@@ -31,14 +31,14 @@
     ]
   },
   "include": [
-    "next-env.d.ts",
-    "vitest.config.ts",
-    "vitest.setup.ts",
-    "src",
-    "app",
     "../../packages/ui/src",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
+    "/tmp/goblin-next/types/**/*.ts",
+    "/tmp/goblin-next/dev/types/**/*.ts",
+    "app",
+    "next-env.d.ts",
+    "src",
+    "vitest.config.ts",
+    "vitest.setup.ts"
   ],
   "exclude": [
     "src/**/__tests__/**",

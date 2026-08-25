@@ -141,6 +141,9 @@ vertex-ai                = "gcp_vm"
 "gpt-4o-mini"                         = { provider = "openai",        model = "gpt-4o-mini" }
 "claude-haiku"                        = { provider = "anthropic",     model = "claude-3-5-haiku-latest" }
 "claude-sonnet"                       = { provider = "anthropic",     model = "claude-sonnet-4-20250514" }
+"llama-3.1-8b-instant"                = { provider = "groq",          model = "groq/compound-mini" }
+"llama-3.3-70b-versatile"             = { provider = "groq",          model = "groq/compound" }
+"mixtral-8x7b-32768"                  = { provider = "groq",          model = "groq/compound-mini" }
 "qwen-max"                            = { provider = "aliyun",        model = "qwen-max" }
 "qwen-plus"                           = { provider = "aliyun",        model = "qwen-plus" }
 "qwen-7b"                             = { provider = "siliconeflow",  model = "Qwen/Qwen2.5-7B-Instruct" }
@@ -337,8 +340,8 @@ endpoint_env            = "GROQ_ENDPOINT"
 invoke_path             = "/chat/completions"
 health_path             = "/models"
 api_key_env             = "GROQ_API_KEY"
-default_model           = "llama-3.1-8b-instant"
-models                  = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "mixtral-8x7b-32768"]
+default_model           = "groq/compound-mini"
+models                  = ["groq/compound-mini", "groq/compound", "openai/gpt-oss-20b", "openai/gpt-oss-120b", "qwen/qwen3.6-27b"]
 capabilities            = ["chat", "reasoning", "code"]
 priority_tier           = 10
 cost_score              = 0.25
@@ -356,9 +359,11 @@ is_active               = true
 
 [providers.groq.costs]
 default                 = { input_per1k = 0.00059, output_per1k = 0.00079 }
-"llama-3.1-8b-instant"   = { input_per1k = 0.00059, output_per1k = 0.00079 }
-"llama-3.3-70b-versatile" = { input_per1k = 0.00059, output_per1k = 0.00079 }
-"mixtral-8x7b-32768"    = { input_per1k = 0.00059, output_per1k = 0.00079 }
+"groq/compound-mini"    = { input_per1k = 0.00059, output_per1k = 0.00079 }
+"groq/compound"         = { input_per1k = 0.00059, output_per1k = 0.00079 }
+"openai/gpt-oss-20b"    = { input_per1k = 0.00059, output_per1k = 0.00079 }
+"openai/gpt-oss-120b"   = { input_per1k = 0.00059, output_per1k = 0.00079 }
+"qwen/qwen3.6-27b"      = { input_per1k = 0.00059, output_per1k = 0.00079 }
 
 [providers.groq.rate_limits]
 default                 = { requests_per_minute = 60, tokens_per_minute = 200000, concurrency = 0 }
@@ -911,6 +916,36 @@ temperature         = 0.7
 supports_streaming  = true
 
 [model_defaults.mixtral-8x7b-32768]
+provider            = "groq"
+max_tokens          = 4000
+temperature         = 0.7
+supports_streaming  = true
+
+["model_defaults.groq/compound-mini"]
+provider            = "groq"
+max_tokens          = 4000
+temperature         = 0.7
+supports_streaming  = true
+
+["model_defaults.groq/compound"]
+provider            = "groq"
+max_tokens          = 4000
+temperature         = 0.7
+supports_streaming  = true
+
+["model_defaults.openai/gpt-oss-20b"]
+provider            = "groq"
+max_tokens          = 4000
+temperature         = 0.7
+supports_streaming  = true
+
+["model_defaults.openai/gpt-oss-120b"]
+provider            = "groq"
+max_tokens          = 4000
+temperature         = 0.7
+supports_streaming  = true
+
+["model_defaults.qwen/qwen3.6-27b"]
 provider            = "groq"
 max_tokens          = 4000
 temperature         = 0.7

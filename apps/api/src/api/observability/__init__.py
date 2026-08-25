@@ -17,7 +17,6 @@ Components:
 
 from .alerting_system import Alert, AlertSeverity, AlertStatus, alerting_system
 from .context_snapshotter import capture_context_snapshot, context_snapshotter
-from .debug_router import router as debug_router
 from .decision_logger import DecisionReason, decision_logger, log_write_time_decision
 from .memory_logger import PromotionGate, log_memory_promotion, memory_promotion_logger
 from .metrics_collector import SystemMetrics, metrics_collector
@@ -102,3 +101,12 @@ __all__ = [
 # Version information
 __version__ = "1.0.0"
 __description__ = "Comprehensive observability and debugging system for goblin-assistant"
+
+
+def __getattr__(name: str):
+    if name == "debug_router":
+        from .debug_router import router as _debug_router
+
+        globals()["debug_router"] = _debug_router
+        return _debug_router
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

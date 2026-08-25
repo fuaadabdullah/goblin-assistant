@@ -324,7 +324,7 @@ jobs:
             sleep 60
             for i in $(seq 1 20); do
               STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
-                https://goblin-backend-dt30.onrender.com/health || echo "000")
+                https://goblin-backend-dt30.onrender.com/api/v1/health || echo "000")
               [ "$STATUS" = "200" ] && echo "Healthy after $i attempts." && exit 0
               echo "Attempt $i: $STATUS — retrying in 15s"
               sleep 15
@@ -448,7 +448,7 @@ jobs:
           command: |
             for i in $(seq 1 5); do
               STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
-                https://goblin-backend-dt30.onrender.com/health || echo "000")
+                https://goblin-backend-dt30.onrender.com/api/v1/health || echo "000")
               [ "$STATUS" = "200" ] && echo "Health check passed." && break
               echo "Attempt $i: $STATUS — retrying in 10s"
               sleep 10
@@ -458,7 +458,7 @@ jobs:
           name: Readiness check
           command: |
             STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
-              https://goblin-backend-dt30.onrender.com/health/ready || echo "000")
+              https://goblin-backend-dt30.onrender.com/api/v1/health/ready || echo "000")
             [ "$STATUS" = "200" ] && echo "Readiness check passed." && exit 0
             echo "Readiness check returned $STATUS." && exit 1
 
@@ -493,27 +493,27 @@ workflows:
           requires: [build]
           filters:
             branches:
-              only: [main, develop]
+              only: [main, develop, deploy/live-benchmark-clean]
       - deploy-render:
           requires: [docker-build]
           filters:
             branches:
-              only: main
+              only: [main, deploy/live-benchmark-clean]
       - deploy-vercel:
           requires: [build]
           filters:
             branches:
-              only: main
+              only: [main, deploy/live-benchmark-clean]
       - smoke-test:
           requires: [deploy-render]
           filters:
             branches:
-              only: main
+              only: [main, deploy/live-benchmark-clean]
       - notify-deploy:
           requires: [smoke-test, deploy-vercel]
           filters:
             branches:
-              only: main
+              only: [main, deploy/live-benchmark-clean]
 
   nightly:
     triggers:

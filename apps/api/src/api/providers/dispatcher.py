@@ -564,7 +564,7 @@ class ProviderDispatcher:
         return re_ranked
 
     def _candidate_order(self, provider_id: Optional[str]) -> List[str]:
-        from ..routing.policy_engine import cost_router, hybrid_router
+        from ..routing.router import cost_router, hybrid_router
 
         def _provider_list_fn(include_hidden: bool = False) -> List[Dict[str, Any]]:
             return self.list_providers(include_hidden=include_hidden)

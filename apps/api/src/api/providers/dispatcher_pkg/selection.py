@@ -52,9 +52,14 @@ class SelectionEngine:
                 routing_mode=routing_mode,
             )
 
-        configured_candidates = dispatcher._auto_configured_candidates(candidates)
-        if not configured_candidates:
-            configured_candidates = [p for p in candidates if dispatcher.is_configured(p)]
+        try:
+            from ...services.provider_health import health_monitor
+
+            available_candidates = set(health_monitor.get_available_providers())
+        except Exception:
+            available_candidates = set()
+
+        configured_candidates = [p for p in candidates if p in available_candidates]
 
         available: List[str] = []
         for provider_id in configured_candidates:
@@ -70,12 +75,12 @@ class SelectionEngine:
         # `available` is gated by canary/health/success-rate and can be a
         # strict subset of `configured_candidates` (e.g. only one or two
         # providers pass the gate on a cold start). If every gated candidate
-        # fails, still fall through to the rest of the configured list
-        # instead of giving up while known-configured providers sit untried.
+        # fails, return the empty set instead of silently reintroducing
+        # unverified configured providers.
         rest = [p for p in configured_candidates if p not in available]
         return ProviderSelectionPlan(
             explicit_mode=explicit_mode,
-            ordered=[*available, *rest] if available else configured_candidates,
+            ordered=[*available, *rest] if available else [],
             routing_mode=routing_mode,
         )
 

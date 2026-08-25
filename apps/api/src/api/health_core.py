@@ -12,15 +12,33 @@ from typing import Any, Dict
 from ._version import get_version
 
 
+def _provider_snapshot_is_available(provider: Dict[str, Any]) -> bool:
+    if not provider:
+        return False
+    if provider.get("billing_issue"):
+        return False
+    if provider.get("configured") is False:
+        return False
+    return provider.get("status") in {"healthy", "degraded"}
+
+
 async def check_routing_health() -> Dict[str, Any]:
     """Check routing system health"""
     try:
-        from .departments import DEPARTMENT_REGISTRY
+        from .services.provider_health import health_monitor
 
-        providers = DEPARTMENT_REGISTRY.list_ids()
+        provider_status = health_monitor.get_all_status(include_hidden=False)
+        providers_available = sum(
+            1 for provider in provider_status.values() if _provider_snapshot_is_available(provider)
+        )
+        providers_configured = sum(
+            1 for provider in provider_status.values() if provider.get("configured")
+        )
         return {
-            "status": "healthy",
-            "providers_available": len(providers),
+            "status": "healthy" if providers_available > 0 else "degraded",
+            "providers_available": providers_available,
+            "providers_configured": providers_configured,
+            "providers_checked": len(provider_status),
             "routing_system": "active",
         }
     except Exception as e:
@@ -101,14 +119,18 @@ def _summarize_provider_health(provider_status: Dict[str, Dict[str, Any]]) -> st
     if not provider_status:
         return "degraded"
 
-    statuses = {provider.get("status") for provider in provider_status.values()}
-    if statuses <= {"healthy", "unknown", "billing_issue"}:
+    providers = list(provider_status.values())
+    if any(_provider_snapshot_is_available(provider) for provider in providers):
         return "healthy"
-    if "healthy" in statuses:
+
+    statuses = {provider.get("status") for provider in providers}
+    if "degraded" in statuses:
         return "warnings"
-    if "unhealthy" in statuses and "unknown" in statuses and "degraded" not in statuses:
-        return "warnings"
-    return "degraded"
+    if statuses <= {"unknown", "billing_issue"}:
+        return "unknown"
+    if "unhealthy" in statuses:
+        return "degraded"
+    return "warnings"
 
 
 def overall_status_from(component_statuses: list) -> str:
@@ -155,9 +177,13 @@ async def build_health_payload(
         from .services.provider_health import health_monitor
 
         provider_status = health_monitor.get_all_status(include_hidden=False)
+        providers_available = sum(
+            1 for provider in provider_status.values() if _provider_snapshot_is_available(provider)
+        )
         provider_health = {
             "status": _summarize_provider_health(provider_status),
             "providers_checked": len(provider_status),
+            "providers_available": providers_available,
             "details": provider_status,
         }
     except Exception as e:
@@ -196,6 +222,7 @@ async def build_health_payload(
         "components": {
             "api": api_health,
             "chroma": chroma_health,
+            "vector_store": chroma_health,
             "routing": routing_health,
             "database": db_health,
             "redis": redis_health,

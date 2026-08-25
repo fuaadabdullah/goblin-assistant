@@ -103,6 +103,27 @@ describe('apiClient.getProviders', () => {
 
     await expect(apiClient.getProviders()).resolves.toEqual([]);
   });
+
+  it('treats malformed registry payloads as empty lists', async () => {
+    mockGetFrontend.mockResolvedValue({ providers: null, models: undefined });
+
+    await expect(apiClient.getProviders()).resolves.toEqual([]);
+  });
+
+  it('ignores invalid ids before falling back to model ids', async () => {
+    mockGetFrontend.mockResolvedValue({
+      providers: [{ id: null as any }, { id: '   ' }],
+      models: [
+        { provider: null as any, name: 'ignored' },
+        { provider: 'openai', name: 'gpt-4o-mini', is_selectable: true, health: 'healthy' },
+        { provider: 'openai', name: 'gpt-4o-mini' },
+      ],
+    });
+
+    const providers = await apiClient.getProviders();
+
+    expect(providers).toEqual(['openai']);
+  });
 });
 
 describe('apiClient.getProviderModelOptions', () => {

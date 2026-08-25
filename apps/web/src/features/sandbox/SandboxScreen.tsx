@@ -16,7 +16,7 @@ const SandboxScreen: FC = () => {
     pollIntervalMs: 60000,
   });
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
-  const guestParam = searchParams.get('guest');
+  const guestParam = searchParams?.get('guest');
   const allowGuest = useMemo(() => {
     return guestParam === '1' || guestParam === 'true';
   }, [guestParam]);

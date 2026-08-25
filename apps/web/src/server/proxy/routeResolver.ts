@@ -1,4 +1,8 @@
-import { API_PROXY_ROUTES, type ApiProxyRoute } from '@goblin/shared';
+import {
+  API_PROXY_ENDPOINT_ROUTES,
+  API_PROXY_PREFIX_ROUTES,
+  type ApiProxyRoute,
+} from '@goblin/shared';
 
 const normalizePathname = (pathname: string): string =>
   pathname !== '/' ? pathname.replace(/\/+$/, '') : pathname;
@@ -18,17 +22,22 @@ export const suffixFromSegments = (segments: readonly string[], frontendPrefix: 
 
 export const resolveProxyRoute = (pathname: string): ApiProxyRoute | null => {
   const normalizedPathname = normalizePathname(pathname);
-  let resolved: ApiProxyRoute | null = null;
 
-  for (const route of API_PROXY_ROUTES) {
-    if (!isPrefixMatch(normalizedPathname, route.frontendPrefix)) {
-      continue;
+  // Endpoint routes: exact match, checked first — no sub-path forwarding.
+  for (const route of API_PROXY_ENDPOINT_ROUTES) {
+    if (normalizedPathname === normalizePathname(route.frontendPath)) {
+      return { ...route, kind: 'endpoint' };
     }
+  }
 
+  // Prefix routes: longest-prefix match wins.
+  let resolved: (typeof API_PROXY_PREFIX_ROUTES)[number] | null = null;
+  for (const route of API_PROXY_PREFIX_ROUTES) {
+    if (!isPrefixMatch(normalizedPathname, route.frontendPrefix)) continue;
     if (!resolved || route.frontendPrefix.length > resolved.frontendPrefix.length) {
       resolved = route;
     }
   }
 
-  return resolved;
+  return resolved ? { ...resolved, kind: 'prefix' } : null;
 };

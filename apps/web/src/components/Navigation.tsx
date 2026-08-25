@@ -36,6 +36,7 @@ interface NavigationProps {
 const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: NavigationProps) => {
   const router = useRouter();
   const pathname = usePathname();
+  const currentPathname = pathname ?? '';
   const { logout } = useAuthSession();
   const isMobileMenuOpen = useUIStore((s) => s.mobileNavOpen);
   const setIsMobileMenuOpen = useUIStore((s) => s.setMobileNavOpen);
@@ -71,8 +72,8 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
   // Admin routes use dynamic imports with heavy dashboards; disable prefetch so
   // hovering the nav doesn't eagerly fetch large JS chunks the user hasn't
   // explicitly navigated to yet. Customer primary paths keep default prefetch.
-  const getItemPrefetch = (path: string): false | 'auto' =>
-    variant === 'admin' && path !== '/' ? false : 'auto';
+  const getItemPrefetch = (path: string): false | undefined =>
+    variant === 'admin' && path !== '/' ? false : undefined;
 
   const navItems = variant === 'admin' ? adminItems : customerItems;
 
@@ -105,12 +106,14 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
           <div className="hidden lg:flex items-center space-x-3">
             {navItems.map((item) => {
               const isActive =
-                pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path));
+                currentPathname === item.path ||
+                (item.path !== '/' && currentPathname.startsWith(item.path));
+              const prefetch = getItemPrefetch(item.path);
               return (
                 <Link
                   key={item.path}
                   href={item.path}
-                  prefetch={getItemPrefetch(item.path)}
+                  {...(prefetch === false ? { prefetch: false as const } : {})}
                   className={`flex items-center space-x-2 px-4 py-3 min-h-[44px] text-sm font-medium rounded-lg transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${
                     isActive
                       ? 'text-text bg-surface-active shadow-glow-primary border border-border'
@@ -178,12 +181,14 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
 
           {navItems.map((item) => {
             const isActive =
-              pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path));
+              currentPathname === item.path ||
+              (item.path !== '/' && currentPathname.startsWith(item.path));
+            const prefetch = getItemPrefetch(item.path);
             return (
               <Link
                 key={item.path}
                 href={item.path}
-                prefetch={getItemPrefetch(item.path)}
+                {...(prefetch === false ? { prefetch: false as const } : {})}
                 className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium min-h-[44px] ${
                   isActive
                     ? 'text-text bg-surface-active border border-border'

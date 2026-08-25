@@ -1,303 +1,137 @@
 name: Deploy to Production
 
+# Triggered automatically when the CI workflow completes successfully on main.
+# Also supports manual dispatch with an explicit image tag override.
+#
+# What this does:
+#   1. SSH into the Oracle ARM64 VM (dogfood v1 trigger — acceptable temporarily)
+#   2. Pull the pre-built image from GHCR (no source build on VM)
+#   3. Restart services via docker compose
+#
+# The key improvement over the old approach:
+#   OLD: git pull → docker compose up --build  (builds on VM, not reproducible)
+#   NEW: docker pull ghcr.io/…:SHA → docker compose up  (immutable image from registry)
+#
+# Promotion path to fully automated:
+#   Run infra/oracle/setup-runner.sh to install a self-hosted GitHub Actions runner
+#   on the Oracle VM, then change the deploy job to:
+#     runs-on: [self-hosted, linux, arm64]
+#   The SSH step becomes unnecessary; the runner deploys directly.
+
 on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       image_tag:
-        description: 'Docker image tag to deploy'
+        description: "Image tag to deploy (defaults to HEAD SHA of the triggering run)"
         required: false
-        default: 'main'
-      terraform_apply:
-        description: 'Apply Terraform changes'
-        required: false
-        type: boolean
-        default: false
-  repository_dispatch:
-    types: [deploy-prod]
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+        type: string
 
 jobs:
-  # ==============================================================================
-  # Pre-Deployment Checks
-  # ==============================================================================
-  pre-deploy-checks:
-    name: Pre-Deployment Checks
+  deploy:
+    name: deploy
     runs-on: ubuntu-latest
-    outputs:
-      continue: ${{ steps.check.outputs.continue }}
+    environment: production
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Verify main branch
+      - name: Resolve image tag
+        id: tag
         run: |
-          if [ "${{ github.ref }}" != "refs/heads/main" ]; then
-            echo "❌ Production deployment only allowed from main branch"
-            exit 1
+          if [ -n "${{ inputs.image_tag }}" ]; then
+            echo "tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ github.event.workflow_run.head_sha }}" ]; then
+            echo "tag=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
           fi
-          echo "✅ On main branch"
 
-      - name: Check required secrets
-        id: check
-        run: |
-          if [ -z "${{ secrets.FLY_API_TOKEN }}" ]; then
-            echo "❌ Missing FLY_API_TOKEN secret"
-            exit 1
-          fi
-          echo "✅ All required secrets configured"
-          echo "continue=true" >> $GITHUB_OUTPUT
-
-      - name: Get latest image from staging
-        run: |
-          echo "Latest staging image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main"
-
-  # ==============================================================================
-  # Terraform Validation & Plan for Production
-  # ==============================================================================
-  terraform-prod-plan:
-    name: Terraform Plan (Production)
-    needs: [pre-deploy-checks]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: '1.6.0'
-
-      - name: Initialize Terraform
-        run: |
-          cd terraform
-          terraform init -backend=false
+      - name: Deploy to Oracle VM
+        uses: appleboy/ssh-action@v1
         env:
-          TF_INPUT: false
-
-      - name: Validate configuration
-        run: |
-          cd terraform
-          terraform validate
-
-      - name: Generate plan (production)
-        id: plan
-        run: |
-          cd terraform
-          terraform plan -no-color -var="environment=production" || true
-
-      - name: Save plan artifact
-        run: |
-          cd terraform
-          terraform plan -out=tfplan -var="environment=production" || true
-
-      - name: Upload plan artifact
-        uses: actions/upload-artifact@v4
+          GOBLIN_IMAGE: ghcr.io/${{ github.repository_owner }}/goblin-api:${{ steps.tag.outputs.tag }}
+          GOBLIN_SANDBOX_IMAGE: ghcr.io/${{ github.repository_owner }}/goblin-sandbox:${{ steps.tag.outputs.tag }}
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
         with:
-          name: terraform-plan-prod
-          path: terraform/tfplan
-          retention-days: 1
+          host: ${{ secrets.ORACLE_VM_IP }}
+          username: ubuntu
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          envs: GOBLIN_IMAGE,GOBLIN_SANDBOX_IMAGE,IMAGE_TAG,GHCR_TOKEN,GHCR_USER
+          timeout: 300s
+          script: |
+            set -euo pipefail
 
-  # ==============================================================================
-  # Manual Approval Gate
-  # ==============================================================================
-  approval:
-    name: Manual Approval
-    needs: [pre-deploy-checks, terraform-prod-plan]
-    runs-on: ubuntu-latest
-    environment:
-      name: production
-    steps:
-      - name: Approve deployment
-        run: |
-          echo "## ✅ Approved for Production Deployment"
-          echo ""
-          echo "Deployment details:"
-          echo "- **Branch**: ${{ github.ref }}"
-          echo "- **Commit**: ${{ github.sha }}"
-          echo "- **Triggered by**: ${{ github.actor }}"
-          echo "- **Timestamp**: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            # Authenticate to GHCR so we can pull private images.
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
-  # ==============================================================================
-  # Apply Terraform Changes (Optional)
-  # ==============================================================================
-  terraform-apply:
-    name: Apply Terraform (Production)
-    needs: [approval]
-    runs-on: ubuntu-latest
-    if: github.event.inputs.terraform_apply == 'true' || github.event_name == 'repository_dispatch'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+            # Pull the images before taking anything down.
+            # If the pull fails the running containers are untouched.
+            echo "Pulling $GOBLIN_IMAGE ..."
+            docker pull "$GOBLIN_IMAGE"
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: '1.6.0'
+            echo "Pulling $GOBLIN_SANDBOX_IMAGE ..."
+            docker pull "$GOBLIN_SANDBOX_IMAGE" || echo "Sandbox image not yet built; skipping"
 
-      - name: Download plan artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: terraform-plan-prod
-          path: terraform/
+            # Stamp the deployed SHA and timestamp for rollback reference.
+            echo "$IMAGE_TAG" > ~/goblin-assistant/infra/oracle/.last_deploy_sha
+            date -u +"%Y-%m-%dT%H:%M:%SZ" > ~/goblin-assistant/infra/oracle/.last_deploy_at
 
-      - name: Initialize Terraform
-        run: |
-          cd terraform
-          terraform init -backend=false
-        env:
-          TF_INPUT: false
+            # Update .env with the new image references.
+            ENV_FILE=~/goblin-assistant/infra/oracle/.env
+            sed -i "s|^GOBLIN_IMAGE=.*|GOBLIN_IMAGE=$GOBLIN_IMAGE|" "$ENV_FILE" \
+              || echo "GOBLIN_IMAGE=$GOBLIN_IMAGE" >> "$ENV_FILE"
+            sed -i "s|^SANDBOX_IMAGE=.*|SANDBOX_IMAGE=$GOBLIN_SANDBOX_IMAGE|" "$ENV_FILE" \
+              || echo "SANDBOX_IMAGE=$GOBLIN_SANDBOX_IMAGE" >> "$ENV_FILE"
 
-      - name: Apply Terraform
-        run: |
-          cd terraform
-          terraform apply -no-color -auto-approve tfplan || true
-        env:
-          TF_INPUT: false
+            cd ~/goblin-assistant/infra/oracle
 
-      - name: Save Terraform outputs
-        run: |
-          cd terraform
-          terraform output -json > /tmp/outputs.json
+            # Restart services using the pulled images. --no-build is explicit:
+            # we never build on the VM.
+            docker compose up -d --no-build --remove-orphans
 
-      - name: Upload outputs
-        uses: actions/upload-artifact@v4
-        with:
-          name: terraform-outputs
-          path: /tmp/outputs.json
-          retention-days: 30
+            # Wait for the API to become healthy (up to 90 s).
+            echo "Waiting for API health check..."
+            for i in $(seq 1 45); do
+              if docker compose exec -T api \
+                  python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health', timeout=5)" \
+                  2>/dev/null; then
+                echo "API healthy after ${i}x2s"
+                break
+              fi
+              if [ "$i" -eq 45 ]; then
+                echo "API did not become healthy within 90s"
+                docker compose logs --tail=50 api
+                exit 1
+              fi
+              sleep 2
+            done
 
-  # ==============================================================================
-  # Deploy to Production (Fly.io)
-  # ==============================================================================
-  deploy-production:
-    name: Deploy to Production
-    needs: [approval, terraform-apply]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install flyctl
-        uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - name: Deploy to Fly.io
-        id: deploy
-        run: |
-          echo "Deploying to production..."
-          flyctl deploy --remote-only --app goblin-backend
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-
-      - name: Wait for deployment
-        run: |
-          echo "Waiting for production deployment..."
-          sleep 45
-
-      - name: Health check
-        id: health
-        run: |
-          max_attempts=30
-          attempt=0
-
-          while [ $attempt -lt $max_attempts ]; do
-            response=$(curl -s -o /dev/null -w "%{http_code}" https://goblin-backend.fly.dev/health)
-            if [ "$response" = "200" ]; then
-              echo "✅ Health check passed - Service is healthy"
-              exit 0
+            # ARM64 sanity check — fail the deploy if the running image is wrong arch.
+            echo "--- ARM64 gate ---"
+            IMAGE_ID=$(docker compose images -q api 2>/dev/null || true)
+            if [ -n "$IMAGE_ID" ]; then
+              ARCH=$(docker inspect "$IMAGE_ID" --format '{{.Architecture}}')
+              echo "  api: $ARCH"
+              if [ "$ARCH" != "arm64" ]; then
+                echo "ERROR: api image is $ARCH, expected arm64" >&2
+                exit 1
+              fi
             fi
+            echo "--- ARM64 gate passed ---"
 
-            attempt=$((attempt + 1))
-            echo "Attempt $attempt/$max_attempts: Status $response - Retrying in 10s..."
-            sleep 10
-          done
+            echo "Deploy complete: $GOBLIN_IMAGE"
 
-          echo "❌ Health check failed after $max_attempts attempts"
-          exit 1
-
-      - name: Rollback on failure
-        if: failure()
+      - name: Record deployment summary
+        if: always()
         run: |
-          echo "⚠️  Deployment failed — rolling back to previous release..."
-          flyctl releases rollback --app goblin-backend || true
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        continue-on-error: true
-
-      - name: Notify deployment success
-        if: success()
-        run: |
-          echo "## ✅ Production Deployment Successful" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Environment**: Production" >> $GITHUB_STEP_SUMMARY
-          echo "- **URL**: https://goblin-backend.fly.dev" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Deployed by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Timestamp**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
-
-      - name: Notify deployment failure
-        if: failure()
-        run: |
-          echo "## ❌ Production Deployment Failed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Please investigate and perform manual rollback if necessary:" >> $GITHUB_STEP_SUMMARY
-          echo "https://fly.io/apps/goblin-backend" >> $GITHUB_STEP_SUMMARY
-
-  # ==============================================================================
-  # Post-Deployment Verification
-  # ==============================================================================
-  post-deploy-verification:
-    name: Post-Deployment Verification
-    needs: [deploy-production]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Verify API endpoints
-        run: |
-          echo "Verifying production API..."
-
-          endpoints=(
-            "/health"
-            "/api/status"
-          )
-
-          for endpoint in "${endpoints[@]}"; do
-            echo "Checking https://goblin-backend.fly.dev$endpoint"
-            status=$(curl -s -o /dev/null -w "%{http_code}" https://goblin-backend.fly.dev$endpoint)
-            if [ "$status" = "200" ] || [ "$status" = "404" ]; then
-              echo "✅ $endpoint - OK ($status)"
-            else
-              echo "❌ $endpoint - FAILED ($status)"
-              exit 1
-            fi
-          done
-
-      - name: Create deployment summary
-        run: |
-          echo "## 📋 Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Status**: ✅ Verified" >> $GITHUB_STEP_SUMMARY
-          echo "**Deployed At**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
-          echo "**Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "[View in Fly.io Dashboard](https://fly.io/apps/goblin-backend)" >> $GITHUB_STEP_SUMMARY
-
-  # ==============================================================================
-  # Notify Success
-  # ==============================================================================
-  notify-success:
-    name: Deployment Notification
-    needs: [post-deploy-verification]
-    if: success()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Log success
-        run: |
-          echo "✅ Production deployment completed successfully"
-          echo "Deployment: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "### Deploy ${{ steps.tag.outputs.tag }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Image: \`ghcr.io/${{ github.repository_owner }}/goblin-api:${{ steps.tag.outputs.tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Status: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"

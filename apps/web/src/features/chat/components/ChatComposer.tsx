@@ -88,16 +88,16 @@ const ChatComposer = ({
   };
 
   return (
-    <div className="border-t border-border bg-surface/85 backdrop-blur px-4 py-4">
-      <div className="max-w-3xl mx-auto">
+    <div className="border-t border-border bg-surface/85 px-3 py-3 backdrop-blur sm:px-4 sm:py-4">
+      <div className="mx-auto max-w-4xl">
         {authError && (
           <div className="mb-4">
             <AuthRequired />
           </div>
         )}
         <div className="bg-surface-hover border border-border rounded-2xl p-4 focus-within:ring-1 focus-within:ring-primary/40 focus-within:border-primary/40 transition">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-3 text-xs text-muted">
-            <div className="flex flex-wrap items-center gap-3">
+          <div className="mb-3 flex flex-col gap-2 text-xs text-muted sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <span className="font-mono">
                 Provider: <span className="text-text">{selectedProvider || 'auto'}</span>
               </span>
@@ -108,7 +108,10 @@ const ChatComposer = ({
                 Settings
               </Link>
             </div>
-            <div className="flex flex-wrap items-center gap-3 font-mono" id="chat-composer-meta">
+            <div
+              className="flex flex-wrap items-center gap-2 font-mono sm:justify-end sm:gap-3"
+              id="chat-composer-meta"
+            >
               <span>
                 Est:{' '}
                 <span className="text-text">
@@ -137,7 +140,7 @@ const ChatComposer = ({
             placeholder={CHAT_COMPOSER_PLACEHOLDER}
             rows={3}
             maxLength={MAX_MESSAGE_LENGTH}
-            className="w-full px-3 py-2 bg-transparent focus:outline-none text-text placeholder-muted resize-none min-h-[112px] text-sm md:text-base leading-relaxed"
+            className="min-h-[124px] w-full resize-none bg-transparent px-3 py-2 text-sm leading-relaxed text-text placeholder-muted focus:outline-none md:text-base"
             disabled={isSending}
             aria-label="Chat message input"
             aria-describedby="chat-composer-meta"
@@ -170,9 +173,9 @@ const ChatComposer = ({
               )}
             </div>
           )}
-          <div className="flex flex-wrap items-center justify-between gap-3 mt-3">
-            <div className="flex items-center gap-3">
-              <div className="text-xs text-muted">Tip: {CHAT_COMPOSER_TIP}</div>
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="text-xs leading-5 text-muted">Tip: {CHAT_COMPOSER_TIP}</div>
               {showCounter && (
                 <div
                   className={`text-xs font-mono ${
@@ -183,7 +186,7 @@ const ChatComposer = ({
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -196,7 +199,7 @@ const ChatComposer = ({
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isSending}
-                className="px-3 py-2 rounded-lg text-sm font-medium border border-border text-text hover:bg-surface-active disabled:opacity-50"
+                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border px-3 py-2 text-sm font-medium text-text hover:bg-surface-active disabled:opacity-50"
                 type="button"
                 aria-label="Attach file"
                 title="Attach file"
@@ -205,7 +208,7 @@ const ChatComposer = ({
               </button>
               <button
                 onClick={onClear}
-                className="px-3 py-2 rounded-lg text-sm font-medium border border-border text-text hover:bg-surface-active"
+                className="min-h-[44px] rounded-lg border border-border px-3 py-2 text-sm font-medium text-text hover:bg-surface-active"
                 type="button"
               >
                 Clear
@@ -213,7 +216,7 @@ const ChatComposer = ({
               <button
                 onClick={onSend}
                 disabled={isSending || !input.trim() || isOverLimit}
-                className="bg-primary hover:brightness-110 disabled:opacity-50 text-text-inverse px-4 py-2 rounded-lg font-medium shadow-glow-primary transition-all"
+                className="min-h-[44px] rounded-lg bg-primary px-4 py-2 font-medium text-text-inverse shadow-glow-primary transition-all hover:brightness-110 disabled:opacity-50"
                 type="button"
                 aria-label={
                   isOverLimit

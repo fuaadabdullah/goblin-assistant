@@ -94,6 +94,12 @@ def _load_proxy_contract(contract_path: Path = PROXY_CONTRACT_PATH) -> tuple[lis
         if isinstance(path, str) and path:
             explicit_patterns.append(_compile_route_pattern(path))
 
+    # ProxyEndpointSpec routes are allowed as exact frontend paths (no sub-paths).
+    for route in getattr(module, "PROXY_ENDPOINT_ROUTES", ()):
+        frontend_path = getattr(route, "frontend_path", None)
+        if isinstance(frontend_path, str) and frontend_path:
+            explicit_patterns.append(_compile_route_pattern(frontend_path))
+
     return proxy_patterns, explicit_patterns
 
 

@@ -94,7 +94,8 @@ class SmartRouter:
         intent: Optional[Any] = None,
         request_id: Optional[str] = None,
     ) -> List[str]:
-        candidates = top_providers_for(capability, limit=20)
+        available = set(health_monitor.get_available_providers())
+        candidates = [p for p in top_providers_for(capability, limit=20) if p in available]
         if not candidates:
             return []
 

@@ -42,11 +42,11 @@ const CustomerHome = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div className="min-h-[100dvh] bg-bg">
       <Seo title="Home" description={`${BRAND_NAME} — ${BRAND_TAGLINE}`} robots="index,follow" />
       <Navigation showLogout={isAuthenticated} variant="customer" />
-      <div className="max-w-6xl mx-auto p-6">
-        <main role="main" id="main-content" tabIndex={-1}>
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+        <main role="main" id="main-content" tabIndex={-1} className="space-y-8">
           <ControlPanelHero />
 
           <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">

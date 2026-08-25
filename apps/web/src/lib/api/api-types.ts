@@ -206,6 +206,16 @@ export interface ConversationSendResponse {
   }>;
 }
 
+export interface ApiErrorLike {
+  status?: number;
+  message?: string;
+  response?: {
+    status?: number;
+    data?: unknown;
+  };
+  responseData?: unknown;
+}
+
 export interface StandardApiErrorPayload {
   code?: string;
   type?: string;

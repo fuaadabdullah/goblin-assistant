@@ -16,31 +16,42 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
-import httpx
+from .domain import ProviderHealthSnapshot as ProviderHealth
 
-from .contracts import ProviderCapabilityMatrix
 
-# Re-exported for every existing `from .base import ProviderErrorCategory` import
-# site — the class is now owned by domain.py so that module has zero runtime
-# dependency on this one (see domain.py's docstring for why).
-from .domain import (
-    ProviderCapability,
-    ProviderErrorCategory,
-    ProviderExecutionRequest,
-    ProviderExecutionResult,
-    ProviderHealthSnapshot,
-    capabilities_from_matrix,
-    from_provider_result,
-)
-from .pricing import resolve_model_pricing
+class ProviderErrorCategory(str, Enum):
+    """Structured error categories for provider failures."""
+
+    AUTH = "auth"  # 401/403, invalid API key
+    RATE_LIMIT = "rate-limit"  # 429, quota exceeded
+    TIMEOUT = "timeout"  # Connection/read timeout
+    MODEL_ERROR = "model-error"  # Invalid model, context too long
+    SERVER_ERROR = "server-error"  # 5xx from provider
+    CONNECTION = "connection"  # DNS, network, connection refused
+    UNKNOWN = "unknown"
 
 
 class ProviderCircuitState(str, Enum):
-    """Provider-local circuit breaker states used by routing."""
+    """Compatibility circuit states shared by providers and dispatcher code."""
 
     CLOSED = "closed"
     SOFT_OPEN = "soft_open"
     HARD_OPEN = "hard_open"
+
+    @classmethod
+    def from_value(cls, value: Any) -> "ProviderCircuitState":
+        if isinstance(value, cls):
+            return value
+        raw = getattr(value, "value", value)
+        normalized = str(raw or "").strip().lower().replace("-", "_")
+        if normalized in {"", "open"}:
+            return cls.HARD_OPEN if normalized == "open" else cls.CLOSED
+        if normalized == "half_open":
+            return cls.SOFT_OPEN
+        try:
+            return cls(normalized)
+        except ValueError:
+            return cls.CLOSED
 
 
 def classify_provider_error(error: Union[str, Exception]) -> ProviderErrorCategory:
@@ -182,11 +193,45 @@ def is_billing_error(status_code: int, body: str) -> bool:
     return any(phrase in body_lower for phrase in _BILLING_PHRASES)
 
 
-# Alias, not a subclass: every provider's health_check() constructs this with
-# `provider_id`/`healthy` positional and the rest by keyword, never passing
-# `status` — ProviderHealthSnapshot derives `status` automatically in that
-# case (see providers/domain.py), so this is a lossless, zero-diff alias.
-ProviderHealth = ProviderHealthSnapshot
+def _normalize_error_category(
+    category: Any,
+    error: str,
+) -> ProviderErrorCategory:
+    if isinstance(category, ProviderErrorCategory):
+        return category
+    raw = getattr(category, "value", category)
+    if raw is None:
+        return classify_provider_error(error)
+    normalized = str(raw).strip().lower().replace("_", "-")
+    try:
+        return ProviderErrorCategory(normalized)
+    except ValueError:
+        return classify_provider_error(error)
+
+
+def _is_hard_open_failure(
+    category: ProviderErrorCategory,
+    error: str,
+) -> bool:
+    if category in {ProviderErrorCategory.AUTH, ProviderErrorCategory.RATE_LIMIT}:
+        return True
+    error_lower = error.lower()
+    if any(phrase in error_lower for phrase in _BILLING_PHRASES):
+        return True
+    if any(
+        phrase in error_lower
+        for phrase in (
+            "access denied",
+            "access_denied",
+            "model_access_denied",
+            "forbidden",
+            "unauthorized",
+            "invalid api key",
+            "invalid_api_key",
+        )
+    ):
+        return True
+    return False
 
 
 class BaseProvider(ABC):
@@ -196,6 +241,11 @@ class BaseProvider(ABC):
     Subclasses must implement completion, streaming, and health probing.
     Costs are expressed as USD per 1K tokens to keep routing logic simple.
     """
+
+    COST_INPUT_PER_1K: float = 0.0
+    COST_OUTPUT_PER_1K: float = 0.0
+    SOFT_OPEN_FAILURE_THRESHOLD: int = 2
+    SOFT_OPEN_BACKOFF_SECONDS: float = 30.0
 
     def __init__(
         self,
@@ -212,22 +262,10 @@ class BaseProvider(ABC):
         self._last_error: Optional[str] = None
         self._failure_count = 0
         self._transient_failure_count = 0
+        self._last_failure_time = 0.0
         self._circuit_open_until = 0.0
-        self._soft_open_probe_taken = False
         self._circuit_state = ProviderCircuitState.CLOSED
-
-        # Shared client configuration
-        self._client: Optional[httpx.AsyncClient] = None
-
-    async def get_client(self, timeout: float = 60.0) -> httpx.AsyncClient:
-        """Returns a reusable AsyncClient instance."""
-        if self._client is None or self._client.is_closed:
-            # Standardizing on a pooled client for the provider instance
-            self._client = httpx.AsyncClient(
-                timeout=timeout,
-                limits=httpx.Limits(max_connections=20, max_keepalive_connections=5),
-            )
-        return self._client
+        self._probe_taken = False
 
     @staticmethod
     def _resolve_init_args(
@@ -254,6 +292,28 @@ class BaseProvider(ABC):
     def default_model(self) -> str:
         return str(self.config.get("default_model", ""))
 
+    @property
+    def circuit_state(self) -> str:
+        return self._circuit_state.value
+
+    @circuit_state.setter
+    def circuit_state(self, value: Any) -> None:
+        state = ProviderCircuitState.from_value(value)
+        self._circuit_state = state
+        if state == ProviderCircuitState.CLOSED:
+            self._circuit_open_until = 0.0
+            self._probe_taken = False
+            self._healthy = True
+        elif state == ProviderCircuitState.SOFT_OPEN:
+            if self._circuit_open_until <= 0.0 or self._circuit_open_until == float("inf"):
+                self._circuit_open_until = time.time() + self.SOFT_OPEN_BACKOFF_SECONDS
+            self._probe_taken = False
+            self._healthy = False
+        else:
+            self._circuit_open_until = float("inf")
+            self._probe_taken = False
+            self._healthy = False
+
     def api_key(self, default_env: str = "") -> str:
         env_name = self.api_key_env or default_env
         return os.getenv(env_name, "").strip() if env_name else ""
@@ -278,52 +338,6 @@ class BaseProvider(ABC):
 
         return []
 
-    @abstractmethod
-    async def invoke(
-        self,
-        messages: Optional[List[Dict[str, str]]] = None,
-        model: Optional[str] = None,
-        *,
-        stream: bool = False,
-        max_tokens: int = 4096,
-        temperature: float = 0.7,
-        prompt: str = "",
-        **kwargs: Any,
-    ) -> ProviderResult:
-        """Non-streaming completion."""
-
-    async def invoke_typed(self, request: ProviderExecutionRequest) -> ProviderExecutionResult:
-        """Typed sibling of invoke(). Concrete (not abstract) — every provider
-        gets an identical typed execution entrypoint for free via inheritance;
-        no subclass needs to change. Bridges through the existing invoke()."""
-        result = await self.invoke(
-            messages=request.messages,
-            model=request.model,
-            stream=request.stream,
-            max_tokens=request.max_tokens if request.max_tokens is not None else 4096,
-            temperature=request.temperature if request.temperature is not None else 0.7,
-            prompt=request.prompt or "",
-            **request.extra,
-        )
-        return from_provider_result(result, provider_id=request.provider_id, model=request.model)
-
-    @abstractmethod
-    def stream(
-        self,
-        messages: Optional[List[Dict[str, str]]] = None,
-        model: Optional[str] = None,
-        *,
-        max_tokens: int = 4096,
-        temperature: float = 0.7,
-        prompt: str = "",
-        **kwargs: Any,
-    ) -> AsyncGenerator[Dict[str, Any], None]:
-        """Streaming completion."""
-
-    @abstractmethod
-    async def health_check(self) -> ProviderHealth:
-        """Probe the provider."""
-
     async def chat(
         self,
         messages: Optional[List[Dict[str, str]]] = None,
@@ -334,8 +348,7 @@ class BaseProvider(ABC):
         temperature: float = 0.7,
         prompt: str = "",
         **kwargs: Any,
-    ) -> ProviderResult:
-        """V1 adapter surface: chat invocation."""
+    ) -> "ProviderResult":
         return await self.invoke(
             messages=messages,
             model=model,
@@ -356,7 +369,6 @@ class BaseProvider(ABC):
         prompt: str = "",
         **kwargs: Any,
     ) -> AsyncGenerator[Dict[str, Any], None]:
-        """V1 adapter surface: streaming chat invocation."""
         return self.stream(
             messages=messages,
             model=model,
@@ -366,12 +378,39 @@ class BaseProvider(ABC):
             **kwargs,
         )
 
-    async def health(self) -> ProviderHealth:
-        """V1 adapter surface: provider health probe."""
-        return await self.health_check()
+    @abstractmethod
+    async def invoke(
+        self,
+        messages: Optional[List[Dict[str, str]]] = None,
+        model: Optional[str] = None,
+        *,
+        stream: bool = False,
+        max_tokens: int = 4096,
+        temperature: float = 0.7,
+        prompt: str = "",
+        **kwargs: Any,
+    ) -> ProviderResult:
+        """Non-streaming completion."""
+
+    @abstractmethod
+    async def stream(
+        self,
+        messages: Optional[List[Dict[str, str]]] = None,
+        model: Optional[str] = None,
+        *,
+        max_tokens: int = 4096,
+        temperature: float = 0.7,
+        prompt: str = "",
+        **kwargs: Any,
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """Streaming completion."""
+
+    @abstractmethod
+    async def health_check(self) -> ProviderHealth:
+        """Probe the provider."""
 
     async def warmup(self) -> ProviderResult:
-        """Optional startup warmup probe."""
+        """Run a minimal live completion probe for access validation."""
         return await self.invoke(
             messages=[{"role": "user", "content": "ping"}],
             model=self.default_model or None,
@@ -379,180 +418,193 @@ class BaseProvider(ABC):
             temperature=0.0,
         )
 
-    def warmup_targets(self) -> list[tuple[str, "BaseProvider"]]:
-        """Return providers that should receive warmup traffic."""
-        return [(self.provider_id, self)]
+    async def invoke_typed(
+        self,
+        request: "ProviderExecutionRequest",  # noqa: F821
+    ) -> "ProviderExecutionResult":  # noqa: F821
+        from .domain import from_provider_result  # noqa: PLC0415
 
-    def capabilities(self) -> ProviderCapabilityMatrix:
-        """V1 capability contract (embeddings optional by design)."""
-        configured = {str(item).strip().lower() for item in self.config.get("capabilities", [])}
-        supports_embed = "embeddings" in configured or self.config.get("supports_embeddings", False)
+        result = await self.invoke(
+            messages=request.messages,
+            model=request.model,
+            stream=request.stream,
+            max_tokens=request.max_tokens or 4096,
+            temperature=request.temperature or 0.7,
+            prompt=request.prompt or "",
+            **request.extra,
+        )
+        return from_provider_result(
+            result,
+            provider_id=request.provider_id,
+            model=request.model,
+        )
+
+    async def health(
+        self,
+    ) -> "ProviderHealth":
+        return await self.health_check()
+
+    def capabilities(self) -> Dict[str, Any]:
+        raw_caps = self.config.get("capabilities", [])
+        configured_caps = (
+            {str(item).strip().lower() for item in raw_caps if str(item).strip()}
+            if isinstance(raw_caps, list)
+            else set()
+        )
         limits: Dict[str, int] = {}
-        for source_key, dest_key in (
-            ("max_input_tokens", "max_input_tokens"),
-            ("max_output_tokens", "max_output_tokens"),
-            ("max_batch_size", "max_batch_size"),
-        ):
-            value = self.config.get(source_key)
+        for key in ("max_input_tokens", "max_output_tokens", "max_batch_size"):
+            value = self.config.get(key)
             if isinstance(value, int) and value > 0:
-                limits[dest_key] = value
-
+                limits[key] = value
         return {
             "chat": True,
             "stream_chat": True,
             "health": True,
             "capabilities": True,
-            "embeddings": bool(supports_embed),
+            "embeddings": "embeddings" in configured_caps
+            or type(self).embed is not BaseProvider.embed,
+            "reranking": "reranking" in configured_caps or hasattr(self, "rerank"),
             "limits": limits,
         }
 
-    def capabilities_typed(self) -> frozenset[ProviderCapability]:
-        """Typed sibling of capabilities(). Concrete (not abstract) — every
-        provider gets this for free via inheritance, no subclass changes
-        needed. Bridges through the existing capabilities() matrix."""
+    def capabilities_typed(self):
+        from .domain import capabilities_from_matrix  # noqa: PLC0415
+
         return capabilities_from_matrix(self.capabilities())
 
     def is_available(self) -> bool:
-        if self._circuit_state == ProviderCircuitState.HARD_OPEN:
-            return False
-        if self._circuit_state == ProviderCircuitState.SOFT_OPEN:
-            return True
-        if time.time() < self._circuit_open_until:
-            return False
-        return self._healthy or self._failure_count < 3
+        return self._circuit_state != ProviderCircuitState.HARD_OPEN
 
-    def should_attempt(self, *, canary: bool = False, critical: bool = True) -> bool:
-        """Return whether routing may attempt this provider now."""
+    def should_attempt(self, *, canary: bool = False) -> bool:
         if self._circuit_state == ProviderCircuitState.HARD_OPEN:
             return False
         if self._circuit_state == ProviderCircuitState.SOFT_OPEN:
             return bool(canary and self.soft_open_probe_available())
-        return self.is_available()
-
-    def soft_open_probe_available(self) -> bool:
-        """Return True when a soft-open provider may receive its next probe."""
-        return (
-            self._circuit_state == ProviderCircuitState.SOFT_OPEN
-            and not self._soft_open_probe_taken
-            and time.time() >= self._circuit_open_until
-        )
-
-    def claim_soft_open_probe(self) -> bool:
-        """Reserve the current soft-open probe slot if one is available."""
-        if not self.soft_open_probe_available():
-            return False
-        self._soft_open_probe_taken = True
         return True
 
-    @property
-    def circuit_state(self) -> str:
-        return self._circuit_state.value
+    def soft_open_probe_available(self) -> bool:
+        if self._circuit_state != ProviderCircuitState.SOFT_OPEN:
+            return False
+        if self._probe_taken:
+            return False
+        return time.time() >= self._circuit_open_until
+
+    def claim_soft_open_probe(self) -> bool:
+        if not self.soft_open_probe_available():
+            return False
+        self._probe_taken = True
+        return True
 
     def circuit_status(self) -> Dict[str, Any]:
-        cooldown_remaining_seconds = 0.0
-        if self._circuit_open_until not in (0.0, float("inf")):
-            cooldown_remaining_seconds = max(0.0, self._circuit_open_until - time.time())
+        now = time.time()
+        state = self.circuit_state
+        open_until = (
+            self._circuit_open_until
+            if self._circuit_state == ProviderCircuitState.SOFT_OPEN
+            else 0.0
+        )
+        cooldown_remaining = max(0.0, open_until - now) if open_until else 0.0
+        probe_available = self.soft_open_probe_available()
         return {
-            "state": self._circuit_state.value,
+            "state": state,
+            "circuit_state": state,
+            "available": self.is_available(),
+            "healthy": self.is_available(),
             "failure_count": self._failure_count,
+            "failure_threshold": self.SOFT_OPEN_FAILURE_THRESHOLD,
             "transient_failure_count": self._transient_failure_count,
             "last_error": self._last_error,
-            "open_until": self._circuit_open_until,
-            "cooldown_remaining_seconds": round(cooldown_remaining_seconds, 1),
-            "probe_available": self.soft_open_probe_available(),
-            "probe_taken": self._soft_open_probe_taken,
-            "available": self.is_available(),
+            "last_failure_time": self._last_failure_time,
+            "open_until": open_until,
+            "cooldown_remaining_seconds": round(cooldown_remaining, 1),
+            "time_until_recovery": round(cooldown_remaining, 1),
+            "probe_available": probe_available,
+            "probe_taken": self._probe_taken,
         }
+
+    def reset_circuit(self) -> None:
+        self.record_success()
 
     def record_failure(
         self,
         error: str,
         backoff_seconds: float = 30.0,
-        category: Optional[Union[ProviderErrorCategory, str]] = None,
+        *,
+        category: Optional[Union[str, ProviderErrorCategory]] = None,
     ) -> None:
-        category_value = self._normalize_error_category(error, category)
+        now = time.time()
         self._failure_count += 1
         self._last_error = error
+        self._last_failure_time = now
+
+        normalized_category = _normalize_error_category(category, error)
+        if _is_hard_open_failure(normalized_category, error):
+            self._circuit_state = ProviderCircuitState.HARD_OPEN
+            self._circuit_open_until = float("inf")
+            self._transient_failure_count = 0
+            self._probe_taken = False
+            self._healthy = False
+            return
+
         if self._circuit_state == ProviderCircuitState.HARD_OPEN:
             self._healthy = False
             return
-        if category_value == ProviderErrorCategory.AUTH or (
-            category_value in {ProviderErrorCategory.RATE_LIMIT, ProviderErrorCategory.UNKNOWN}
-            and is_billing_error(429, error)
+
+        self._healthy = False
+        if normalized_category == ProviderErrorCategory.MODEL_ERROR:
+            return
+
+        self._transient_failure_count += 1
+        if (
+            self._circuit_state == ProviderCircuitState.SOFT_OPEN
+            or self._transient_failure_count >= self.SOFT_OPEN_FAILURE_THRESHOLD
         ):
-            self._healthy = False
-            self._circuit_state = ProviderCircuitState.HARD_OPEN
-            self._circuit_open_until = float("inf")
-            self._soft_open_probe_taken = False
-            return
-
-        if self._circuit_state == ProviderCircuitState.SOFT_OPEN:
-            self._healthy = False
-            self._circuit_open_until = time.time() + backoff_seconds
-            self._soft_open_probe_taken = False
-            if category_value in {
-                ProviderErrorCategory.TIMEOUT,
-                ProviderErrorCategory.SERVER_ERROR,
-            }:
-                self._transient_failure_count += 1
-            elif category_value not in {
-                ProviderErrorCategory.AUTH,
-                ProviderErrorCategory.RATE_LIMIT,
-            }:
-                self._transient_failure_count = 0
-            return
-
-        if category_value in {ProviderErrorCategory.TIMEOUT, ProviderErrorCategory.SERVER_ERROR}:
-            self._transient_failure_count += 1
-        else:
-            self._transient_failure_count = 0
-
-        if self._transient_failure_count >= 2 or self._failure_count >= 3:
             self._circuit_state = ProviderCircuitState.SOFT_OPEN
-            self._healthy = False
-            self._circuit_open_until = time.time() + backoff_seconds
-            self._soft_open_probe_taken = False
+            self._circuit_open_until = now + max(
+                0.0, backoff_seconds or self.SOFT_OPEN_BACKOFF_SECONDS
+            )
+            self._probe_taken = False
+        else:
+            self._circuit_state = ProviderCircuitState.CLOSED
+            self._circuit_open_until = 0.0
+            self._probe_taken = False
 
     def record_success(self) -> None:
         self._healthy = True
         self._failure_count = 0
         self._transient_failure_count = 0
         self._last_error = None
+        self._last_failure_time = 0.0
         self._circuit_open_until = 0.0
-        self._soft_open_probe_taken = False
         self._circuit_state = ProviderCircuitState.CLOSED
-
-    def reset_circuit(self) -> None:
-        self.record_success()
-
-    @staticmethod
-    def _normalize_error_category(
-        error: str,
-        category: Optional[Union[ProviderErrorCategory, str]],
-    ) -> ProviderErrorCategory:
-        if isinstance(category, ProviderErrorCategory):
-            return category
-        if isinstance(category, str) and category:
-            try:
-                return ProviderErrorCategory(category.strip().lower().replace("_", "-"))
-            except ValueError:
-                pass
-        return classify_provider_error(error)
+        self._probe_taken = False
 
     def estimate_cost(
         self,
         input_tokens: int,
         output_tokens: int,
+        *,
         model: Optional[str] = None,
     ) -> float:
-        resolved_model = model or self.default_model or None
-        pricing = resolve_model_pricing(
-            self.provider_id,
-            resolved_model,
-            config=self.config,
-        )
+        try:
+            from .pricing import estimate_cost as resolve_cost  # noqa: PLC0415
+
+            configured_cost = resolve_cost(
+                self.provider_id,
+                input_tokens,
+                output_tokens,
+                model=model,
+                config=self.config,
+            )
+        except Exception:
+            configured_cost = 0.0
+
+        if configured_cost > 0:
+            return configured_cost
+
         return (
-            input_tokens * pricing.input_per1k / 1000 + output_tokens * pricing.output_per1k / 1000
+            input_tokens * self.COST_INPUT_PER_1K / 1000
+            + output_tokens * self.COST_OUTPUT_PER_1K / 1000
         )
 
     async def embed(
@@ -561,7 +613,7 @@ class BaseProvider(ABC):
         model: str = "",
         **kwargs: Any,
     ) -> Union[List[float], List[List[float]]]:
-        raise RuntimeError(f"{self.__class__.__name__} does not support embeddings")
+        raise NotImplementedError(f"{self.__class__.__name__} does not support embeddings")
 
     @classmethod
     def from_config(cls, config: Dict[str, Any]) -> "BaseProvider":

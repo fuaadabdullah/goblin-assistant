@@ -40,6 +40,7 @@ jobs:
       - name: Run release gates
         run: |
           make test-critical
+          make benchmark-gates
           make check-api-boundaries
           make check-api-cycles
           make check-capability-boundaries

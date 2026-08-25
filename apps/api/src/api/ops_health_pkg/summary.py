@@ -12,15 +12,23 @@ from ..health_core import build_health_payload, overall_status_from
 async def build_ops_health_summary(
     *,
     performance_metrics: Any,
-    check_chroma_fn,
+    check_vector_store_fn=None,
     check_mcp_fn,
     check_raptor_fn,
     check_sandbox_fn,
     check_cost_tracking_fn,
     build_health_payload_fn=build_health_payload,
+    # Backward-compat alias — callers that still pass check_chroma_fn= work.
+    check_chroma_fn=None,
 ) -> Dict[str, Any]:
+    _vector_store_fn = check_vector_store_fn or check_chroma_fn
+    if _vector_store_fn is None:
+        from ..health_checks import _check_vector_store
+
+        _vector_store_fn = _check_vector_store
+
     base_health = await build_health_payload_fn()
-    chroma_health = await check_chroma_fn()
+    vector_store_health = await _vector_store_fn()
     mcp_health = await check_mcp_fn()
     raptor_health = await check_raptor_fn()
     sandbox_health = await check_sandbox_fn()
@@ -28,7 +36,7 @@ async def build_ops_health_summary(
 
     component_statuses = [
         base_health["status"],
-        chroma_health["status"],
+        vector_store_health["status"],
         mcp_health["status"],
         raptor_health["status"],
         sandbox_health["status"],
@@ -55,7 +63,7 @@ async def build_ops_health_summary(
             "redis": base_health["components"]["redis"],
             "providers": base_health["components"]["providers"],
             "security": base_health["components"]["security"],
-            "chroma": chroma_health,
+            "vector_store": vector_store_health,
             "mcp": mcp_health,
             "raptor": raptor_health,
             "sandbox": sandbox_health,

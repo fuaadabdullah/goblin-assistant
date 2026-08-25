@@ -14,54 +14,34 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.config.archetypes import (
-    is_deep_research_mode as _is_deep_research_mode,
-)
-from api.config.archetypes import (
-    is_general_assistant_mode as _is_general_assistant_mode,
-)
-from api.config.archetypes import (
-    missing_deep_research_tools as _missing_deep_research_tools,
-)
-from api.config.archetypes import (
-    missing_general_assistant_tools as _missing_general_assistant_tools,
-)
 from api.config.mode_addendums import get_addendum as _get_mode_addendum
-from api.config.prompt_composer import compose_system_prompt
-from api.config.system_prompt import system_prompt_manager
+from api.config.system_prompt import EDUCATION_SYSTEM_ADDENDUM, system_prompt_manager
 
-from ..assistant_tools.executor import extract_tool_calls_contract, run_tool_loop
+from ..assistant_tools.executor import extract_tool_calls, run_tool_loop
 from ..assistant_tools.registry import export_tools_for_provider
 from ..auth.router import User as AuthenticatedUser
 from ..auth.router import get_current_user
-from ..core.contracts import SuccessEnvelope
 from ..storage import conversation_store
-from ..storage.database import get_readonly_db
+from ..storage.database import get_db
 from . import _runtime as _cr
 from .archiving import schedule_conversation_archive
 from .schemas import ContextualChatRequest, ContextualChatResponse
 from .service_accessors import (
     _get_context_assembly_service,
+    _get_embedding_worker,
     _get_message_classifier,
 )
-
-
-def _get_embedding_worker():
-    from ..services.embedding_worker import embedding_worker
-
-    return embedding_worker
-
 
 logger = structlog.get_logger()
 
 router = APIRouter()
 
 
-@router.post("/contextual-chat", response_model=SuccessEnvelope[ContextualChatResponse])
+@router.post("/contextual-chat", response_model=ContextualChatResponse)
 async def contextual_chat(
     request: ContextualChatRequest,
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: AsyncSession = Depends(get_readonly_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Chat with the new fixed-order retrieval stack + strict token budgeting.
 
@@ -75,31 +55,19 @@ async def contextual_chat(
         if conversation_id:
             await _cr._assert_conversation_owned(conversation_id, current_user, db)
 
-        # Resolve mode + learning boost together so the composer can build
-        # the mode block with the existing addendum / education rules in
-        # the correct slot. The composer owns step 3 of the order; we
-        # just hand it the right inputs.
-        learning_boost = False
         if request.mode:
             try:
-                _get_mode_addendum(request.mode)  # validate; KeyError handled below
+                addendum = _get_mode_addendum(request.mode)
             except KeyError as exc:
                 raise HTTPException(status_code=400, detail=str(exc))
         else:
             message_classifier, MessageType = _get_message_classifier()
             msg_classification = message_classifier.classify_message(request.message, "user")
-            learning_boost = msg_classification.message_type == MessageType.LEARNING
-
-        # Build steps 1–4 of the canonical composition order. The assembled
-        # context (step 5) is appended separately below so the system budget
-        # in `system_layer.py` continues to own context placement.
-        prefix_prompt = compose_system_prompt(
-            tone=request.tone,
-            mode=request.mode,
-            learning_boost=learning_boost,
-            request_glossary=request.glossary,
-            unknown_mode="raise",
-        )
+            addendum = (
+                EDUCATION_SYSTEM_ADDENDUM
+                if msg_classification.message_type == MessageType.LEARNING
+                else ""
+            )
 
         context_assembly = None
         if request.enable_context_assembly and user_id:
@@ -124,8 +92,11 @@ async def contextual_chat(
             context_assembly = assembly_result
             context_text = assembly_result.get("context", "")
 
-            # Step 5: dynamic memory / context appended to the composed prefix.
-            system_prompt = f"{prefix_prompt}\n\n{context_text}" if context_text else prefix_prompt
+            system_prompt = system_prompt_manager.get_complete_prompt_with_addendum(
+                context=context_text,
+                user_query=request.message,
+                addendum=addendum,
+            )
 
             messages = [
                 {"role": "system", "content": system_prompt},
@@ -144,7 +115,9 @@ async def contextual_chat(
             }
 
         else:
-            system_prompt = prefix_prompt
+            system_prompt = system_prompt_manager.get_complete_prompt_with_addendum(
+                user_query=request.message, addendum=addendum
+            )
             messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": request.message},
@@ -154,46 +127,11 @@ async def contextual_chat(
         payload = {
             "messages": messages,
             "model": request.model,
-            "user_id": str(user_id),
         }
 
         ctx_tools = export_tools_for_provider(request.provider)
-        if _is_general_assistant_mode(request.mode) and ctx_tools:
-            missing_tools = _missing_general_assistant_tools(ctx_tools)
-            if missing_tools:
-                logger.warning(
-                    "general_assistant_required_tools_missing",
-                    provider=request.provider,
-                    mode=request.mode,
-                    missing_tools=missing_tools,
-                    registered_tool_count=len(ctx_tools),
-                )
-        if _is_deep_research_mode(request.mode) and ctx_tools:
-            missing_tools = _missing_deep_research_tools(ctx_tools)
-            if missing_tools:
-                logger.warning(
-                    "deep_research_required_tools_missing",
-                    provider=request.provider,
-                    mode=request.mode,
-                    missing_tools=missing_tools,
-                    registered_tool_count=len(ctx_tools),
-                )
         if ctx_tools:
             payload["tools"] = ctx_tools
-
-        # Resolve department for contextual chat
-        _ctx_dept = request.department or "general"
-        _ctx_dept_provider = request.provider
-        _ctx_dept_model = request.model
-        if request.department and not request.provider:
-            try:
-                from api.departments import department_dispatcher as _dd  # noqa: PLC0415
-
-                _ctx_dept_id = _dd.resolve_provider_id(request.department)
-                if _ctx_dept_id:
-                    _ctx_dept_provider = _ctx_dept_id
-            except Exception:
-                pass
 
         if request.stream:
             # Streaming requires a conversation; create one on the fly if missing.
@@ -210,8 +148,8 @@ async def contextual_chat(
                     message=request.message,
                     conversation_id=stream_conv_id,
                     current_user=current_user,
-                    provider=_ctx_dept_provider,
-                    model=_ctx_dept_model,
+                    provider=request.provider,
+                    model=request.model,
                 ),
                 media_type="text/event-stream",
                 headers={
@@ -220,29 +158,33 @@ async def contextual_chat(
                 },
             )
 
-        provider_response = await _cr.invoke_provider(
-            pid=_ctx_dept_provider,
-            model=_ctx_dept_model,
-            payload=payload,
-            timeout_ms=30000,
-            stream=False,
-        )
-        if (
-            ctx_tools
-            and isinstance(provider_response, dict)
-            and provider_response.get("ok")
-            and extract_tool_calls_contract(provider_response)
-        ):
-            provider_response = await run_tool_loop(
-                messages=list(messages),
-                invoke_fn=_cr.invoke_provider,
-                provider=_ctx_dept_provider,
-                model=_ctx_dept_model,
-                tools=ctx_tools,
+        try:
+            provider_response = await _cr.invoke_provider(
+                pid=request.provider,
+                model=request.model,
+                payload=payload,
                 timeout_ms=30000,
-                user_id=user_id,
-                conversation_id=conversation_id,
+                stream=False,
             )
+
+            if (
+                isinstance(provider_response, dict)
+                and provider_response.get("ok")
+                and extract_tool_calls(provider_response)
+            ):
+                provider_response = await run_tool_loop(
+                    messages=list(messages),
+                    invoke_fn=_cr.invoke_provider,
+                    provider=request.provider,
+                    model=request.model,
+                    tools=ctx_tools if ctx_tools else None,
+                    timeout_ms=30000,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                )
+
+        except Exception:
+            raise
 
         if isinstance(provider_response, dict) and provider_response.get("ok"):
             result_data = provider_response.get("result", {})
@@ -255,7 +197,8 @@ async def contextual_chat(
             used_model = provider_response.get("model", request.model or "unknown")
         else:
             if isinstance(provider_response, dict) and not provider_response.get("ok"):
-                _cr._raise_structured_provider_error(provider_response)
+                error_msg = provider_response.get("error", "unknown-error")
+                raise HTTPException(status_code=500, detail=f"AI Provider error: {error_msg}")
 
             response_content = str(provider_response)
             used_provider = request.provider or "unknown"
@@ -268,17 +211,15 @@ async def contextual_chat(
                 conversation_id=conversation_id,
                 role="user",
                 content=request.message,
-                metadata=(
-                    {
-                        "context_assembly_enabled": request.enable_context_assembly,
-                        "context_assembly_layers": (
-                            len(context_assembly.get("layers", [])) if context_assembly else 0
-                        ),
-                        "metadata": request.metadata,
-                    }
-                    if request.enable_context_assembly
-                    else request.metadata
-                ),
+                metadata={
+                    "context_assembly_enabled": request.enable_context_assembly,
+                    "context_assembly_layers": len(context_assembly.get("layers", []))
+                    if context_assembly
+                    else 0,
+                    "metadata": request.metadata,
+                }
+                if request.enable_context_assembly
+                else request.metadata,
             )
 
             await conversation_store.add_message_to_conversation(
@@ -292,54 +233,45 @@ async def contextual_chat(
                     "token_usage": token_usage,
                 },
             )
-            await schedule_conversation_archive(conversation_id)
 
-            # Queue both messages for embedding so they're retrievable by RAG
-            # on future turns. Fire-and-forget — never blocks the response.
-            try:
-                worker = _get_embedding_worker()
-                user_msg_id = str(uuid.uuid4())
-                await worker.queue_message_embedding(
-                    user_id=user_id,
-                    conversation_id=conversation_id,
-                    message_id=user_msg_id,
-                    content=request.message,
-                )
-                await worker.queue_message_embedding(
-                    user_id=user_id,
-                    conversation_id=conversation_id,
-                    message_id=response_message_id,
-                    content=response_content,
-                    metadata={"provider": used_provider, "model": used_model},
-                )
-            except Exception as _emb_exc:
-                logger.debug("embedding_queue_skipped", error=str(_emb_exc))
+        if conversation_id and user_id:
+            embedding_worker = _get_embedding_worker()
+            user_message_id = str(uuid.uuid4())
+            await embedding_worker.queue_message_embedding(
+                user_id=user_id,
+                conversation_id=conversation_id,
+                message_id=user_message_id,
+                content=request.message,
+                metadata=request.metadata,
+            )
+            await embedding_worker.queue_message_embedding(
+                user_id=user_id,
+                conversation_id=conversation_id,
+                message_id=response_message_id,
+                content=response_content,
+                metadata={"provider": used_provider, "model": used_model},
+            )
+
+        await schedule_conversation_archive(conversation_id or "")
 
         visualizations = None
         if isinstance(provider_response, dict) and provider_response.get("visualizations"):
             visualizations = provider_response["visualizations"]
 
-        return SuccessEnvelope(
-            data=ContextualChatResponse(
-                message_id=response_message_id,
-                response=response_content,
-                department=_ctx_dept,
-                department_reason="",
-                timestamp=datetime.utcnow().isoformat(),
-                context_assembly=context_assembly,
-                token_usage=token_usage,
-                visualizations=visualizations,
-            )
+        return ContextualChatResponse(
+            message_id=response_message_id,
+            response=response_content,
+            department=request.department or used_provider,
+            department_reason=f"provider={used_provider} model={used_model}",
+            timestamp=datetime.utcnow().isoformat(),
+            context_assembly=context_assembly,
+            token_usage=token_usage,
+            visualizations=visualizations,
         )
 
     except HTTPException:
         raise
-    except Exception as exc:
-        logger.error(
-            "contextual_chat_failed",
-            error=str(exc),
-            error_type=type(exc).__name__,
-        )
+    except Exception:
         raise HTTPException(status_code=500, detail="Contextual chat failed")
 
 
@@ -354,12 +286,7 @@ async def debug_context_assembly():
             "timestamp": datetime.utcnow().isoformat(),
         }
         return debug_info
-    except Exception as exc:
-        logger.error(
-            "debug_context_assembly_failed",
-            error=str(exc),
-            error_type=type(exc).__name__,
-        )
+    except Exception:
         raise HTTPException(status_code=500, detail="Debug endpoint failed")
 
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { buildVersionedPath } from '@goblin/shared';
 import { resolveBackendOrigin } from '@/config/backendOrigin';
+import { buildVersionedPath } from '@/server/backendRoutes';
 
 const BACKEND_URL = resolveBackendOrigin();
 

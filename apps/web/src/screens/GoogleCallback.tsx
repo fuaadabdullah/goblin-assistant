@@ -12,8 +12,8 @@ const GoogleCallback: React.FC = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
-  const code = searchParams.get('code');
-  const oauthError = searchParams.get('error');
+  const code = searchParams?.get('code');
+  const oauthError = searchParams?.get('error');
 
   useEffect(() => {
     const handleCallback = async () => {

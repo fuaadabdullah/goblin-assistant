@@ -7,11 +7,11 @@ from typing import Any, Dict
 from fastapi import APIRouter, HTTPException
 
 from .health_checks import (
-    _check_chroma,
     _check_cost_tracking,
     _check_mcp,
     _check_raptor,
     _check_sandbox,
+    _check_vector_store,
 )
 from .ops_health_pkg import build_ops_health_summary, build_provider_status_payload
 
@@ -32,7 +32,7 @@ async def ops_health_summary() -> Dict[str, Any]:
     try:
         return await build_ops_health_summary(
             performance_metrics=performance_metrics,
-            check_chroma_fn=_check_chroma,
+            check_vector_store_fn=_check_vector_store,
             check_mcp_fn=_check_mcp,
             check_raptor_fn=_check_raptor,
             check_sandbox_fn=_check_sandbox,

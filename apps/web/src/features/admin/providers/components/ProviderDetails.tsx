@@ -1,27 +1,5 @@
 import type { ProviderConfig } from '../../../../hooks/api/useSettings';
-import { useRoutingProviders } from '../hooks/useRoutingAnalytics';
-
-interface RoutingStats {
-  ewma_latency_ms: number;
-  p95_latency_ms: number;
-  success_rate: number;
-  total_cost_usd: number;
-  ewma_tokens_per_sec: number;
-  total_output_tokens: number;
-}
-
-function getCircuitStateColor(state?: string): string {
-  switch (state?.toLowerCase()) {
-    case 'closed':
-      return 'bg-success/20 text-success border border-success/30';
-    case 'soft_open':
-      return 'bg-warning/20 text-warning border border-warning/30';
-    case 'hard_open':
-      return 'bg-danger/20 text-danger border border-danger/30';
-    default:
-      return 'bg-muted/20 text-muted border border-muted/30';
-  }
-}
+import { useRoutingProviders, type RoutingStats as RoutingAnalyticsStats } from '../hooks/useRoutingAnalytics';
 
 export default function ProviderDetails({
   provider,
@@ -32,9 +10,8 @@ export default function ProviderDetails({
 }) {
   const { data: routingData } = useRoutingProviders();
 
-  const routingStats: RoutingStats | null =
+  const routingStats: RoutingAnalyticsStats | null =
     routingData?.providers?.[provider.name]?.routing_stats || null;
-  const health = routingData?.providers?.[provider.name]?.health;
 
   return (
     <div className="bg-surface rounded-xl shadow-sm border border-border p-6">
@@ -104,25 +81,6 @@ export default function ProviderDetails({
                 {routingStats.ewma_tokens_per_sec.toFixed(0)} tok/s
               </div>
             </div>
-            <div className="bg-bg rounded-lg p-3">
-              <div className="text-xs text-muted mb-1">Total Tokens</div>
-              <div className="text-base font-semibold text-text">
-                {routingStats.total_output_tokens.toLocaleString()}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Circuit State */}
-      {health && (
-        <div className="mb-6">
-          <h3 className="text-sm font-semibold text-text mb-2">Circuit Breaker State</h3>
-          <div
-            className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${getCircuitStateColor(health.status)}`}
-          >
-            <span className="w-2 h-2 rounded-full bg-current" />
-            {health.status?.toUpperCase() || 'UNKNOWN'}
           </div>
         </div>
       )}

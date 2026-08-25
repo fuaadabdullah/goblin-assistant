@@ -12,11 +12,11 @@ from typing import Any, Dict
 from fastapi import APIRouter, HTTPException, Request
 
 from .health_checks import (
-    _check_chroma,
     _check_cost_tracking,
     _check_mcp,
     _check_raptor,
     _check_sandbox,
+    _check_vector_store,
 )
 from .health_core import (  # noqa: F401 — re-exported for backward compat
     _summarize_provider_health,
@@ -30,7 +30,8 @@ from .health_core import (  # noqa: F401 — re-exported for backward compat
 from .ops_health import ops_health_router  # noqa: F401 — re-exported for ops_routes
 
 router = APIRouter(tags=["health"])
-check_chroma_health = _check_chroma
+check_vector_store_health = _check_vector_store
+check_chroma_health = _check_vector_store  # backward-compat alias
 
 
 class HealthPayload(dict):
@@ -54,7 +55,7 @@ async def health_check(
     # Pass the module-level check functions so patches on `api.health.check_*`
     # (used by tests) are honored.
     payload = await build_health_payload(
-        chroma_check=check_chroma_health,
+        chroma_check=check_vector_store_health,
         routing_check=check_routing_health,
         db_check=check_db_health,
         redis_check=check_redis_health,
@@ -73,8 +74,8 @@ async def health_stream(request: Request) -> Dict[str, Any]:
 @router.get("/health/all")
 async def health_all() -> Dict[str, Any]:
     """Return a detailed health summary for all subsystems."""
-    chroma, mcp, raptor, sandbox, cost = await asyncio.gather(
-        _check_chroma(),
+    vector_store, mcp, raptor, sandbox, cost = await asyncio.gather(
+        _check_vector_store(),
         _check_mcp(),
         _check_raptor(),
         _check_sandbox(),
@@ -82,14 +83,15 @@ async def health_all() -> Dict[str, Any]:
     )
 
     overall = overall_status_from(
-        [chroma.get("status"), mcp.get("status"), raptor.get("status"), sandbox.get("status")]
+        [vector_store.get("status"), mcp.get("status"), raptor.get("status"), sandbox.get("status")]
     )
 
     return {
         "status": overall,
         "timestamp": datetime.utcnow().isoformat(),
         "components": {
-            "chroma": chroma,
+            "chroma": vector_store,
+            "vector_store": vector_store,
             "mcp": mcp,
             "raptor": raptor,
             "sandbox": sandbox,
@@ -98,9 +100,14 @@ async def health_all() -> Dict[str, Any]:
     }
 
 
+@router.get("/health/vector-store/status")
+async def health_vector_store():
+    return await _check_vector_store()
+
+
 @router.get("/health/chroma/status")
 async def health_chroma():
-    return await _check_chroma()
+    return await _check_vector_store()  # backward-compat route
 
 
 @router.get("/health/mcp/status")
@@ -215,15 +222,14 @@ async def liveness_check() -> Dict[str, Any]:
 async def health_routing() -> Dict[str, Any]:
     """Check routing subsystem health"""
     try:
-        from .departments import DEPARTMENT_REGISTRY
-
-        providers = DEPARTMENT_REGISTRY.list_ids()
-        return {
-            "status": "healthy" if len(providers) > 0 else "degraded",
-            "providers_available": len(providers),
-            "service": "routing",
-            "timestamp": datetime.utcnow().isoformat(),
-        }
+        payload = await check_routing_health()
+        payload.update(
+            {
+                "service": "routing",
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
+        return payload
     except Exception as e:
         return {
             "status": "unhealthy",

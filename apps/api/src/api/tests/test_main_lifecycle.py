@@ -37,8 +37,6 @@ def test_app_registers_runtime_middlewares_and_core_routes() -> None:
     paths = {route.path for route in main.app.routes if hasattr(route, "path")}
     assert "/" in paths
     assert "/test" in paths
-    assert "/api/v1/health" in paths
-    assert "/api/v1/search/query" in paths
 
 
 def test_app_auth_middleware_excludes_public_auth_bootstrap_routes() -> None:

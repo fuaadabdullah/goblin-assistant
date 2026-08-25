@@ -48,9 +48,9 @@ export default function ControlPanelHero() {
   const current = words[index];
 
   return (
-    <section className="bg-surface/80 border border-border rounded-3xl p-6 mb-8 shadow-card backdrop-blur">
-      <div className="flex items-start justify-between gap-6">
-        <div className="flex-1">
+    <section className="mb-8 rounded-3xl border border-border bg-surface/80 p-6 shadow-card backdrop-blur sm:p-8">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 flex-1">
           <h1 className="text-3xl font-semibold text-text mb-1">Control panel</h1>
           <p className="text-sm text-muted mb-4">
             Live status and quick actions — this system is running.
@@ -74,7 +74,7 @@ export default function ControlPanelHero() {
 
           <div className="mb-4">
             <div className="text-sm text-muted mb-1">Currently running:</div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
               <div className="text-lg font-mono text-primary">{current}</div>
               <div className="text-sm text-muted">
                 — Live examples and demos tailored to the domain above.
@@ -108,7 +108,7 @@ export default function ControlPanelHero() {
           </div>
         </div>
 
-        <div className="w-56 shrink-0">
+        <div className="w-full shrink-0 lg:w-56">
           <div className="rounded-2xl border border-border bg-bg p-4 shadow-inner">
             <div className="text-xs font-mono uppercase tracking-wide text-muted mb-2">Preview</div>
             <div className="text-sm text-text">

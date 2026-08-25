@@ -61,6 +61,10 @@ def test_ml_bandit_strategy_enters_routing_prompt_adapter():
             return_value=["openai", "anthropic"],
         ),
         patch(
+            "api.services.smart_router.health_monitor.get_available_providers",
+            return_value=["openai", "anthropic"],
+        ),
+        patch(
             "api.services.smart_router.dispatcher.get_provider",
             return_value=MagicMock(config={}),
         ),
@@ -98,6 +102,10 @@ async def test_invoke_with_fallback_returns_success():
     with (
         patch(
             "api.services.smart_router.top_providers_for",
+            return_value=["openai"],
+        ),
+        patch(
+            "api.services.smart_router.health_monitor.get_available_providers",
             return_value=["openai"],
         ),
         patch(
@@ -141,6 +149,10 @@ async def test_select_provider_prefers_healthy_preferred_provider():
         patch(
             "api.services.smart_router.health_monitor.is_available",
             return_value=True,
+        ),
+        patch(
+            "api.services.smart_router.health_monitor.get_available_providers",
+            return_value=["openai"],
         ),
         patch(
             "api.services.smart_router.health_monitor.get_latency",

@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import os
 import random
+import re
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 from .base import BaseProvider, ProviderHealth, ProviderResult
@@ -71,11 +74,33 @@ class MockProvider(BaseProvider):
         **kwargs: Any,
     ) -> Union[List[float], List[List[float]]]:
         del model, kwargs
-        dim = 32
+        dim = max(1, int(os.getenv("EMBEDDING_DIMENSION", "32")))
         is_single = isinstance(texts, str)
         entries = [texts] if is_single else texts
-        embeddings = [[random.uniform(-1, 1) for _ in range(dim)] for _ in entries]
+        embeddings = [self._embed_text(entry or "", dim) for entry in entries]
         return embeddings[0] if is_single else embeddings
+
+    @staticmethod
+    def _embed_text(text: str, dim: int) -> List[float]:
+        tokens = re.findall(r"[a-z0-9]+", text.lower())
+        if not tokens:
+            return [0.0] * dim
+
+        features = list(tokens)
+        features.extend(f"{left}_{right}" for left, right in zip(tokens, tokens[1:]))
+
+        vector = [0.0] * dim
+        for feature in features:
+            digest = hashlib.sha256(feature.encode("utf-8", errors="replace")).digest()
+            index = int.from_bytes(digest[:4], "big") % dim
+            sign = 1.0 if digest[4] & 1 else -1.0
+            weight = 1.0 + (digest[5] / 255.0)
+            vector[index] += sign * weight
+
+        norm = sum(value * value for value in vector) ** 0.5
+        if not norm:
+            return vector
+        return [value / norm for value in vector]
 
     def _generate_response(self, prompt: str, model: str) -> str:
         del model

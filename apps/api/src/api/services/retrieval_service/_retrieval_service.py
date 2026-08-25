@@ -10,16 +10,17 @@ the retrieval pipeline:
 """
 
 import time
-from datetime import datetime
+from datetime import datetime, timezone
+from math import sqrt
 from typing import Any, Dict, List, Optional, Tuple
 
 import structlog
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 from ...storage.database import get_readonly_db_context
 from ..context_builder import LegacyContextBuilder
 from ..embedding_service import EmbeddingProviderUnavailableError, EmbeddingService
-from ..memory_contract import canonicalize_memory_item
+from ..memory_contract import _normalize_embedding, canonicalize_memory_item
 from ._context_bundle import build_context_bundle
 from ._limits import clamp_prompt_retrieval_k
 from ._sql_retrieval import (
@@ -32,6 +33,51 @@ from ._sql_retrieval import (
 )
 
 logger = structlog.get_logger()
+
+
+def _coerce_naive_datetime(value: Any) -> Optional[datetime]:
+    if not isinstance(value, datetime):
+        return None
+    if value.tzinfo is not None:
+        return value.astimezone(timezone.utc).replace(tzinfo=None)
+    return value
+
+
+def _cosine_similarity(lhs: List[float], rhs: List[float]) -> float:
+    left = [float(value) for value in lhs if value is not None]
+    right = [float(value) for value in rhs if value is not None]
+    if not left or not right:
+        return 0.0
+
+    length = min(len(left), len(right))
+    left = left[:length]
+    right = right[:length]
+    left_norm = sqrt(sum(value * value for value in left))
+    right_norm = sqrt(sum(value * value for value in right))
+    if not left_norm or not right_norm:
+        return 0.0
+
+    return sum(lv * rv for lv, rv in zip(left, right)) / (left_norm * right_norm)
+
+
+def _memory_state_rank(value: Optional[str]) -> int:
+    state = (value or "").strip().lower()
+    return {
+        "verified": 4,
+        "active": 3,
+        "candidate": 2,
+        "deprecated": 1,
+    }.get(state, 0)
+
+
+def _confidence_rank(value: float) -> int:
+    if value >= 0.90:
+        return 3
+    if value >= 0.70:
+        return 2
+    if value >= 0.40:
+        return 1
+    return 0
 
 
 class RetrievalService:
@@ -58,6 +104,107 @@ class RetrievalService:
     def _clear_degraded(self) -> None:
         self._degraded_mode = False
         self._degraded_reason = None
+
+    async def _retrieve_memory_facts_sqlite(
+        self,
+        *,
+        query_embedding: List[float],
+        user_id: str,
+        categories: Optional[List[str]],
+        k: int,
+    ) -> List[Dict[str, Any]]:
+        from ...storage.vector_models import MemoryFactModel  # noqa: PLC0415
+
+        category_filter = {
+            str(category).strip() for category in (categories or []) if str(category).strip()
+        }
+        now = datetime.utcnow()
+
+        async with get_readonly_db_context() as session:
+            result = await session.execute(
+                select(MemoryFactModel).where(MemoryFactModel.user_id == user_id)
+            )
+            rows = result.scalars().all()
+
+        scored_rows: List[tuple[tuple[int, int, float, float, float], Dict[str, Any]]] = []
+        for row in rows:
+            row_category = getattr(row, "category", None)
+            if category_filter and row_category not in category_filter:
+                continue
+
+            row_metadata = dict(getattr(row, "metadata_", None) or {})
+            state = str(
+                getattr(row, "memory_state", None)
+                or row_metadata.get("memory_state")
+                or row_metadata.get("state")
+                or "active"
+            )
+            if state.lower() in {"archived", "deleted"} or bool(getattr(row, "is_archived", False)):
+                continue
+
+            expires_at = _coerce_naive_datetime(getattr(row, "expires_at", None))
+            if expires_at is not None and expires_at <= now:
+                continue
+
+            row_embedding_value = getattr(row, "fact_embedding", None)
+            if row_embedding_value is None:
+                row_embedding_value = row_metadata.get("embedding")
+            if row_embedding_value is None:
+                row_embedding_value = row_metadata.get("fact_embedding")
+            row_embedding = _normalize_embedding(row_embedding_value)
+            similarity_score = _cosine_similarity(query_embedding, row_embedding)
+            confidence_value = getattr(row, "confidence", None)
+            if confidence_value is None:
+                confidence_value = row_metadata.get("confidence")
+            salience_value = getattr(row, "salience_score", None)
+            if salience_value is None:
+                salience_value = row_metadata.get("salience_score")
+            confidence = float(confidence_value or 0.0)
+            salience = float(salience_value or 0.0)
+            created_at = _coerce_naive_datetime(getattr(row, "created_at", None)) or datetime.min
+
+            scored_rows.append(
+                (
+                    (
+                        _memory_state_rank(state),
+                        _confidence_rank(confidence),
+                        similarity_score,
+                        salience,
+                        created_at.timestamp() if created_at != datetime.min else 0.0,
+                    ),
+                    canonicalize_memory_item(
+                        {
+                            "id": row.id,
+                            "fact_text": row.fact_text,
+                            "content": row.fact_text,
+                            "embedding": row_embedding,
+                            "category": row_category,
+                            "memory_type": getattr(row, "memory_type", None) or row_category,
+                            "source_kind": getattr(row, "source_kind", None),
+                            "source_id": getattr(row, "source_id", None),
+                            "salience_score": salience,
+                            "confidence": confidence,
+                            "memory_state": state,
+                            "sensitivity_level": getattr(row, "sensitivity_level", None),
+                            "retention_days": getattr(row, "retention_days", None),
+                            "expires_at": getattr(row, "expires_at", None),
+                            "last_accessed_at": getattr(row, "last_accessed_at", None),
+                            "confirmation_count": getattr(row, "confirmation_count", None),
+                            "is_archived": bool(getattr(row, "is_archived", False)),
+                            "related_memory_ids": getattr(row, "related_memory_ids", None),
+                            "entity_refs": getattr(row, "entity_refs", None),
+                            "metadata": row_metadata,
+                            "created_at": getattr(row, "created_at", None),
+                            "score": similarity_score,
+                        },
+                        user_id=user_id,
+                        source_type="memory",
+                    ),
+                )
+            )
+
+        scored_rows.sort(key=lambda item: item[0], reverse=True)
+        return [item[1] for item in scored_rows[:k]]
 
     async def retrieve_context(
         self,
@@ -339,6 +486,15 @@ class RetrievalService:
                 return []
 
             async with get_readonly_db_context() as session:
+                dialect_name = getattr(getattr(session, "bind", None), "dialect", None)
+                if getattr(dialect_name, "name", "") == "sqlite":
+                    return await self._retrieve_memory_facts_sqlite(
+                        query_embedding=query_embedding,
+                        user_id=user_id,
+                        categories=categories,
+                        k=k,
+                    )
+
                 where_clauses = ["mf.user_id = :user_id"]
                 params = {
                     "user_id": user_id,

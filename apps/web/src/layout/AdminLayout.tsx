@@ -22,6 +22,7 @@ export default function AdminLayout({
 }: AdminLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const currentPathname = pathname ?? '/';
   const searchParams = useSearchParams();
   const { isAuthenticated, isHydrated, hasRole } = useAuthSession();
   const contentClassName = fullWidth ? 'px-6' : 'max-w-7xl mx-auto p-6';
@@ -30,12 +31,12 @@ export default function AdminLayout({
   useEffect(() => {
     if (!isHydrated) return; // wait for Zustand store to rehydrate from session
     if (!isAuthenticated || !hasRole('admin')) {
-      const query = searchParams.toString();
-      const asPath = query ? `${pathname}?${query}` : pathname;
-      const redirect = encodeURIComponent(asPath ?? '/');
+      const query = searchParams?.toString() ?? '';
+      const asPath = query ? `${currentPathname}?${query}` : currentPathname;
+      const redirect = encodeURIComponent(asPath);
       router.replace(`/login?redirect=${redirect}`);
     }
-  }, [isHydrated, isAuthenticated, hasRole, router, pathname, searchParams]);
+  }, [isHydrated, isAuthenticated, hasRole, router, currentPathname, searchParams]);
 
   // Render nothing until hydration is complete and auth is confirmed
   if (!isHydrated || !isAuthenticated || !hasRole('admin')) {

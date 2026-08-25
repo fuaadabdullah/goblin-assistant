@@ -1,4 +1,4 @@
-import { apiClient } from '@/lib/api';
+import { apiClient, getApiErrorMessage, getApiErrorStatus } from '@/lib/api';
 import { UiError } from '../../../lib/ui-error';
 import { getUserMessage } from '../../../lib/error/toast';
 import { getAuthTokenForRequest } from '../../../utils/auth-session';
@@ -236,10 +236,10 @@ export const chatClient = {
           provider,
           attachment_ids,
         });
-      } catch (error) {
-        if (!hasExplicitSelection) {
-          throw error;
-        }
+    } catch (error) {
+      if (!hasExplicitSelection) {
+        throw error;
+      }
 
         return await apiClient.sendConversationMessage({
           conversationId,
@@ -249,13 +249,8 @@ export const chatClient = {
       }
     } catch (error) {
       // Check for specific error statuses
-      const errorObj = error as any;
-      const status = errorObj?.response?.status || errorObj?.status;
-      const backendError =
-        errorObj?.responseData?.error ||
-        errorObj?.response?.data?.error ||
-        errorObj?.response?.data?.detail ||
-        errorObj?.response?.data?.message;
+      const status = getApiErrorStatus(error);
+      const backendError = getApiErrorMessage(error, '');
 
       if (backendError === 'provider-access-denied') {
         throw new UiError(
@@ -448,13 +443,7 @@ export const chatClient = {
         onComplete(finalResponse);
       } catch (error) {
         reader.cancel();
-        const errorObj = error as any;
-        const backendError =
-          errorObj?.responseData?.error ||
-          errorObj?.response?.data?.error ||
-          errorObj?.response?.data?.detail ||
-          errorObj?.response?.data?.message ||
-          errorObj?.message;
+        const backendError = getApiErrorMessage(error, '');
 
         const uiError = error instanceof Error ? error : new Error(getUserMessage(error));
         onError(uiError);

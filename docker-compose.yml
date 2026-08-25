@@ -40,13 +40,20 @@ services:
       - SANDBOX_IMAGE=goblin-assistant-sandbox:latest
       - JOBS_DIR=/app/sandbox_jobs
       - PORT=8001
+      - REDIS_URL=redis://redis:6379/0
       - ROUTING_REGISTRY_DB_PATH=/app/state/routing_registry.db
+      - JWT_SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=${DATABASE_URL}?sslmode=require
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
     volumes:
       - ./apps/api/src/api:/app/apps/api/src/api:ro
       - sandbox_jobs:/app/sandbox_jobs
       - api_uploads:/app/apps/api/src/uploads
       - api_logs:/app/logs
-      - api_chroma:/app/chroma_db
       - api_state:/app/state
     read_only: true
     tmpfs:
@@ -55,7 +62,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:8001/health']
+      test: ['CMD', 'python3', '-c', 'import urllib.request; urllib.request.urlopen("http://localhost:8001/api/v1/health", timeout=5)']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -376,5 +383,4 @@ volumes:
   minio_data:
   api_uploads:
   api_logs:
-  api_chroma:
   api_state:

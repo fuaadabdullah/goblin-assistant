@@ -10,15 +10,15 @@ import time
 def test_endpoint(name, method, url, data=None):
     print(f"\n🧪 Testing {name}...")
     try:
-        start_time = time.time()
+        start_time = time.perf_counter()
         if method == "POST":
             response = requests.post(url, json=data, timeout=10)
         else:
             response = requests.get(url, timeout=10)
 
-        response_time = time.time() - start_time
+        response_time = time.perf_counter() - start_time
         print(f"Status: {response.status_code}")
-        print(".3f")
+        print(f"Response Time: {response_time:.3f}s")
         print(f"Response: {response.text[:200]}...")
 
         return response.status_code, response_time, response.text

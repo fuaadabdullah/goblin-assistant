@@ -23,6 +23,12 @@ def _get_write_time_intelligence():
     return write_time_intelligence
 
 
+def _get_embedding_worker():
+    from ..services.embedding_service import embedding_worker
+
+    return embedding_worker
+
+
 def _get_request_pipeline():
     from ..pipeline.pipeline import RequestPipeline
     from ..pipeline.tool_selection import tool_selection_model

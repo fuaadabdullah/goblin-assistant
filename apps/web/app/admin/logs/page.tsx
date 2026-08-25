@@ -1,14 +1,19 @@
 'use client';
 
 import { Suspense } from 'react';
-import LogsPage from '@/screens/LogsPage';
+import nextDynamic from 'next/dynamic';
 import AdminLayout from '@/layout/AdminLayout';
 import { withRouteErrorBoundary } from '@/components/RouteBoundary';
 
 export const dynamic = 'force-dynamic';
 
+const MonitoringScreen = nextDynamic(() => import('@/screens/MonitoringScreen'), {
+  ssr: false,
+  loading: () => <div className="min-h-screen bg-bg" />,
+});
+
 const AdminLogsContent = withRouteErrorBoundary(function AdminLogsContent() {
-  return <LogsPage />;
+  return <MonitoringScreen />;
 }, 'adminLogs');
 
 export default function AdminLogs() {

@@ -6,7 +6,7 @@ import pytest
 
 from api.providers.base import ProviderResult
 from api.providers.dispatcher import ProviderDispatcher
-from api.routing.router import registry
+from api.routing.router_registry import registry
 
 from .conftest import StubProvider
 

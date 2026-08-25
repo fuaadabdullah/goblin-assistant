@@ -69,7 +69,7 @@ def apply_circuit_state(provider: Any, state: Dict[str, Any]) -> None:
     """Restore a previously-persisted circuit breaker state onto a provider."""
     from ..base import ProviderCircuitState  # noqa: PLC0415
 
-    circuit_state = state.get("circuit_state") or "closed"
+    circuit_state = ProviderCircuitState.from_value(state.get("circuit_state") or "closed")
     failure_count = int(state.get("failure_count") or 0)
     transient = int(state.get("transient_failure_count") or 0)
     open_until = float(state.get("circuit_open_until") or 0.0)
@@ -79,11 +79,22 @@ def apply_circuit_state(provider: Any, state: Dict[str, Any]) -> None:
         provider._circuit_open_until = float("inf")
         provider._failure_count = failure_count
         provider._transient_failure_count = transient
-    elif circuit_state == ProviderCircuitState.SOFT_OPEN and time.time() < open_until:
+        provider._probe_taken = False
+        provider._healthy = False
+    elif circuit_state == ProviderCircuitState.SOFT_OPEN:
         provider._circuit_state = ProviderCircuitState.SOFT_OPEN
-        provider._circuit_open_until = open_until
+        provider._circuit_open_until = open_until or time.time()
         provider._failure_count = failure_count
         provider._transient_failure_count = transient
+        provider._probe_taken = False
+        provider._healthy = False
+    else:
+        provider._circuit_state = ProviderCircuitState.CLOSED
+        provider._circuit_open_until = 0.0
+        provider._failure_count = failure_count
+        provider._transient_failure_count = transient
+        provider._probe_taken = False
+        provider._healthy = True
 
 
 def restore_circuit_states(

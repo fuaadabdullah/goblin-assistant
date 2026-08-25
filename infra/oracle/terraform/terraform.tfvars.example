@@ -1,0 +1,20 @@
+# Copy to terraform.tfvars and fill in your values.
+# Never commit terraform.tfvars — it contains OCI API credentials.
+#
+# Where to find each value:
+#   tenancy_ocid        → OCI Console → Governance → Tenancy Details
+#   user_ocid           → OCI Console → Identity → Users → (your user)
+#   fingerprint         → OCI Console → Identity → Users → API Keys
+#   private_key_path    → path to the PEM you downloaded when creating the API key
+#   compartment_ocid    → same as tenancy_ocid for root; or Identity → Compartments
+#   availability_domain → run: oci iam availability-domain list --output table
+#   ssh_public_key      → cat ~/.ssh/id_ed25519.pub
+
+tenancy_ocid        = "ocid1.tenancy.oc1..aaaa..."
+user_ocid           = "ocid1.user.oc1..aaaa..."
+fingerprint         = "xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx"
+private_key_path    = "~/.oci/oci_api_key.pem"
+region              = "us-ashburn-1"
+compartment_ocid    = "ocid1.tenancy.oc1..aaaa..."   # same as tenancy for root
+availability_domain = "Uocm:US-ASHBURN-AD-1"
+ssh_public_key      = "ssh-ed25519 AAAA..."

@@ -67,7 +67,7 @@ function initDatadog() {
     defaultPrivacyLevel: 'mask-user-input',
   });
 
-  datadogLogs.init({
+  const logsConfig = {
     clientToken,
     site,
     service: 'goblin-web',
@@ -75,7 +75,9 @@ function initDatadog() {
     version,
     forwardErrorsToLogs: true,
     sessionSampleRate: 100,
-  } as any);
+  } satisfies Parameters<typeof datadogLogs.init>[0];
+
+  datadogLogs.init(logsConfig);
 }
 
 export default function Providers({ children }: { children: ReactNode }) {

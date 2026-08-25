@@ -1,86 +1,84 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Goblin Assistant CI/CD Setup Script
-# This script helps set up the complete CI/CD pipeline
+# This script prepares the hybrid GitHub Actions + CircleCI workflow.
 
-set -e
+set -euo pipefail
 
-echo "🚀 Setting up Goblin Assistant CI/CD Pipeline..."
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
+
+echo "Setting up Goblin Assistant CI/CD pipeline..."
 echo ""
 
-# Check if we're in the right directory
-if [ ! -f "package.json" ] || [ ! -d ".github" ]; then
-    echo "❌ Please run this script from the goblin-assistant app root directory"
-    echo "   cd apps/goblin-assistant && ./scripts/setup-ci-cd.sh"
-    exit 1
+cd "$REPO_ROOT"
+
+if [ ! -f "Makefile" ] || [ ! -f "package.json" ] || [ ! -d ".github" ] || [ ! -d ".circleci" ]; then
+  echo "Please run this script from the goblin-assistant repository root."
+  exit 1
 fi
 
-echo "📦 Installing dependencies..."
-npm ci
+echo "Installing workspace dependencies..."
+make install
 
 echo ""
-echo "🔧 Setting up Husky Git hooks..."
-# Initialize husky if not already done
-if [ ! -d ".husky" ]; then
-    npx husky install
-fi
+echo "Running initial quality checks..."
+make lint
+make type-check
+make check-route-lifecycle
+make check-providers-json
+make contract-checks
+make test
+make build
 
-# Ensure pre-commit hook exists
-if [ ! -f ".husky/pre-commit" ]; then
-    echo "Creating pre-commit hook..."
-    npx husky add .husky/pre-commit "npx lint-staged && npm run validate-env"
-fi
+echo ""
+echo "CircleCI setup"
+read -r -p "Run CircleCI setup helper now? [y/N]: " run_circleci
+if [[ "$run_circleci" =~ ^[Yy]$ ]]; then
+  origin_url=$(git remote get-url origin 2>/dev/null || true)
+  owner=""
+  repo=""
 
-# Ensure pre-push hook exists
-if [ ! -f ".husky/pre-push" ]; then
-    echo "Creating pre-push hook..."
-    cat > .husky/pre-push << 'EOF'
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
+  if [[ "$origin_url" =~ github\.com[:/]+([^/]+)/([^/]+?)(\.git)?$ ]]; then
+    owner="${BASH_REMATCH[1]}"
+    repo="${BASH_REMATCH[2]}"
+  fi
 
-echo "🔍 Running pre-push validation..."
-npm run lint
-npm run type-check
-npm run test
-echo "✅ Pre-push validation passed!"
-EOF
-    chmod +x .husky/pre-push
+  if [ -z "$owner" ] || [ -z "$repo" ]; then
+    read -r -p "GitHub owner/org: " owner
+    read -r -p "Repository name: " repo
+  fi
+
+  if [ -n "$owner" ] && [ -n "$repo" ]; then
+    "$SCRIPT_DIR/setup-circleci.sh" gh "$owner" "$repo"
+  else
+    echo "Skipping CircleCI setup because repository coordinates were not provided."
+  fi
+else
+  echo "Skipping CircleCI setup"
 fi
 
 echo ""
-echo "🧪 Running initial quality checks..."
-echo "Running lint check..."
-npm run lint
-
-echo "Running type check..."
-npm run type-check
-
-echo "Running tests..."
-npm run test
-
-echo "Running build..."
-npm run build
-
-echo ""
-echo "🔒 Setting up branch protection..."
+echo "Branch protection"
 echo "Note: Branch protection requires GitHub CLI and repository admin access"
 echo "Run this command manually after authenticating with GitHub CLI:"
 echo "  ./scripts/setup-branch-protection.sh"
 
 echo ""
-echo "📋 CI/CD Setup Complete! 🎉"
+echo "CI/CD setup complete."
 echo ""
-echo "📚 What was configured:"
-echo "  ✅ GitHub Actions CI/CD workflow"
-echo "  ✅ Pre-commit hooks (lint-staged)"
-echo "  ✅ Pre-push validation (lint + type-check + tests)"
-echo "  ✅ Branch protection setup script"
-echo "  ✅ Comprehensive documentation"
+echo "What was configured:"
+echo "  - Workspace install via Makefile"
+echo "  - Repo-wide quality checks"
+echo "  - Pre-commit hooks from the checked-in Husky config"
+echo "  - Optional CircleCI environment setup via helper"
+echo "  - Branch protection setup script"
+echo "  - Hybrid CI/CD documentation"
 echo ""
-echo "🔄 Next Steps:"
+echo "Next steps:"
 echo "1. Push your changes to trigger the CI pipeline"
 echo "2. Set up branch protection (requires admin access)"
 echo "3. Configure deployment secrets if needed"
 echo "4. Review the CI/CD documentation: docs/infra/CI_CD_SETUP.md"
 echo ""
-echo "📖 Documentation: docs/infra/CI_CD_SETUP.md"
-echo "🔧 Branch Protection: ./scripts/setup-branch-protection.sh"
+echo "Documentation: docs/infra/CI_CD_SETUP.md"
+echo "Branch protection: ./scripts/setup-branch-protection.sh"

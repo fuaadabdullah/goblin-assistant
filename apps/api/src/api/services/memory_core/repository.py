@@ -113,11 +113,12 @@ def _record_from_model(row: MemoryFactModel) -> MemoryRecord:
     explicitness_score = float(metadata.get("explicitness_score") or 0.0)
     confidence_reason = str(metadata.get("confidence_reason") or "")
     importance_reason = str(metadata.get("importance_reason") or "")
-    embedding = _normalize_embedding(
-        getattr(row, "fact_embedding", None)
-        or metadata.get("embedding")
-        or metadata.get("fact_embedding")
-    )
+    embedding_value = getattr(row, "fact_embedding", None)
+    if embedding_value is None:
+        embedding_value = metadata.get("embedding")
+    if embedding_value is None:
+        embedding_value = metadata.get("fact_embedding")
+    embedding = _normalize_embedding(embedding_value)
 
     return MemoryRecord(
         id=row.id,

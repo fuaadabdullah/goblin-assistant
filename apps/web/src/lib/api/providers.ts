@@ -94,7 +94,7 @@ const mergeProviderModelOption = (
   merged.set(incoming.name, {
     ...existing,
     isSelectable: selectable,
-    health: selectable ? 'healthy' : incoming.health || existing.health,
+    health: selectable ? 'healthy' : incoming.health ?? existing.health ?? 'unknown',
     healthReason: selectable ? null : (incoming.healthReason ?? existing.healthReason ?? null),
   });
 };
@@ -141,20 +141,29 @@ export const providersMethods = {
     return patchFrontend(`/api/settings/${encodeURIComponent(key)}`, { value });
   },
 
-  async setProviderPriority(providerId: number, priority: number, role?: string) {
-    return postFrontend(`/api/providers/${providerId}/priority`, { priority, role });
+  async setProviderPriority(providerId: number | string, priority: number, role?: string) {
+    return putFrontend(`/api/settings/providers/${encodeURIComponent(String(providerId))}`, {
+      priority,
+      ...(role ? { role } : {}),
+    });
   },
 
-  async reorderProviders(providerIds: number[]) {
-    return postFrontend('/api/providers/reorder', { providerIds });
+  async reorderProviders(providerIds: Array<number | string>) {
+    return Promise.all(
+      providerIds.map((id, index) =>
+        putFrontend(`/api/settings/providers/${encodeURIComponent(String(id))}`, {
+          priority: index + 1,
+        })
+      )
+    );
   },
 
   async testProviderConnection(providerId: number | string) {
-    return postFrontend(`/api/providers/${providerId}/test`);
+    return postFrontend(`/api/routing/test/${encodeURIComponent(String(providerId))}`);
   },
 
   async testProviderWithPrompt(providerId: number | string, prompt: string) {
-    return postFrontend(`/api/providers/${providerId}/test-prompt`, { prompt });
+    return postFrontend('/api/generate', { prompt, provider: String(providerId) });
   },
 
   async getProviders(): Promise<string[]> {

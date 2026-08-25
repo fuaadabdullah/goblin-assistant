@@ -103,16 +103,27 @@ const emitStreamChunk = (
     typeof payload['content'] === 'string'
       ? payload['content']
       : typeof payload['result'] === 'string'
-        ? payload['result']
-        : undefined;
+      ? payload['result']
+      : undefined;
 
-  onChunk({
-    content: chunkContent,
+  const chunk: StreamChunk = {
     done: payload['done'] === true,
-    token_count: Number(payload['token_count']) || undefined,
-    cost_delta: Number(payload['cost_delta']) || undefined,
     result: payload['result'],
-  });
+  };
+
+  if (chunkContent !== undefined) {
+    chunk.content = chunkContent;
+  }
+
+  if (payload['token_count'] !== undefined) {
+    chunk['token_count'] = Number(payload['token_count']) || undefined;
+  }
+
+  if (payload['cost_delta'] !== undefined) {
+    chunk['cost_delta'] = Number(payload['cost_delta']) || undefined;
+  }
+
+  onChunk(chunk);
 };
 
 const processRuntimeStreamLine = (

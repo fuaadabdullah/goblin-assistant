@@ -16,8 +16,8 @@ const HelpScreen: FC = () => {
   const searchParams = useSearchParams();
   const [startupDiagnostics, setStartupDiagnostics] = useState<StartupDiagnostics | null>(null);
 
-  const reasonParam = searchParams.get('reason');
-  const logIdParam = searchParams.get('logId');
+  const reasonParam = searchParams?.get('reason');
+  const logIdParam = searchParams?.get('logId');
 
   const isStartupFailed = useMemo(() => {
     return reasonParam === 'startup_failed';

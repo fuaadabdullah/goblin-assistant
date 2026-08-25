@@ -2,11 +2,10 @@
 Performance optimizations for Goblin Assistant API
 """
 
-import asyncio
 import time
-from functools import wraps
+import asyncio
 from typing import Dict
-
+from functools import wraps
 import structlog
 from fastapi import Request
 from starlette.responses import Response as StarletteResponse
@@ -82,10 +81,10 @@ def optimize_database_queries():
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            start_time = time.time()
+            start_time = time.perf_counter()
             try:
                 result = await func(*args, **kwargs)
-                duration = time.time() - start_time
+                duration = time.perf_counter() - start_time
 
                 # Log slow queries
                 if duration > 1.0:  # Log queries taking longer than 1 second
@@ -97,7 +96,7 @@ def optimize_database_queries():
 
                 return result
             except Exception as e:
-                duration = time.time() - start_time
+                duration = time.perf_counter() - start_time
                 logger.error(
                     "database_query_error",
                     function=func.__name__,
