@@ -86,7 +86,7 @@ Every doc should land in exactly one of these classes:
 - `docs/operations/API_ROUTE_MIGRATION_TRACKER.md` is a transitional
   compatibility tracker and should eventually become generated or be removed
   once legacy routes are gone.
-- `docs/operations/ENDPOINT_AUDIT.md` and `docs/operations/PRODUCTION_MONITORING.md`
+- `docs/archive/ENDPOINT_AUDIT.md` and `docs/operations/PRODUCTION_MONITORING.md`
   should be normalized to canonical backend/operations pointers instead of
   referencing a non-existent legacy backend docs tree.
 

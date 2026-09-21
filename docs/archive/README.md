@@ -19,6 +19,12 @@ Deployment snapshots — each describes the state of one past deploy:
 - `DEPLOYMENT_STATUS.md` (v0.2.0), `DEPLOYMENT_COMPLETION_GUIDE.md`,
   `POST_DEPLOYMENT_GUIDE.md`, `QUICKSTART_PRODUCTION.md`
 
+Audits and migration logs — each records findings or progress at a point in time:
+
+- `ENDPOINT_AUDIT.md` (Dec 2025 endpoint smoke test), `WEBHOOK_AUTH_AUDIT.md`
+  (findings since resolved in `../operations/ATTESTATION_WEBHOOK_DEPLOYMENT.md`),
+  `STORAGE_MIGRATION.md`, `PRIVACY_PYTHON_313_NOTE.md`
+
 Completion reports — each records work finished on a given date:
 
 - `AUTHENTICATION_IMPROVEMENTS.md`, `CHAT_FUNCTIONALITY_RESTORED.md`,

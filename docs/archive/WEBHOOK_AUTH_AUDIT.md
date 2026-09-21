@@ -1,5 +1,10 @@
 # Attestation Webhook Security Audit
 
+> **Archived: not canonical.** Point-in-time report retained for historical
+> context; statements below reflect the date they were written, not current
+> system state. See `docs/operations/` for current guidance.
+
+
 ## Critical Findings
 
 ### 1. **CRITICAL: `/attest-node` Endpoint is Completely Unauthenticated**

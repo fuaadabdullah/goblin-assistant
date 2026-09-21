@@ -1,3 +1,8 @@
+
+> **Archived: not canonical.** Point-in-time report retained for historical
+> context; statements below reflect the date they were written, not current
+> system state. See `docs/operations/` for current guidance.
+
 This audit is retained here as a historical operations reference.
 
 The canonical backend documentation index is `docs/backend/README.md`. If this

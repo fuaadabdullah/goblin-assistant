@@ -1,5 +1,10 @@
 # Privacy Implementation - Python 3.13 Compatibility Note
 
+> **Archived: not canonical.** Point-in-time report retained for historical
+> context; statements below reflect the date they were written, not current
+> system state. See `docs/operations/` for current guidance.
+
+
 ## ✅ Status: PRODUCTION READY (with one optional limitation)
 
 All **core privacy features** are fully operational with Python 3.13. Only the **optional vector store** feature requires PyTorch, which is not yet available for Python 3.13.
