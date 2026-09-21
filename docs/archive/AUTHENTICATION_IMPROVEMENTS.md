@@ -1,5 +1,10 @@
 # Authentication System Improvements Summary
 
+> **Archived: not canonical.** Point-in-time report retained for historical
+> context; statements below reflect the date they were written, not current
+> system state. See `docs/operations/` for current guidance.
+
+
 ## Overview
 
 This document summarizes all the improvements made to the GoblinOS Assistant authentication system to fix the "Login failed" issues and enhance overall security and functionality.

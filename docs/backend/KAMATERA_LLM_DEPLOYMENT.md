@@ -4,7 +4,6 @@ This page is retained for legacy links from the local LLM routing guides.
 
 ## Canonical references
 
-- `docs/operations/DEPLOYMENT_README.md`
 - `docs/operations/DEPLOYMENT_AND_TESTING.md`
 - `docs/operations/ENVIRONMENT_SETUP.md`
 

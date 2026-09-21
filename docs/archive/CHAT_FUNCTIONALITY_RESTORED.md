@@ -1,5 +1,10 @@
 # Goblin Assistant Chat Functionality - Restored
 
+> **Archived: not canonical.** Point-in-time report retained for historical
+> context; statements below reflect the date they were written, not current
+> system state. See `docs/operations/` for current guidance.
+
+
 **Date**: March 7, 2026  
 **Status**: ✅ WORKING
 

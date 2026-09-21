@@ -1,5 +1,10 @@
 # ✅ Complete Configuration Verification
 
+> **Archived: not canonical.** Point-in-time report retained for historical
+> context; statements below reflect the date they were written, not current
+> system state. See `docs/operations/` for current guidance.
+
+
 **Date**: January 11, 2026  
 **Status**: ALL SYSTEMS OPERATIONAL
 

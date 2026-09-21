@@ -1,5 +1,10 @@
 # 🎉 Production Deployment - Quick Reference
 
+> **Archived: not canonical.** Point-in-time report retained for historical
+> context; statements below reflect the date they were written, not current
+> system state. See `docs/operations/` for current guidance.
+
+
 This document contains a mix of backend and frontend quickstart notes. Please update any references or links to point to canonical locations:
 
 ## Status: ✅ ALL COMPLETE

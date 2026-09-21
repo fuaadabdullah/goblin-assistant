@@ -96,7 +96,7 @@ curl -X DELETE https://goblin-assistant-backend.onrender.com/api/privacy/delete 
 ## 📚 Full Documentation
 
 - **Executive Summary**: `PRIVACY_EXECUTIVE_SUMMARY.md`
-- **Complete Features**: `docs/operations/PRIVACY_IMPLEMENTATION_SUCCESS.md`
+- **Complete Features**: `docs/archive/PRIVACY_IMPLEMENTATION_SUCCESS.md`
 - **Technical Guide**: `docs/security/PRIVACY_IMPLEMENTATION.md`
 - **Integration Steps**: `docs/security/PRIVACY_INTEGRATION_GUIDE.md`
 

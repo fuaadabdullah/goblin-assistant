@@ -1,5 +1,10 @@
 # Goblin Assistant v0.2.0 - Production Deployment Status
 
+> **Archived: not canonical.** Point-in-time report retained for historical
+> context; statements below reflect the date they were written, not current
+> system state. See `docs/operations/` for current guidance.
+
+
 ## ✅ Deployment Phase: Complete
 
 **Latest Push:** `3922f3e` (v0.2.0) to `main` → `origin/main`  

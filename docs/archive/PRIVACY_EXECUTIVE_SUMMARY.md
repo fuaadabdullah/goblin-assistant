@@ -100,7 +100,7 @@ fly deploy
 
 All documentation is ready and comprehensive:
 
-1. **`docs/operations/PRIVACY_IMPLEMENTATION_SUCCESS.md`** ← You are here
+1. **`docs/archive/PRIVACY_IMPLEMENTATION_SUCCESS.md`** ← You are here
 2. **`PRIVACY_IMPLEMENTATION_COMPLETE.md`** - Full feature list
 3. **`docs/security/PRIVACY_IMPLEMENTATION.md`** - Technical implementation guide
 4. **`docs/security/PRIVACY_INTEGRATION_GUIDE.md`** - Step-by-step integration

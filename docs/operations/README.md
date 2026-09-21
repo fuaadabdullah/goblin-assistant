@@ -28,13 +28,23 @@ This directory is the canonical home for operational documentation previously un
   misrouted provider dispatch — circuit breaker state, routing decisions,
   provider-leakage import errors.
 
+## Deployment operations
+
+- `DEPLOYMENT_AND_TESTING.md`: deployment validation flow — the canonical
+  entry point for deploying and verifying a release.
+- `DEPLOYMENT_ARCHITECTURE.md`: how the deployed system is laid out across
+  Render (backend) and Vercel (frontend).
+- `RENDER_DEPLOYMENT_GUIDE.md`: Render-specific backend deployment,
+  environment configuration, and verification steps.
+- `PRODUCTION_DEPLOYMENT_CHECKLIST.md`: production readiness checks.
+- `DEPLOYMENT_ROLLBACK.md`: rolling back a bad deploy on Render and/or
+  Vercel, including the database-migration edge case.
+
 ## Release operations
 
 - `RELEASE_PROCESS.md`: release cut checklist, tag policy, and verification flow.
 - `DOGFOODING_V0_3.md`: v0.3 real-user dogfooding entry gates, feedback loop,
   support routing, and rollback rules.
-- `DEPLOYMENT_ROLLBACK.md`: rolling back a bad deploy on Render and/or
-  Vercel, including the database-migration edge case.
 
 ## API compatibility tracking
 

@@ -1,5 +1,10 @@
 # Production Deployment - Post-Deployment Guide
 
+> **Archived: not canonical.** Point-in-time report retained for historical
+> context; statements below reflect the date they were written, not current
+> system state. See `docs/operations/` for current guidance.
+
+
 ## Current Status: Deployment In Progress ⏳
 
 **Time Elapsed:** ~2-3 minutes  

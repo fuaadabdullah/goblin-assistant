@@ -1,5 +1,10 @@
 # Deployment Completion Guide
 
+> **Archived: not canonical.** Point-in-time report retained for historical
+> context; statements below reflect the date they were written, not current
+> system state. See `docs/operations/` for current guidance.
+
+
 **Status Date:** May 7, 2026  
 **Branch:** `fix/remove-embedded-secrets`  
 **Target:** Main merge + production deployment

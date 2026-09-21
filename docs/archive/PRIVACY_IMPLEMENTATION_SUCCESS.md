@@ -1,5 +1,10 @@
 # 🎉 Privacy Implementation - SUCCESSFULLY COMPLETED
 
+> **Archived: not canonical.** Point-in-time report retained for historical
+> context; statements below reflect the date they were written, not current
+> system state. See `docs/operations/` for current guidance.
+
+
 ## ✅ Implementation Status: PRODUCTION READY
 
 All core privacy and security features have been successfully implemented and validated for the Goblin Assistant backend.
