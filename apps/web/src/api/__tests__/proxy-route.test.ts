@@ -91,4 +91,50 @@ describe('/api/[...path] route', () => {
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toEqual({ detail: 'Not found' });
   });
+
+  it('does not buffer non-JSON streaming responses', async () => {
+    const encoder = new TextEncoder();
+    let closeBackend: (() => void) | undefined;
+
+    const backendBody = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('first-chunk\n'));
+        closeBackend = () => controller.close();
+      },
+    });
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(backendBody, {
+        status: 200,
+        headers: {
+          'content-type': 'text/event-stream',
+          'x-correlation-id': 'cid-stream',
+        },
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await Promise.race([
+      GET(new Request('http://localhost/api/metrics'), {
+        params: Promise.resolve({ path: ['metrics'] }),
+      }),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('proxy buffered the backend stream')), 100);
+      }),
+    ]);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toContain('text/event-stream');
+    expect(response.headers.get('X-Correlation-ID')).toBe('cid-stream');
+
+    const reader = response.body?.getReader();
+    expect(reader).toBeDefined();
+    const first = await reader!.read();
+    expect(new TextDecoder().decode(first.value)).toBe('first-chunk\n');
+
+    closeBackend?.();
+    const finished = await reader!.read();
+    expect(finished.done).toBe(true);
+  });
+
 });

@@ -485,3 +485,78 @@ async def test_dispatch_timeout_cancels_inflight_provider_task(monkeypatch):
     assert result["ok"] is False
     assert result["error_category"] == "timeout"
     assert cancelled.is_set()
+
+
+@pytest.mark.asyncio
+async def test_stream_records_success_only_after_clean_exhaustion(monkeypatch):
+    dispatcher = ProviderDispatcher()
+    provider = dispatcher.get_provider("openai")
+    provider.reset_circuit()
+
+    async def fake_stream(messages=None, model=None, **kwargs):
+        _ = messages, model, kwargs
+        yield {"text": "hello "}
+        yield {"text": "world"}
+
+    monkeypatch.setattr(provider, "stream", fake_stream)
+    monkeypatch.setattr(provider, "estimate_cost", lambda *_args, **_kwargs: 0.123)
+
+    stats = registry.get("openai")
+    before_successes = stats.success_count
+    before_failures = stats.failure_count
+    before_cost = stats.total_cost_usd
+
+    result = await dispatcher.dispatch(
+        pid="openai",
+        model="gpt-4o-mini",
+        payload={"messages": [{"role": "user", "content": "hi"}]},
+        stream=True,
+    )
+
+    assert result["ok"] is True
+    assert registry.get("openai").success_count == before_successes
+    assert registry.get("openai").failure_count == before_failures
+
+    chunks = [chunk async for chunk in result["stream"]]
+
+    assert [chunk["text"] for chunk in chunks] == ["hello ", "world"]
+    assert registry.get("openai").success_count == before_successes + 1
+    assert registry.get("openai").failure_count == before_failures
+    assert registry.get("openai").total_cost_usd == pytest.approx(before_cost + 0.123)
+
+
+@pytest.mark.asyncio
+async def test_stream_midflight_failure_is_not_recorded_as_success(monkeypatch):
+    dispatcher = ProviderDispatcher()
+    provider = dispatcher.get_provider("openai")
+    provider.reset_circuit()
+
+    async def broken_stream(messages=None, model=None, **kwargs):
+        _ = messages, model, kwargs
+        yield {"text": "partial"}
+        raise RuntimeError("stream exploded")
+
+    monkeypatch.setattr(provider, "stream", broken_stream)
+
+    stats = registry.get("openai")
+    before_successes = stats.success_count
+    before_failures = stats.failure_count
+
+    result = await dispatcher.dispatch(
+        pid="openai",
+        model="gpt-4o-mini",
+        payload={"messages": [{"role": "user", "content": "hi"}]},
+        stream=True,
+    )
+
+    assert result["ok"] is True
+    assert registry.get("openai").success_count == before_successes
+
+    received = []
+    with pytest.raises(RuntimeError, match="stream exploded"):
+        async for chunk in result["stream"]:
+            received.append(chunk)
+
+    assert received == [{"text": "partial"}]
+    assert registry.get("openai").success_count == before_successes
+    assert registry.get("openai").failure_count == before_failures + 1

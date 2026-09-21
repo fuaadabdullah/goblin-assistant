@@ -219,3 +219,52 @@ async def test_stream_task_raises_http_500_when_response_construction_fails(monk
     error = exc_info.value
     assert getattr(error, "status_code", None) == 500
     assert getattr(error, "detail", None) == "Task streaming failed"
+
+
+@pytest.mark.asyncio
+async def test_generate_stream_events_reports_streaming_cost(monkeypatch):
+    async def fake_stream():
+        yield {"text": "abcd"}
+        yield {"text": "efgh"}
+
+    async def fake_invoke_provider(**kwargs):
+        assert kwargs.get("stream") is True
+        return {
+            "ok": True,
+            "stream": fake_stream(),
+            "provider": "priced-provider",
+            "model": "priced-model",
+        }
+
+    def fake_estimate_cost(provider_id, model, *, input_tokens=0, output_tokens=0):
+        assert provider_id == "priced-provider"
+        assert model == "priced-model"
+        return (input_tokens * 0.001) + (output_tokens * 0.002)
+
+    monkeypatch.setattr("api.services.task_streaming.invoke_provider", fake_invoke_provider)
+    monkeypatch.setattr(
+        "api.services.task_streaming._estimate_provider_cost",
+        fake_estimate_cost,
+    )
+
+    events = []
+    async for event in stream.generate_stream_events(
+        task_id="task-priced",
+        messages=[{"role": "user", "content": "12345678"}],
+        provider="auto",
+        model=None,
+    ):
+        events.append(event)
+
+    parsed = [_parse_sse(event) for event in events]
+    chunks = [item for item in parsed if item.get("content")]
+    completed = next(item for item in reversed(parsed) if item.get("done") is True)
+
+    assert len(chunks) == 2
+    assert chunks[0]["cost_delta"] > 0
+    assert chunks[1]["cost_delta"] > 0
+    assert completed["cost"] == pytest.approx(
+        sum(float(item["cost_delta"]) for item in chunks)
+    )
+    assert completed["provider"] == "priced-provider"
+    assert completed["model"] == "priced-model"

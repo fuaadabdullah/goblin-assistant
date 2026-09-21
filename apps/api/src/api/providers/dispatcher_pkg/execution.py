@@ -14,6 +14,7 @@ from ..base import (
     classify_provider_error,
 )
 from ..metrics import record_dispatch
+from ..quota_pkg.estimation import estimate_text_tokens
 from ..quota_service import quota_service
 from ..router_service import get_router_model_names
 from ..supabase_events import insert_routing_audit
@@ -105,61 +106,122 @@ async def stream_wrap(
             first = chunk
             break
 
-        async def combined() -> AsyncGenerator[Dict[str, Any], None]:
-            if first is not None:
-                yield first
-            async for item in gen:
-                yield item
-
-        latency = (asyncio.get_running_loop().time() - started_at) * 1000
-        provider.record_success()
-        dispatcher.record_routing_outcome(provider_id, ok=True, latency_ms=latency, cost_usd=0.0)
-        dispatcher.note_provider_result(provider_id, ok=True, latency_ms=latency)
-        record_dispatch(
-            provider_id=provider_id,
-            model=model,
-            latency_ms=latency,
-            ok=True,
+        input_tokens = sum(
+            estimate_text_tokens(str(message.get("content", "") or ""))
+            for message in messages
         )
+        if not messages:
+            input_tokens += estimate_text_tokens(str(kwargs.get("prompt", "") or ""))
+
+        async def combined() -> AsyncGenerator[Dict[str, Any], None]:
+            output_tokens = 0
+            try:
+                if first is not None:
+                    first_text = (
+                        str(first.get("text", "") or "")
+                        if isinstance(first, dict)
+                        else str(first)
+                    )
+                    output_tokens += estimate_text_tokens(first_text)
+                    yield first
+                async for item in gen:
+                    item_text = (
+                        str(item.get("text", "") or "")
+                        if isinstance(item, dict)
+                        else str(item)
+                    )
+                    output_tokens += estimate_text_tokens(item_text)
+                    yield item
+            except (asyncio.CancelledError, GeneratorExit):
+                latency = (asyncio.get_running_loop().time() - started_at) * 1000
+                logger.bind(
+                    provider=provider_id,
+                    model=model,
+                    latency_ms=round(latency, 1),
+                ).info("dispatch_stream_cancelled")
+                raise
+            except Exception as exc:
+                latency = (asyncio.get_running_loop().time() - started_at) * 1000
+                safe_error = dispatcher._sanitize_error(exc)
+                error_category = classify_provider_error(exc).value
+                await _record_provider_failure(
+                    provider_id,
+                    provider,
+                    safe_error,
+                    category=error_category,
+                )
+                dispatcher.record_routing_outcome(provider_id, ok=False)
+                dispatcher.note_provider_result(provider_id, ok=False, error=safe_error)
+                record_dispatch(
+                    provider_id=provider_id,
+                    model=model,
+                    latency_ms=latency,
+                    ok=False,
+                    error_category=error_category,
+                )
+                logger.bind(
+                    provider=provider_id,
+                    model=model,
+                    latency_ms=round(latency, 1),
+                    error_category=error_category,
+                ).warning("dispatch_stream_failure", error=safe_error)
+                raise
+            else:
+                latency = (asyncio.get_running_loop().time() - started_at) * 1000
+                try:
+                    stream_cost = float(
+                        provider.estimate_cost(
+                            input_tokens,
+                            output_tokens,
+                            model=model,
+                        )
+                    )
+                except Exception:
+                    stream_cost = 0.0
+                provider.record_success()
+                dispatcher.record_routing_outcome(
+                    provider_id,
+                    ok=True,
+                    latency_ms=latency,
+                    cost_usd=max(0.0, stream_cost),
+                )
+                dispatcher.note_provider_result(provider_id, ok=True, latency_ms=latency)
+                record_dispatch(
+                    provider_id=provider_id,
+                    model=model,
+                    latency_ms=latency,
+                    ok=True,
+                )
+                logger.bind(
+                    provider=provider_id,
+                    model=model,
+                    latency_ms=round(latency, 1),
+                    cost_usd=round(max(0.0, stream_cost), 8),
+                ).info("dispatch_stream_success")
+
+        time_to_first_chunk_ms = (asyncio.get_running_loop().time() - started_at) * 1000
+        return ProviderResult(
+            ok=True,
+            provider=provider_id,
+            model=model,
+            latency_ms=time_to_first_chunk_ms,
+            raw={"stream_gen": combined()},
+        )
+    except Exception as exc:
+        latency = (asyncio.get_running_loop().time() - started_at) * 1000
+        safe_error = dispatcher._sanitize_error(exc)
+        error_category = classify_provider_error(exc).value
         logger.bind(
             provider=provider_id,
             model=model,
             latency_ms=round(latency, 1),
-        ).info("dispatch_stream_success")
+            error_category=error_category,
+        ).warning("dispatch_stream_start_failure", error=safe_error)
         return ProviderResult(
-            ok=True,
+            ok=False,
             provider=provider_id,
             model=model,
             latency_ms=latency,
-            raw={"stream_gen": combined()},
-        )
-    except Exception as exc:
-        safe_error = dispatcher._sanitize_error(exc)
-        error_category = classify_provider_error(exc).value
-        await _record_provider_failure(
-            provider_id,
-            provider,
-            safe_error,
-            category=error_category,
-        )
-        dispatcher.record_routing_outcome(provider_id, ok=False)
-        dispatcher.note_provider_result(provider_id, ok=False, error=safe_error)
-        record_dispatch(
-            provider_id=provider_id,
-            model=model,
-            latency_ms=0.0,
-            ok=False,
-            error_category=error_category,
-        )
-        logger.bind(
-            provider=provider_id,
-            model=model,
-            error_category=error_category,
-        ).warning("dispatch_stream_failure", error=safe_error)
-        return ProviderResult(
-            ok=False,
-            provider=provider_id,
-            model=model,
             error=safe_error,
             error_category=error_category,
         )
@@ -336,17 +398,40 @@ async def _execute_dispatch_attempt_impl(
                 timeout=timeout_ms / 1000,
             )
             if result.ok:
-                _tag(aspan, "dispatch.outcome", "success")
+                source_stream = result.raw.get("stream_gen")
+                if source_stream is None:
+                    await quota_service.release(reservation)
+                    return None, "stream missing generator", ProviderErrorCategory.UNKNOWN
+
+                async def metered_stream() -> AsyncGenerator[Dict[str, Any], None]:
+                    output_tokens = 0
+                    try:
+                        async for chunk in source_stream:
+                            if isinstance(chunk, dict):
+                                text = str(chunk.get("text", "") or "")
+                            else:
+                                text = str(chunk)
+                            output_tokens += estimate_text_tokens(text)
+                            yield chunk
+                    finally:
+                        try:
+                            await quota_service.commit(
+                                reservation,
+                                actual_input_tokens=reservation.estimated_input_tokens,
+                                actual_output_tokens=output_tokens,
+                            )
+                        except Exception as quota_exc:
+                            log.warning(
+                                "dispatch_stream_quota_commit_failed",
+                                error=dispatcher._sanitize_error(quota_exc),
+                            )
+
+                _tag(aspan, "dispatch.outcome", "stream_started")
                 _tag(rspan, "dispatch.final_provider", provider_id)
-                await quota_service.commit(
-                    reservation,
-                    actual_input_tokens=reservation.estimated_input_tokens,
-                    actual_output_tokens=reservation.estimated_output_tokens,
-                )
                 return (
                     {
                         "ok": True,
-                        "stream": result.raw.get("stream_gen"),
+                        "stream": metered_stream(),
                         "provider": provider_id,
                         "model": model_name,
                     },
