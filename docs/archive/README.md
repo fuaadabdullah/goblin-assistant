@@ -33,9 +33,28 @@ Completion reports — each records work finished on a given date:
   `MONITORING_IMPLEMENTATION.md`, `DATADOG_PROCESS_MONITORING_SETUP.md`,
   `FINAL_SUMMARY.md`
 
+Frontend and UX implementation reports — theme rollout, component migration,
+logo and UI passes, accessibility remediation, visual-regression setup:
+
+- `THEME_COMPLETE_REPORT.md`, `THEME_IMPLEMENTATION_SUMMARY.md`,
+  `THEME_AND_ACCESSIBILITY_VERIFICATION.md`, `COMPONENT_ATOMIZATION_SUMMARY.md`,
+  `COMPONENT_MIGRATION_COMPLETE.md`, `MIGRATION_PROGRESS.md`,
+  `LOGO_OPTIMIZATION_SUMMARY.md`, `UI_IMPROVEMENTS_SUMMARY.md`,
+  `ZUSTAND_AXIOS_HEALTH_CHECK.md`, `ACCESSIBILITY_SUMMARY.md`,
+  `ACCESSIBILITY_TESTING_CHECKLIST.md`, `UX_IMPROVEMENTS.md`,
+  `VISUAL_REGRESSION_COMPLETE.md`
+
+Designs that did not ship:
+
+- `API_QUICK_REF.md` and `DASHBOARD_API_CONSOLIDATION.md` describe an
+  `/api/dashboard/*` surface that was never registered in the backend.
+
 Some of these reference paths from the pre-monorepo layout (`backend/`,
-`apps/goblin-assistant/`) that no longer exist. That is expected — they are
-preserved as written rather than rewritten.
+`apps/goblin-assistant/`), a Vite dev server, or `src/App.tsx` — none of which
+exist now. That is expected; they are preserved as written rather than
+rewritten. Colour values in the theme reports predate the move to the warm
+palette, so treat any contrast figure there as superseded by
+`../ux/ACCESSIBILITY.md`.
 
 ## Usage rules
 

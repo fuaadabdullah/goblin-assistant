@@ -1,5 +1,10 @@
 # Component Migration Progress
 
+> **Archived: not canonical.** Point-in-time report retained for historical
+> context; statements below reflect the date they were written, not current
+> system state. See `docs/operations/` for current guidance.
+
+
 ## ✅ MIGRATION COMPLETE! (26/26 components - 100%)
 
 ### Auth Components (6/6)

@@ -1,5 +1,16 @@
 # Dashboard API Consolidation
 
+> **Archived: not canonical.** Point-in-time report retained for historical
+> context; statements below reflect the date they were written, not current
+> system state. See `docs/operations/` for current guidance.
+
+> The `/api/dashboard/status`, `/api/dashboard/costs` and
+> `/api/dashboard/metrics/{service}` endpoints described below were never
+> registered: there is no dashboard router in `apps/api/src/api/`, nothing
+> mounts that prefix in `app_factory.py`, and no frontend code calls it.
+> Treat this as a design that did not ship, not as an API reference.
+
+
 **Date**: 2025-01-XX
 **Author**: AI Assistant
 **Goal**: Reduce API calls, add aggressive caching, optimize dashboard performance
@@ -401,8 +412,8 @@ async def startup():
 
 ## 📚 Related Documentation
 
-- [Loading & Error States](./LOADING_ERROR_STATES.md) - Skeleton UI and ARIA patterns
-- [UX Improvements](../ux/UX_IMPROVEMENTS.md) - Tooltip and timestamp enhancements
+- [Loading & Error States](../frontend/LOADING_ERROR_STATES.md) - Skeleton UI and ARIA patterns
+- [UX Improvements](./UX_IMPROVEMENTS.md) - Tooltip and timestamp enhancements
 - [Component Migration](./COMPONENT_MIGRATION_COMPLETE.md) - UI component library
 
 ---

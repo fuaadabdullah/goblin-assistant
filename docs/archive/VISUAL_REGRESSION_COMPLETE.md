@@ -1,5 +1,10 @@
 # Visual Regression Testing Setup - Complete!
 
+> **Archived: not canonical.** Point-in-time report retained for historical
+> context; statements below reflect the date they were written, not current
+> system state. See `docs/operations/` for current guidance.
+
+
 ## 🎉 Setup Summary
 
 Visual regression testing has been successfully implemented for the Goblin Assistant UI! Your components are now protected from unexpected visual changes.

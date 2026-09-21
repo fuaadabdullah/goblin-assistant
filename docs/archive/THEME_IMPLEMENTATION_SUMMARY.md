@@ -1,5 +1,10 @@
 # Theme System Implementation - Session Summary
 
+> **Archived: not canonical.** Point-in-time report retained for historical
+> context; statements below reflect the date they were written, not current
+> system state. See `docs/operations/` for current guidance.
+
+
 **Date**: December 2, 2025
 **Scope**: Priorities 1-4 (Create Module → Wire → Replace Colors → Add Toggle)
 **Status**: ✅ **COMPLETE**
@@ -225,10 +230,10 @@ node scripts/verify-theme-system.js
 
 ## 📚 Documentation
 
-- **[THEME_SYSTEM.md](./THEME_SYSTEM.md)** - Complete implementation guide
+- **[THEME_SYSTEM.md](../frontend/THEME_SYSTEM.md)** - Complete implementation guide
 - **[ACCESSIBILITY.md](../ux/ACCESSIBILITY.md)** - WCAG 2.1 audit
 - **[ACCESSIBILITY.md](../ux/ACCESSIBILITY.md)** - Lighthouse audit guide
-- **[ACCESSIBILITY_SUMMARY.md](../ux/ACCESSIBILITY_SUMMARY.md)** - 0 violations
+- **[ACCESSIBILITY_SUMMARY.md](./ACCESSIBILITY_SUMMARY.md)** - 0 violations
 
 ---
 

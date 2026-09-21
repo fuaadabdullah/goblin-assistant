@@ -398,7 +398,7 @@ import Logo from './Logo';
 ## Related Documentation
 
 - **Theme System**: `docs/frontend/THEME_SYSTEM.md`
-- **Accessibility**: `docs/frontend/THEME_AND_ACCESSIBILITY_VERIFICATION.md`
+- **Accessibility**: `docs/ux/ACCESSIBILITY.md`
 - **Component Library**: (Storybook - future)
 
 ---

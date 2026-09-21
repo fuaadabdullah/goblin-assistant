@@ -1,5 +1,10 @@
 # Accessibility Implementation Summary
 
+> **Archived: not canonical.** Point-in-time report retained for historical
+> context; statements below reflect the date they were written, not current
+> system state. See `docs/operations/` for current guidance.
+
+
 ## ✅ Completed (December 2, 2025)
 
 ### 1. WCAG AA Contrast Compliance ✅

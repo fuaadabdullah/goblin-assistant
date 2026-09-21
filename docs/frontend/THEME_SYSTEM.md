@@ -346,9 +346,9 @@ tailwind.config.js     # Maps CSS vars to Tailwind utilities
 
 ## 🔗 Related Documentation
 
-- [ACCESSIBILITY.md](../ux/ACCESSIBILITY.md) - WCAG 2.1 Level AA audit
-- [ACCESSIBILITY.md](../ux/ACCESSIBILITY.md) - 100/100 accessibility score
-- [ACCESSIBILITY_SUMMARY.md](../ux/ACCESSIBILITY_SUMMARY.md) - 0 violations across all pages
+- [ACCESSIBILITY.md](../ux/ACCESSIBILITY.md) - WCAG AA targets, the measured
+  contrast table, and keyboard/screen-reader testing procedure
+- [DESIGN_TOKENS.md](./DESIGN_TOKENS.md) - token values and scales
 
 ---
 

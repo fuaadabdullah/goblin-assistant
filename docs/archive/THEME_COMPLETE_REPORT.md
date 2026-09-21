@@ -1,5 +1,10 @@
 # GoblinOS Theme System - Complete Implementation Report
 
+> **Archived: not canonical.** Point-in-time report retained for historical
+> context; statements below reflect the date they were written, not current
+> system state. See `docs/operations/` for current guidance.
+
+
 **Implementation Date**: December 2, 2025
 **Status**: ✅ **PRODUCTION READY**
 **Build Status**: ✅ **PASSING**
@@ -406,11 +411,11 @@ setThemeVars({
 
 ## 🔗 Related Documentation
 
-- **[THEME_SYSTEM.md](./THEME_SYSTEM.md)** - Complete implementation guide (300+ lines)
+- **[THEME_SYSTEM.md](../frontend/THEME_SYSTEM.md)** - Complete implementation guide (300+ lines)
 - **[THEME_IMPLEMENTATION_SUMMARY.md](./THEME_IMPLEMENTATION_SUMMARY.md)** - Session summary
 - **[ACCESSIBILITY.md](../ux/ACCESSIBILITY.md)** - WCAG 2.1 audit results
 - **[ACCESSIBILITY.md](../ux/ACCESSIBILITY.md)** - Lighthouse audit guide
-- **[ACCESSIBILITY_SUMMARY.md](../ux/ACCESSIBILITY_SUMMARY.md)** - Zero violations report
+- **[ACCESSIBILITY_SUMMARY.md](./ACCESSIBILITY_SUMMARY.md)** - Zero violations report
 
 ---
 

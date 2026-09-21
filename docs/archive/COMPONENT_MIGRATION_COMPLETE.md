@@ -1,5 +1,10 @@
 # Component Migration to UI Library - Complete
 
+> **Archived: not canonical.** Point-in-time report retained for historical
+> context; statements below reflect the date they were written, not current
+> system state. See `docs/operations/` for current guidance.
+
+
 **Status**: ✅ **COMPLETE**
 **Date**: December 2024
 **Migration Scope**: All frontend components now use centralized UI component library

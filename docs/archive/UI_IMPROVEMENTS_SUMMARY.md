@@ -1,5 +1,10 @@
 # UI/UX Improvements Summary
 
+> **Archived: not canonical.** Point-in-time report retained for historical
+> context; statements below reflect the date they were written, not current
+> system state. See `docs/operations/` for current guidance.
+
+
 **Date**: December 2, 2025
 **Status**: ✅ Implementation Complete, Testing Phase
 **Dev Server**: <http://localhost:5173>

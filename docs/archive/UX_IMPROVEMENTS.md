@@ -1,5 +1,10 @@
 # UX Small Wins - Status Cards Enhancement
 
+> **Archived: not canonical.** Point-in-time report retained for historical
+> context; statements below reflect the date they were written, not current
+> system state. See `docs/operations/` for current guidance.
+
+
 **Status**: ✅ **COMPLETE**
 **Date**: December 2024
 **Scope**: Color-coded status chips, accessible tooltips, and last-updated timestamps

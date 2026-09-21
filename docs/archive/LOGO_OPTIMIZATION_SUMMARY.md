@@ -1,5 +1,10 @@
 # Logo Optimization Complete ✅
 
+> **Archived: not canonical.** Point-in-time report retained for historical
+> context; statements below reflect the date they were written, not current
+> system state. See `docs/operations/` for current guidance.
+
+
 **Date**: December 2, 2025
 **Status**: Production Ready
 **Priority**: 7 of 8 (Original Roadmap)

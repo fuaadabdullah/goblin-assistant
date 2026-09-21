@@ -5,6 +5,17 @@ description: "Dashboard API Quick Reference"
 
 # Dashboard API Quick Reference
 
+> **Archived: not canonical.** Point-in-time report retained for historical
+> context; statements below reflect the date they were written, not current
+> system state. See `docs/operations/` for current guidance.
+
+> The `/api/dashboard/status`, `/api/dashboard/costs` and
+> `/api/dashboard/metrics/{service}` endpoints described below were never
+> registered: there is no dashboard router in `apps/api/src/api/`, nothing
+> mounts that prefix in `app_factory.py`, and no frontend code calls it.
+> Treat this as a design that did not ship, not as an API reference.
+
+
 ## New Endpoints
 
 ### `/api/dashboard/status` (10s cache)
