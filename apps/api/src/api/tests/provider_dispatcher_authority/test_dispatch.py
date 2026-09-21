@@ -499,10 +499,12 @@ async def test_stream_records_success_only_after_clean_exhaustion(monkeypatch):
         yield {"text": "world"}
 
     monkeypatch.setattr(provider, "stream", fake_stream)
+    monkeypatch.setattr(provider, "estimate_cost", lambda *_args, **_kwargs: 0.123)
 
     stats = registry.get("openai")
     before_successes = stats.success_count
     before_failures = stats.failure_count
+    before_cost = stats.total_cost_usd
 
     result = await dispatcher.dispatch(
         pid="openai",
@@ -520,6 +522,7 @@ async def test_stream_records_success_only_after_clean_exhaustion(monkeypatch):
     assert [chunk["text"] for chunk in chunks] == ["hello ", "world"]
     assert registry.get("openai").success_count == before_successes + 1
     assert registry.get("openai").failure_count == before_failures
+    assert registry.get("openai").total_cost_usd == pytest.approx(before_cost + 0.123)
 
 
 @pytest.mark.asyncio
