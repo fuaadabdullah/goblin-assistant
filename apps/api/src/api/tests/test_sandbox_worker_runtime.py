@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 
-def test_sandbox_worker_image_default_when_env_unset() -> None:
+def test_sandbox_worker_image_default_when_env_unset(tmp_path) -> None:
     repo_root = Path(__file__).resolve().parents[5]
     module_path = repo_root / "apps" / "api" / "scripts" / "root-tools" / "sandbox_worker.py"
     assert module_path.exists()
@@ -39,6 +39,21 @@ def test_sandbox_worker_image_default_when_env_unset() -> None:
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         assert module.SANDBOX_IMAGE == "goblin-assistant-sandbox:latest"
+        module.redis_client = MagicMock()
+        module.docker_client = MagicMock()
+        module.record_job_failed = MagicMock()
+        module.verify_image_signature = MagicMock(return_value=True)
+        module.run_job("network-denied", "python", 10, "", str(tmp_path), allow_network=True)
+        module.docker_client.containers.run.assert_not_called()
+        updates = module.redis_client.hset.call_args.kwargs["mapping"]
+        assert updates["status"] == "failed"
+        assert "egress policy" in updates["error"]
+
+        module.run_job("offline", "python", 10, "", str(tmp_path))
+        config = module.docker_client.containers.run.call_args.kwargs
+        assert config["network_disabled"] is True
+        assert config["pids_limit"] == 128
+
     finally:
         if original is None:
             os.environ.pop("SANDBOX_IMAGE", None)

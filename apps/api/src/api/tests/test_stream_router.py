@@ -219,3 +219,24 @@ async def test_stream_task_raises_http_500_when_response_construction_fails(monk
     error = exc_info.value
     assert getattr(error, "status_code", None) == 500
     assert getattr(error, "detail", None) == "Task streaming failed"
+
+
+@pytest.mark.asyncio
+async def test_stream_cost_and_usage_metadata_survive_without_text(monkeypatch):
+    async def chunks():
+        yield {"text": "hello"}
+        yield {"usage": {"completion_tokens": 7}, "cost_usd": 0.012, "cost_estimated": True}
+
+    async def invoke(**kwargs):
+        return {"ok": True, "stream": chunks(), "provider": "p", "model": "m"}
+
+    monkeypatch.setattr("api.services.task_streaming.invoke_provider", invoke)
+    events = [
+        _parse_sse(event)
+        async for event in stream.generate_stream_events(
+            "usage-test", [{"role": "user", "content": "hi"}], "p", "m"
+        )
+    ]
+    assert events[-1]["cost"] == 0.012
+    assert events[-1]["cost_estimated"] is True
+    assert events[-1]["tokens"] == 7

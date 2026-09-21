@@ -12,6 +12,7 @@ This test suite validates:
 import os
 
 import pytest
+from route_helpers import iter_effective_routes
 
 SANDBOX_TEST_API_KEY = os.getenv("API_AUTH_KEY", "test-api-key")
 
@@ -237,10 +238,8 @@ class TestSandboxSecurity:
         # ["api.sandbox_api"] with a fresh module object at collection time,
         # which would silently orphan a module-attribute patch here from the
         # module the live route function actually reads from.
-        from fastapi.routing import APIRoute
-
-        for route in client.app.routes:
-            if isinstance(route, APIRoute) and route.path.endswith("/sandbox/submit"):
+        for route in iter_effective_routes(client.app.routes):
+            if route.path.endswith("/sandbox/submit"):
                 monkeypatch.setitem(route.endpoint.__globals__, "SANDBOX_ENABLED", True)
                 break
 

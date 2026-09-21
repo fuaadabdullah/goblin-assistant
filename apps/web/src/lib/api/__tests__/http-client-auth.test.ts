@@ -16,7 +16,9 @@ describe('frontend HTTP authentication', () => {
 
   beforeEach(() => {
     mock = new MockAdapter(frontendHttp);
-    vi.mocked(authGetSession).mockResolvedValue({ session: { access_token: 'supabase-jwt' } } as never);
+    vi.mocked(authGetSession).mockResolvedValue({
+      session: { access_token: 'supabase-jwt' },
+    } as never);
     vi.mocked(authRefreshSession).mockResolvedValue({
       session: { access_token: 'refreshed-supabase-jwt' },
     } as never);

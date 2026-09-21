@@ -813,6 +813,87 @@ export interface components {
              */
             temperature: number | null;
         };
+        /**
+         * NodeHeartbeat
+         * @description What a node POSTs to /api/v1/nodes/heartbeat.
+         */
+        NodeHeartbeat: {
+            /**
+             * Active Jobs
+             * @default 0
+             */
+            active_jobs: number;
+            /**
+             * Backend
+             * @default unknown
+             */
+            backend: string;
+            /** Endpoint */
+            endpoint?: string | null;
+            /**
+             * Gpu
+             * @default
+             */
+            gpu: string;
+            /**
+             * Max Concurrency
+             * @default 1
+             */
+            max_concurrency: number;
+            /** Models */
+            models?: string[];
+            /** Node Id */
+            node_id: string;
+            /**
+             * Node Type
+             * @default inference
+             */
+            node_type: string;
+            /**
+             * Status
+             * @default online
+             * @enum {string}
+             */
+            status: "online" | "degraded" | "offline";
+        };
+        /**
+         * NodeView
+         * @description Read model for the /nodes endpoints.
+         *
+         *     Exposes `age_seconds` and the *effective* status rather than the raw
+         *     stored one, so an operator sees what the router sees.
+         */
+        NodeView: {
+            /** Active Jobs */
+            active_jobs: number;
+            /** Age Seconds */
+            age_seconds: number;
+            /** Backend */
+            backend: string;
+            /** Consecutive Failures */
+            consecutive_failures: number;
+            /** Eligible */
+            eligible: boolean;
+            /** Endpoint */
+            endpoint: string | null;
+            /** Gpu */
+            gpu: string;
+            /** Heartbeat Count */
+            heartbeat_count: number;
+            /** Max Concurrency */
+            max_concurrency: number;
+            /** Models */
+            models: string[];
+            /** Node Id */
+            node_id: string;
+            /** Node Type */
+            node_type: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "online" | "degraded" | "offline";
+        };
         /** NotificationCreate */
         NotificationCreate: {
             /** Body */

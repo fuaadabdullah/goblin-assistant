@@ -10,31 +10,6 @@ const INTERNAL_PROXY_API_KEY = (
   ''
 ).trim();
 
-async function safeJson<T = unknown>(response: Response): Promise<T | null> {
-  try {
-    return (await response.json()) as T;
-  } catch {
-    return null;
-  }
-}
-
-async function fetchWithTimeout(
-  url: string,
-  options: RequestInit,
-  timeoutMs: number
-): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
 function buildHeaders(req: Request): Record<string, string> {
   const headers: Record<string, string> = {};
 
@@ -90,36 +65,81 @@ export async function forwardRequest(
 ): Promise<Response> {
   const backendUrl = buildBackendUrl(req, backendBasePath, suffixPath);
 
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout>;
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  let downstream: ReadableStreamDefaultController<Uint8Array> | undefined;
+  let finished = false;
+  let idleTimeoutMs = 10000;
+
+  const cleanup = () => {
+    finished = true;
+    clearTimeout(timer);
+    req.signal.removeEventListener('abort', onAbort);
+  };
+  const abort = (reason: unknown) => {
+    if (finished) return;
+    cleanup();
+    controller.abort(reason);
+    downstream?.error(reason);
+    void reader?.cancel(reason).catch(() => undefined);
+  };
+  const onAbort = () => abort(req.signal.reason);
+  const armTimeout = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => abort(new Error('Backend response timed out')), idleTimeoutMs);
+  };
+  req.signal.addEventListener('abort', onAbort, { once: true });
+  armTimeout();
+  if (req.signal.aborted) onAbort();
+
   try {
-    const response = await fetchWithTimeout(backendUrl, await buildRequestInit(req), 10000);
-    const nextHeaders = new Headers();
-
-    const correlationId = response.headers.get('x-correlation-id');
-    if (correlationId) {
-      nextHeaders.set('X-Correlation-ID', correlationId);
-    }
-
-    const contentType = response.headers.get('content-type') || '';
-    if (contentType.toLowerCase().includes('application/json')) {
-      const payload = (await safeJson(response)) ?? {
-        detail: 'Backend returned a non-JSON response',
-      };
-      return NextResponse.json(payload, {
-        status: response.status,
-        headers: nextHeaders,
-      });
-    }
-
-    const payload = await response.text();
-    if (contentType) {
-      nextHeaders.set('Content-Type', contentType);
-    }
-
-    return new NextResponse(payload, {
-      status: response.status,
-      headers: nextHeaders,
+    const response = await fetch(backendUrl, {
+      ...(await buildRequestInit(req)),
+      signal: controller.signal,
+      cache: 'no-store',
     });
+    const headers = new Headers();
+    for (const name of ['content-type', 'x-correlation-id', 'cache-control', 'retry-after']) {
+      const value = response.headers.get(name);
+      if (value) headers.set(name, value);
+    }
+    if (!response.body || [204, 205, 304].includes(response.status)) {
+      cleanup();
+      return new NextResponse(null, { status: response.status, headers });
+    }
+    if (headers.get('content-type')?.includes('text/event-stream')) idleTimeoutMs = 30000;
+    armTimeout();
+    reader = response.body.getReader();
+    const body = new ReadableStream<Uint8Array>({
+      start(streamController) {
+        downstream = streamController;
+      },
+      async pull(streamController) {
+        try {
+          const { done, value } = await reader!.read();
+          if (finished) return;
+          if (done) {
+            cleanup();
+            streamController.close();
+          } else {
+            armTimeout();
+            streamController.enqueue(value);
+          }
+        } catch (error) {
+          abort(error);
+        }
+      },
+      async cancel(reason) {
+        cleanup();
+        controller.abort(reason);
+        await reader!.cancel(reason);
+      },
+    });
+    return new NextResponse(body, { status: response.status, headers });
   } catch {
+    cleanup();
+    controller.abort();
     return NextResponse.json({ detail: 'Backend unreachable' }, { status: 502 });
   }
 }

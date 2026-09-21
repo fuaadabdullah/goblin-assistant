@@ -145,7 +145,11 @@ class OpenAIProvider(BaseProvider):
                     chunk = json.loads(payload)
                 except json.JSONDecodeError:
                     continue
-                delta = chunk["choices"][0]["delta"].get("content", "")
+                usage = chunk.get("usage")
+                if isinstance(usage, dict):
+                    yield {"usage": usage}
+                choices = chunk.get("choices") or []
+                delta = choices[0].get("delta", {}).get("content", "") if choices else ""
                 if delta:
                     yield {"text": delta}
 

@@ -11,6 +11,10 @@ Redis is used for:
 - Task result caching for long-running operations
 - Provider status caching for health monitoring
 
+For the canonical OCI production stack, Redis runs on the same Oracle VM as
+the API and Celery worker. Managed Redis is optional only when you deliberately
+split Redis off-node.
+
 ## Production Setup
 
 ### 1. Environment Configuration
@@ -139,11 +143,11 @@ For Fly.io deployment, add this to your `fly.toml`:
 Update your production environment variables:
 
 ```bash
-# For production, use a managed Redis service
-REDIS_URL=redis://username:password@your-redis-host:6379/0
-REDIS_HOST=your-redis-host
+# OCI production (same-node Redis on the Oracle VM)
+REDIS_URL=redis://redis:6379/0
+REDIS_HOST=redis
 REDIS_PORT=6379
-REDIS_PASSWORD=your-redis-password
+REDIS_PASSWORD=
 REDIS_DB=0
 
 # Connection pool settings
@@ -161,7 +165,7 @@ REDIS_DEFAULT_TTL=3600
 REDIS_CACHE_PREFIX=goblin_assistant_prod:
 ```
 
-### 6. Managed Redis Services
+### 6. Managed Redis Services (Optional)
 
 #### AWS ElastiCache
 ```bash

@@ -13,7 +13,6 @@ import aiohttp
 import hvac
 from hvac.exceptions import Forbidden, InvalidPath, VaultError
 
-from .auth import TokenCredentials, get_auth_manager
 from .base import (
     Secret,
     SecretAdapter,
@@ -24,6 +23,7 @@ from .base import (
     SecretValidationError,
 )
 from .cache import SecretCache
+from .credentials import TokenCredentials, get_auth_manager
 
 logger = logging.getLogger(__name__)
 

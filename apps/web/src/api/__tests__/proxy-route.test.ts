@@ -92,3 +92,82 @@ describe('/api/[...path] route', () => {
     await expect(response.json()).resolves.toEqual({ detail: 'Not found' });
   });
 });
+
+describe('proxy streaming lifecycle', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('delivers the first chunk before upstream completion and cancels upstream', async () => {
+    const cancel = vi.fn();
+    const upstream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('data: first\n\n'));
+      },
+      cancel,
+    });
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(upstream, {
+        headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' },
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const response = await POST(
+      new Request('http://localhost/api/chat/stream', { method: 'POST' }),
+      {
+        params: Promise.resolve({ path: ['chat', 'stream'] }),
+      }
+    );
+    const reader = response.body!.getReader();
+    const first = await reader.read();
+    expect(new TextDecoder().decode(first.value)).toBe('data: first\n\n');
+    expect(response.headers.get('cache-control')).toBe('no-cache');
+    await reader.cancel();
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0]![1].signal.aborted).toBe(true);
+  });
+
+  it('times out a body that stalls after headers', async () => {
+    vi.useFakeTimers();
+    const cancel = vi.fn();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(new ReadableStream({ cancel }))));
+    const response = await GET(new Request('http://localhost/api/metrics'), {
+      params: Promise.resolve({ path: ['metrics'] }),
+    });
+    const read = response.body!.getReader().read();
+    const failure = expect(read).rejects.toThrow('timed out');
+    await vi.advanceTimersByTimeAsync(10001);
+    await failure;
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it('propagates a client abort while streaming', async () => {
+    const client = new AbortController();
+    const cancel = vi.fn();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(new ReadableStream({ cancel }))));
+    const request = new Request('http://localhost/api/metrics');
+    Object.defineProperty(request, 'signal', { value: client.signal });
+    const response = await GET(request, {
+      params: Promise.resolve({ path: ['metrics'] }),
+    });
+    const read = response.body!.getReader().read();
+    const failure = expect(read).rejects.toThrow('client left');
+    client.abort(new Error('client left'));
+    await failure;
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it('preserves an empty 204 response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
+    const response = await POST(
+      new Request('http://localhost/api/auth/logout', { method: 'POST' }),
+      {
+        params: Promise.resolve({ path: ['auth', 'logout'] }),
+      }
+    );
+    expect(response.status).toBe(204);
+    expect(response.body).toBeNull();
+  });
+});

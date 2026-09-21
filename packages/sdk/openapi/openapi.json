@@ -2278,6 +2278,169 @@
         "title": "ModelSettings",
         "type": "object"
       },
+      "NodeHeartbeat": {
+        "description": "What a node POSTs to /api/v1/nodes/heartbeat.",
+        "properties": {
+          "active_jobs": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Active Jobs",
+            "type": "integer"
+          },
+          "backend": {
+            "default": "unknown",
+            "maxLength": 64,
+            "title": "Backend",
+            "type": "string"
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint"
+          },
+          "gpu": {
+            "default": "",
+            "maxLength": 256,
+            "title": "Gpu",
+            "type": "string"
+          },
+          "max_concurrency": {
+            "default": 1,
+            "minimum": 0.0,
+            "title": "Max Concurrency",
+            "type": "integer"
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "node_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Node Id",
+            "type": "string"
+          },
+          "node_type": {
+            "default": "inference",
+            "maxLength": 64,
+            "title": "Node Type",
+            "type": "string"
+          },
+          "status": {
+            "default": "online",
+            "enum": [
+              "online",
+              "degraded",
+              "offline"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id"
+        ],
+        "title": "NodeHeartbeat",
+        "type": "object"
+      },
+      "NodeView": {
+        "description": "Read model for the /nodes endpoints.\n\nExposes `age_seconds` and the *effective* status rather than the raw\nstored one, so an operator sees what the router sees.",
+        "properties": {
+          "active_jobs": {
+            "title": "Active Jobs",
+            "type": "integer"
+          },
+          "age_seconds": {
+            "title": "Age Seconds",
+            "type": "number"
+          },
+          "backend": {
+            "title": "Backend",
+            "type": "string"
+          },
+          "consecutive_failures": {
+            "title": "Consecutive Failures",
+            "type": "integer"
+          },
+          "eligible": {
+            "title": "Eligible",
+            "type": "boolean"
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint"
+          },
+          "gpu": {
+            "title": "Gpu",
+            "type": "string"
+          },
+          "heartbeat_count": {
+            "title": "Heartbeat Count",
+            "type": "integer"
+          },
+          "max_concurrency": {
+            "title": "Max Concurrency",
+            "type": "integer"
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "node_type": {
+            "title": "Node Type",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "online",
+              "degraded",
+              "offline"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id",
+          "node_type",
+          "status",
+          "backend",
+          "gpu",
+          "models",
+          "active_jobs",
+          "max_concurrency",
+          "endpoint",
+          "age_seconds",
+          "heartbeat_count",
+          "consecutive_failures",
+          "eligible"
+        ],
+        "title": "NodeView",
+        "type": "object"
+      },
       "NotificationCreate": {
         "properties": {
           "body": {
@@ -10373,6 +10536,181 @@
         "summary": "Health Component",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/nodes": {
+      "get": {
+        "description": "All known nodes with their effective (staleness-aware) status.",
+        "operationId": "list_nodes_api_v1_nodes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/NodeView"
+                  },
+                  "title": "Response List Nodes Api V1 Nodes Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Nodes",
+        "tags": [
+          "nodes"
+        ]
+      }
+    },
+    "/api/v1/nodes/heartbeat": {
+      "post": {
+        "description": "Accept a node's periodic self-announcement.\n\nUpserts by node_id: the first heartbeat registers the node, subsequent\nones refresh it. There is no separate registration call, so a node that\nrestarts or changes its model set needs no operator intervention.\n\nThe advertised endpoint is validated before it is stored, because dispatch\nwill later send real user prompts to it.",
+        "operationId": "heartbeat_api_v1_nodes_heartbeat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NodeHeartbeat"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Heartbeat Api V1 Nodes Heartbeat Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Heartbeat",
+        "tags": [
+          "nodes"
+        ]
+      }
+    },
+    "/api/v1/nodes/{node_id}": {
+      "delete": {
+        "description": "Drop a node immediately rather than waiting for its heartbeat to lapse.",
+        "operationId": "forget_node_api_v1_nodes__node_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "title": "Node Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Forget Node Api V1 Nodes  Node Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Forget Node",
+        "tags": [
+          "nodes"
+        ]
+      },
+      "get": {
+        "operationId": "get_node_api_v1_nodes__node_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "title": "Node Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Node",
+        "tags": [
+          "nodes"
         ]
       }
     },

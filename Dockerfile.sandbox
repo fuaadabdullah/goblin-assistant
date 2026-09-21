@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.7-labs
-# Dockerfile for sandbox execution environment
-# This image provides a secure, minimal runtime for executing untrusted user code
+# Dockerfile for sandbox execution environment — built natively on Oracle ARM64 VM.
+# Must produce a linux/arm64 image. Do not add x86-only dependencies.
 
-FROM python:3.11-slim
+FROM --platform=linux/arm64 python:3.11-slim
 
 # Install only essential packages
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \

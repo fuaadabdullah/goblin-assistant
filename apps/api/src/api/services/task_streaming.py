@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import time
+from contextlib import aclosing
 from typing import Any, AsyncIterator, Dict, List, Optional
 
 import structlog
@@ -32,7 +34,9 @@ async def iter_task_stream_chunks(  # noqa: PLR0915
 ) -> AsyncIterator[Dict[str, Any]]:
     accumulated_text = ""
     total_tokens = 0
-    total_cost = 0.0
+    total_cost = None
+    cost_estimated = True
+    usage_estimated = True
     selected_provider = provider or "auto"
     selected_model = model or ""
     start_time = time.time()
@@ -55,6 +59,7 @@ async def iter_task_stream_chunks(  # noqa: PLR0915
             stream=False,
         )
         if isinstance(fallback, dict) and fallback.get("ok"):
+            provider_response = fallback
             text = _extract_result_text(fallback)
             selected_provider = str(fallback.get("provider", selected_provider))
             selected_model = str(fallback.get("model", selected_model))
@@ -62,7 +67,7 @@ async def iter_task_stream_chunks(  # noqa: PLR0915
                 yield {
                     "content": text,
                     "token_count": max(1, len(text) // 4),
-                    "cost_delta": 0,
+                    "cost_delta": None,
                     "done": False,
                 }
                 accumulated_text = text
@@ -77,19 +82,31 @@ async def iter_task_stream_chunks(  # noqa: PLR0915
             return
     elif provider_response.get("stream"):
         stream_gen = provider_response["stream"]
-        async for chunk in stream_gen:
-            chunk_text = chunk.get("text", "") if isinstance(chunk, dict) else str(chunk)
-            if not chunk_text:
-                continue
-            token_estimate = max(1, len(chunk_text) // 4)
-            accumulated_text += chunk_text
-            total_tokens += token_estimate
-            yield {
-                "content": chunk_text,
-                "token_count": token_estimate,
-                "cost_delta": 0,
-                "done": False,
-            }
+        async with aclosing(stream_gen):
+            async for chunk in stream_gen:
+                if isinstance(chunk, dict):
+                    if chunk.get("cost_usd") is not None:
+                        total_cost = chunk["cost_usd"]
+                        cost_estimated = chunk.get("cost_estimated", False)
+                    if chunk.get("usage"):
+                        usage = chunk["usage"]
+                        total_tokens = int(
+                            usage.get("completion_tokens", usage.get("output_tokens", total_tokens))
+                        )
+                        usage_estimated = chunk.get("usage_estimated", False)
+                chunk_text = chunk.get("text", "") if isinstance(chunk, dict) else str(chunk)
+                if not chunk_text:
+                    continue
+                accumulated_text += chunk_text
+                new_total = (len(accumulated_text) + 3) // 4
+                token_estimate = new_total - total_tokens
+                total_tokens = new_total
+                yield {
+                    "content": chunk_text,
+                    "token_count": token_estimate,
+                    "cost_delta": None,
+                    "done": False,
+                }
         selected_provider = str(provider_response.get("provider", selected_provider))
         selected_model = str(provider_response.get("model", selected_model))
     else:
@@ -103,14 +120,27 @@ async def iter_task_stream_chunks(  # noqa: PLR0915
             yield {
                 "content": text,
                 "token_count": token_estimate,
-                "cost_delta": 0,
+                "cost_delta": None,
                 "done": False,
             }
 
+    result = provider_response.get("result", {})
+    if isinstance(result, dict):
+        if result.get("cost_usd") is not None:
+            total_cost = result["cost_usd"]
+            cost_estimated = result.get("cost_estimated", True)
+        if result.get("usage"):
+            usage = result["usage"]
+            total_tokens = int(
+                usage.get("completion_tokens", usage.get("output_tokens", total_tokens))
+            )
+            usage_estimated = False
     duration_ms = int((time.time() - start_time) * 1000)
     yield {
         "result": accumulated_text,
         "cost": total_cost,
+        "cost_estimated": cost_estimated,
+        "usage_estimated": usage_estimated,
         "tokens": total_tokens,
         "model": selected_model,
         "provider": selected_provider,
@@ -143,25 +173,31 @@ async def run_task_stream_to_state(  # noqa: PLR0913
         )
 
     try:
-        async for chunk in iter_task_stream_chunks(
-            task_id=task_id,
-            messages=messages,
-            provider=provider,
-            model=model,
-        ):
-            await store.append_chunk(stream_id, chunk)
-            if chunk.get("done") is True:
-                if chunk.get("error"):
-                    await store.mark_status(
-                        stream_id,
-                        status="failed",
-                        done=True,
-                        updates={"error": chunk.get("error")},
-                    )
-                else:
-                    await store.mark_status(stream_id, status="completed", done=True)
-                return
+        async with aclosing(
+            iter_task_stream_chunks(
+                task_id=task_id,
+                messages=messages,
+                provider=provider,
+                model=model,
+            )
+        ) as chunks:
+            async for chunk in chunks:
+                await store.append_chunk(stream_id, chunk)
+                if chunk.get("done") is True:
+                    if chunk.get("error"):
+                        await store.mark_status(
+                            stream_id,
+                            status="failed",
+                            done=True,
+                            updates={"error": chunk.get("error")},
+                        )
+                    else:
+                        await store.mark_status(stream_id, status="completed", done=True)
+                    return
         await store.mark_status(stream_id, status="completed", done=True)
+    except asyncio.CancelledError:
+        await store.mark_status(stream_id, status="cancelled", done=True)
+        raise
     except Exception as exc:
         logger.error("task_stream_execution_failed", stream_id=stream_id, error=str(exc))
         await store.append_chunk(stream_id, {"error": "Streaming failed", "done": True})

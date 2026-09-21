@@ -29,7 +29,14 @@ print_error() {
 }
 
 # Configuration
-BACKEND_URL="${BACKEND_URL:-https://goblin-backend-dt30.onrender.com}"
+if [ -n "${BACKEND_URL:-}" ]; then
+    :
+elif [ -n "${GOBLIN_API_DOMAIN:-}" ]; then
+    BACKEND_URL="https://${GOBLIN_API_DOMAIN}"
+else
+    BACKEND_URL="http://127.0.0.1:8000"
+fi
+
 FRONTEND_URL="${FRONTEND_URL:-https://goblin-assistant.vercel.app}"
 HEALTH_ENDPOINT="${BACKEND_URL}/api/v1/health"
 API_ENDPOINT="${BACKEND_URL}/api/v1/sandbox/metrics"
@@ -51,8 +58,8 @@ else
     HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${HEALTH_ENDPOINT}")
     if [ "$HEALTH_STATUS" = "000" ]; then
         print_error "Cannot reach backend at ${BACKEND_URL}"
-        print_warning "Backend may still be deploying. Check Render dashboard:"
-        echo "   → https://dashboard.render.com/services/goblin-backend"
+        print_warning "Backend may still be deploying. Check the Oracle VM logs:"
+        echo "   → ssh ubuntu@${ORACLE_VM_IP:-<oracle-vm>}"
         BACKEND_OK=0
     else
         print_warning "Backend returned HTTP ${HEALTH_STATUS} (expected 200)"
@@ -137,7 +144,7 @@ print_status "Frontend URL: ${FRONTEND_URL}"
 echo ""
 
 echo "🔗 Quick Links:"
-echo "   • Render Backend: https://dashboard.render.com/services/goblin-backend"
+echo "   • Oracle VM: ssh ubuntu@${ORACLE_VM_IP:-<oracle-vm>}"
 echo "   • Vercel Frontend: https://vercel.com/dashboard/projects"
 echo "   • Backend Health: ${HEALTH_ENDPOINT}"
 echo "   • Auth Endpoint: ${AUTH_ENDPOINT}"

@@ -1,3 +1,6 @@
+# ARCHIVED — Oracle Cloud (infra/oracle/) is the active deployment platform.
+# This file is kept for reference only.
+
 services:
   - type: web
     name: goblin-backend
