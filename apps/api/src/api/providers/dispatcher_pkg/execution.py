@@ -106,11 +106,31 @@ async def stream_wrap(
             first = chunk
             break
 
+        input_tokens = sum(
+            estimate_text_tokens(str(message.get("content", "") or ""))
+            for message in messages
+        )
+        if not messages:
+            input_tokens += estimate_text_tokens(str(kwargs.get("prompt", "") or ""))
+
         async def combined() -> AsyncGenerator[Dict[str, Any], None]:
+            output_tokens = 0
             try:
                 if first is not None:
+                    first_text = (
+                        str(first.get("text", "") or "")
+                        if isinstance(first, dict)
+                        else str(first)
+                    )
+                    output_tokens += estimate_text_tokens(first_text)
                     yield first
                 async for item in gen:
+                    item_text = (
+                        str(item.get("text", "") or "")
+                        if isinstance(item, dict)
+                        else str(item)
+                    )
+                    output_tokens += estimate_text_tokens(item_text)
                     yield item
             except (asyncio.CancelledError, GeneratorExit):
                 latency = (asyncio.get_running_loop().time() - started_at) * 1000
@@ -148,12 +168,22 @@ async def stream_wrap(
                 raise
             else:
                 latency = (asyncio.get_running_loop().time() - started_at) * 1000
+                try:
+                    stream_cost = float(
+                        provider.estimate_cost(
+                            input_tokens,
+                            output_tokens,
+                            model=model,
+                        )
+                    )
+                except Exception:
+                    stream_cost = 0.0
                 provider.record_success()
                 dispatcher.record_routing_outcome(
                     provider_id,
                     ok=True,
                     latency_ms=latency,
-                    cost_usd=0.0,
+                    cost_usd=max(0.0, stream_cost),
                 )
                 dispatcher.note_provider_result(provider_id, ok=True, latency_ms=latency)
                 record_dispatch(
@@ -166,6 +196,7 @@ async def stream_wrap(
                     provider=provider_id,
                     model=model,
                     latency_ms=round(latency, 1),
+                    cost_usd=round(max(0.0, stream_cost), 8),
                 ).info("dispatch_stream_success")
 
         time_to_first_chunk_ms = (asyncio.get_running_loop().time() - started_at) * 1000
