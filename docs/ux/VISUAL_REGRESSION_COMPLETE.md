@@ -58,7 +58,7 @@ npx storybook dev -p 6006 --config-dir ./.storybook
 
 ```bash
 
-cd apps/goblin-assistant
+cd apps/web
 npm run build-storybook
 
 # Output: storybook-static/
@@ -67,7 +67,7 @@ npm run build-storybook
 ### Run Visual Regression Tests (Chromatic)
 
 ```bash
-cd apps/goblin-assistant
+cd apps/web
 npm run chromatic
 # Requires: CHROMATIC_PROJECT_TOKEN environment variable
 ```
@@ -85,7 +85,7 @@ npm run chromatic
 # Get project token
 
 # Run initial baseline
-cd apps/goblin-assistant
+cd apps/web
 export CHROMATIC_PROJECT_TOKEN=your_token_here
 npm run chromatic
 ```
@@ -232,7 +232,7 @@ npx storybook dev -p 6006 --config-dir ./.storybook
 ### Clear Cache
 
 ```bash
-cd apps/goblin-assistant
+cd apps/web
 rm -rf node_modules/.cache
 npx storybook dev -p 6006 --config-dir ./.storybook
 ```

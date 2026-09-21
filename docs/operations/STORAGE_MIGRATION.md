@@ -60,7 +60,7 @@ Database configuration:
 ### Initialize Database
 
 ```bash
-cd apps/goblin-assistant
+cd apps/api
 python init_db.py
 ```
 

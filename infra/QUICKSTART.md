@@ -58,7 +58,7 @@ The script will output IPs like:
 
 ## Step 5: Update Configuration
 
-Add to `apps/goblin-assistant/.env.local`:
+Add to `apps/web/.env.local`:
 
 ```bash
 # GCP LLM Servers

@@ -18,7 +18,6 @@ This guide establishes a secure "Infra Vault" in Bitwarden for managing all Gobl
 
    ```bash
 
-   cd apps/goblin-assistant
    ./scripts/setup_bitwarden.sh
    ```
 
@@ -191,7 +190,6 @@ fly secrets set FASTAPI_SECRET=$FASTAPI_SECRET
 ```bash
 
 # Navigate to project root
-cd apps/goblin-assistant
 
 # Load environment
 source scripts/load_env.sh

@@ -236,7 +236,7 @@ Comprehensive health monitoring:
 Run the comprehensive test suite:
 
 ```bash
-cd apps/goblin-assistant
+cd apps/api
 python test_context_assembly.py
 ```
 

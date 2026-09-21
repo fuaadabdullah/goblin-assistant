@@ -92,7 +92,7 @@ The `.grid-auto-fit` utility now includes optimized breakpoints:
 ### Start Dev Server
 
 ```bash
-cd apps/goblin-assistant
+cd apps/web
 npm run dev
 ```
 

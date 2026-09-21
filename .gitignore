@@ -103,3 +103,9 @@ apps/api/mutants/
 
 # CI-generated report artifacts
 /artifacts/
+
+# Generator output (regenerate with tooling/generators/*)
+output/
+
+# tiktoken BPE cache, downloaded on first use
+data-gym-cache/

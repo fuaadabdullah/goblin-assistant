@@ -34,7 +34,6 @@
 pg_dump goblin_assistant > backup_$(date +%Y%m%d).sql
 
 # Apply migration
-cd apps/goblin-assistant
 supabase migration up
 
 # Or manually via Supabase dashboard:

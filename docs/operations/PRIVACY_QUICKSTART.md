@@ -60,7 +60,6 @@ curl -X POST http://localhost:8000/api/chat \
 ### Step 5: Deploy to Production (1 minute)
 
 ```bash
-cd apps/goblin-assistant
 fly deploy
 
 # Verify

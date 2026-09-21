@@ -13,7 +13,6 @@ pip install chromadb sentence-transformers datadog
 
 ```bash
 # Using Supabase CLI
-cd apps/goblin-assistant
 supabase migration up
 
 # Or manually via Supabase dashboard

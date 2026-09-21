@@ -17,8 +17,8 @@ def check_environment():
 
     # Check if we're in the right directory
     if not os.path.exists("alembic.ini"):
-        print("❌ Error: Not in the goblin-assistant directory")
-        print("Please run this script from the apps/goblin-assistant directory")
+        print("❌ Error: alembic.ini not found")
+        print("Please run this script from the apps/api directory")
         return False
 
     # Check for database URL

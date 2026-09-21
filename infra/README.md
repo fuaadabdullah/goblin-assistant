@@ -63,7 +63,7 @@ export GCP_PROJECT_ID="your-project-id"
 After deployment, update your `.env.local`:
 
 ```bash
-# Add these lines to apps/goblin-assistant/.env.local
+# Add these lines to apps/web/.env.local
 OLLAMA_GCP_URL=http://YOUR_OLLAMA_IP:11434
 LLAMACPP_GCP_URL=http://YOUR_LLAMACPP_IP:8000
 LOCAL_LLM_API_KEY=your-api-key-here

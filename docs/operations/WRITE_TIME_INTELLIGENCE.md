@@ -197,7 +197,7 @@ The system integrates with Datadog for:
 ### Running the Test Suite
 ```bash
 # Start the API server
-cd apps/goblin-assistant
+cd apps/api
 python -m uvicorn api.main:app --host 0.0.0.0 --port 8003
 
 # Run the test suite

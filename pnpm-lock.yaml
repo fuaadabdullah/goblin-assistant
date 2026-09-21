@@ -266,13 +266,9 @@ importers:
         specifier: ^4.3.0
         version: 4.3.0
 
-  packages/config: {}
-
   packages/sdk: {}
 
   packages/shared: {}
-
-  packages/types: {}
 
   packages/ui:
     dependencies:

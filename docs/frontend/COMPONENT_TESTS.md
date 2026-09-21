@@ -80,7 +80,7 @@ Goblin Assistant uses **Playwright** for end-to-end testing and **Storybook** fo
 
 ```bash
 # Run all e2e tests
-cd apps/goblin-assistant
+cd apps/web
 npm run test:e2e
 
 # Run specific test file
@@ -97,7 +97,7 @@ npx playwright test --project=chromium
 
 ```bash
 # Start Storybook development server
-cd apps/goblin-assistant
+cd apps/web
 npm run storybook
 
 # Build Storybook for production

@@ -102,7 +102,7 @@ Run automated checks:
 
 ```bash
 
-cd apps/goblin-assistant
+cd apps/web
 node scripts/verify-theme-system.js
 ```
 

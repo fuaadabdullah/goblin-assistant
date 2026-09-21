@@ -291,7 +291,7 @@ time curl http://localhost:8001/api/dashboard/costs  # Should be <1ms
 ```bash
 
 # Start dev server
-cd apps/goblin-assistant
+cd apps/web
 pnpm dev
 
 # Open browser console

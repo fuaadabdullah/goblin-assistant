@@ -246,7 +246,7 @@ const [backendHealth, chromaStatus, mcpStatus, ragStatus, sandboxStatus, costDat
 
 ```bash
 
-cd apps/goblin-assistant
+cd apps/web
 
 # Install puppeteer if not already installed
 npm install -D puppeteer
@@ -445,7 +445,7 @@ node ../../tools/axe-smoke.js
 
 ```bash
 
-cd apps/goblin-assistant
+cd apps/web
 npm run dev
 
 # → http://localhost:5173

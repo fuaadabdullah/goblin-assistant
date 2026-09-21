@@ -569,7 +569,7 @@ python -c "import redis; r = redis.from_url('redis://localhost:6379'); print(r.p
 echo $PYTHONPATH
 
 # Run from correct directory
-cd apps/goblin-assistant/api
+cd apps/api
 
 # Install in development mode
 pip install -e .

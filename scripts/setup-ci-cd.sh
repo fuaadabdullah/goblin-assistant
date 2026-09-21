@@ -9,8 +9,8 @@ echo ""
 
 # Check if we're in the right directory
 if [ ! -f "package.json" ] || [ ! -d ".github" ]; then
-    echo "❌ Please run this script from the goblin-assistant app root directory"
-    echo "   cd apps/goblin-assistant && ./scripts/setup-ci-cd.sh"
+    echo "❌ Please run this script from the repository root"
+    echo "   ./scripts/setup-ci-cd.sh"
     exit 1
 fi
 

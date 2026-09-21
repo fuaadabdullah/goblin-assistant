@@ -5,7 +5,7 @@ from contextlib import contextmanager
 import pytest
 from fastapi.testclient import TestClient
 
-# Ensure the package root (apps/goblin-assistant) is on sys.path so relative imports work
+# Ensure the package root (apps/api/src) is on sys.path so relative imports work
 pkg_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, pkg_root)
 sys.modules.setdefault("conftest", sys.modules[__name__])

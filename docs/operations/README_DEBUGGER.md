@@ -101,14 +101,14 @@ FALLBACK_MODEL_KEY=your-llm-key
 3. Run the server:
 
    ```bash
-   cd apps/goblin-assistant
+   cd apps/api
    uvicorn api.main:app --reload --port 8000
    ```
 
 4. Test the endpoint:
 
    ```bash
-   cd apps/goblin-assistant
+   cd apps/api
    python test_debugger.py
    ```
 
@@ -117,7 +117,7 @@ FALLBACK_MODEL_KEY=your-llm-key
 ### Unit Tests (Model Routing Logic)
 
 ```bash
-cd apps/goblin-assistant
+cd apps/api
 python -m pytest tests/test_model_router.py -v
 ```
 
@@ -126,7 +126,7 @@ Tests import from canonical location: `api.core.router`
 ### Integration Tests (HTTP Endpoint)
 
 ```bash
-cd apps/goblin-assistant
+cd apps/api
 python test_debugger.py
 ```
 

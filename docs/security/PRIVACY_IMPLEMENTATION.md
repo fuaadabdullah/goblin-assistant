@@ -229,7 +229,6 @@ curl -X POST https://goblin-assistant-backend.onrender.com/api/privacy/consent/r
 
 **RLS Verification**:
 ```bash
-cd apps/goblin-assistant
 bash tools/supabase_rls_check.sh supabase/
 ```
 
