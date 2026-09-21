@@ -10,20 +10,37 @@ This document outlines the accessibility (A11Y) features and testing procedures 
 
 ### Contrast Ratios (WCAG Success Criterion 1.4.3)
 
-All color combinations meet or exceed WCAG AA requirements:
+Do not hand-maintain this table — run the audit. It reads the live tokens from
+`apps/web/src/theme/index.css`, so it cannot drift from what ships:
+
+```bash
+node tooling/quality/check-contrast.js
+```
+
+Standard theme, as measured against the current warm palette:
 
 | Combination                                  | Ratio       | Requirement | Status      | Usage                         |
 | -------------------------------------------- | ----------- | ----------- | ----------- | ----------------------------- |
-| `--text` (#e8ecef) on `--bg` (#0a0e0f)       | **16.33:1** | 4.5:1       | ✅ **PASS** | Body text                     |
-| `--muted` (#8a9ba8) on `--bg` (#0a0e0f)      | **6.77:1**  | 4.5:1       | ✅ **PASS** | Secondary text                |
-| `--text` (#e8ecef) on `--surface` (#151b1e)  | **14.64:1** | 4.5:1       | ✅ **PASS** | Card/panel text               |
-| `--muted` (#8a9ba8) on `--surface` (#151b1e) | **6.07:1**  | 4.5:1       | ✅ **PASS** | Card secondary text           |
-| `--primary` (#00ff88) on `--bg` (#0a0e0f)    | **14.46:1** | 3.0:1       | ✅ **PASS** | Headings/buttons (large text) |
-| `--danger` (#ff4757) on `--bg` (#0a0e0f)     | **5.81:1**  | 4.5:1       | ✅ **PASS** | Error messages                |
-| `--warning` (#ffa502) on `--bg` (#0a0e0f)    | **9.82:1**  | 4.5:1       | ✅ **PASS** | Warning messages              |
-| `--info` (#3498db) on `--bg` (#0a0e0f)       | **6.15:1**  | 4.5:1       | ✅ **PASS** | Info messages                 |
+| `--text` (#f8f0e8) on `--bg` (#161008)       | **16.75:1** | 4.5:1       | ✅ **PASS** | Body text                     |
+| `--muted` (#b8a394) on `--bg` (#161008)      | **7.83:1**  | 4.5:1       | ✅ **PASS** | Secondary text                |
+| `--text` (#f8f0e8) on `--surface` (#26211b)  | **14.15:1** | 4.5:1       | ✅ **PASS** | Card/panel text               |
+| `--muted` (#b8a394) on `--surface` (#26211b) | **6.62:1**  | 4.5:1       | ✅ **PASS** | Card secondary text           |
+| `--primary` (#d4a574) on `--bg` (#161008)    | **8.49:1**  | 3.0:1       | ✅ **PASS** | Headings/buttons (large text) |
+| `--danger` (#e74c3c) on `--bg` (#161008)     | **4.94:1**  | 4.5:1       | ✅ **PASS** | Error messages                |
+| `--warning` (#e8a426) on `--bg` (#161008)    | **8.79:1**  | 4.5:1       | ✅ **PASS** | Warning messages              |
+| `--info` (#8bb3e8) on `--bg` (#161008)       | **8.74:1**  | 4.5:1       | ✅ **PASS** | Info messages                 |
 
-**Testing Script**: `node scripts/check-contrast.js`
+High-contrast mode passes every pair by a wide margin (15.5:1 and above).
+
+**Light theme has one open failure:** `--warning` (#b87d12) on `--bg` (#faf6f1)
+measures **3.26:1** against a 4.5:1 requirement. Darkening the token to roughly
+`#97670f` reaches 4.58:1 while holding the hue; that is a palette decision, so
+the audit is left failing rather than silently adjusted.
+
+Earlier revisions of this table quoted a green palette (`--primary` #00ff88) that
+the product no longer uses, and the audit script hard-coded those same retired
+values — so it reported PASS without measuring anything that ships. Both now read
+from the stylesheet.
 
 ---
 
