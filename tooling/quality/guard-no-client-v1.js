@@ -6,7 +6,19 @@ const path = require('node:path');
 const repoRoot = path.resolve(__dirname, '..', '..');
 const targetDirs = ['apps/web/src'];
 const validExtensions = new Set(['.ts', '.tsx', '.js', '.jsx']);
-const ignoredDirs = new Set(['node_modules', '.next', 'dist', 'coverage', '.git']);
+// Tests and MSW handlers name backend /v1 paths on purpose, to assert that the
+// proxy forwards to them. Only shipped client code is in scope here.
+const ignoredDirs = new Set([
+  'node_modules',
+  '.next',
+  'dist',
+  'coverage',
+  '.git',
+  '__tests__',
+  '__mocks__',
+  'test',
+]);
+const testFilePattern = /\.(test|spec)\.[jt]sx?$/;
 
 const findings = [];
 
@@ -25,7 +37,7 @@ const walk = (dirPath) => {
     }
 
     const ext = path.extname(entry.name);
-    if (!validExtensions.has(ext)) {
+    if (!validExtensions.has(ext) || testFilePattern.test(entry.name)) {
       continue;
     }
 
