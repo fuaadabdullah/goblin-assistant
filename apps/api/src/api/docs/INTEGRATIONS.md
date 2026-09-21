@@ -418,6 +418,7 @@ supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 # Use async operations
 import asyncpg
 
+
 async def get_db_connection():
     """Get database connection for async operations"""
     conn = await asyncpg.connect(DATABASE_URL)
@@ -431,11 +432,9 @@ async def get_db_connection():
 ```python
 # Create user
 async def create_user(email: str, password: str):
-    user = supabase.auth.sign_up({
-        "email": email,
-        "password": password
-    })
+    user = supabase.auth.sign_up({"email": email, "password": password})
     return user
+
 
 # Verify JWT token
 async def verify_jwt_token(token: str):
@@ -481,13 +480,12 @@ WITH CHECK (
 ```python
 # Upload file to Supabase Storage
 async def upload_file(file_path: str, bucket: str = "avatars"):
-    with open(file_path, 'rb') as f:
+    with open(file_path, "rb") as f:
         response = supabase.storage.from_(bucket).upload(
-            path=f"user_uploads/{uuid.uuid4()}",
-            file=f,
-            file_options={"content-type": "image/jpeg"}
+            path=f"user_uploads/{uuid.uuid4()}", file=f, file_options={"content-type": "image/jpeg"}
         )
     return response
+
 
 # Get public URL
 async def get_file_url(bucket: str, path: str):
@@ -510,10 +508,13 @@ VALUES ('avatars', 'avatars', true);
 ```python
 # Listen for real-time updates
 def subscribe_to_conversation(conversation_id: str):
-    subscription = supabase.table('messages').on('*', 
-        lambda payload: handle_message_change(payload)
-    ).filter('conversation_id', 'eq', conversation_id).subscribe()
-    
+    subscription = (
+        supabase.table("messages")
+        .on("*", lambda payload: handle_message_change(payload))
+        .filter("conversation_id", "eq", conversation_id)
+        .subscribe()
+    )
+
     return subscription
 ```
 
@@ -638,41 +639,40 @@ PROVIDERS = {
 async def route_request(task_type: str, requirements: dict):
     """Route request to optimal provider"""
     available_providers = []
-    
+
     for name, config in PROVIDERS.items():
         if await is_provider_available(name):
             score = calculate_provider_score(
-                provider=name,
-                task_type=task_type,
-                requirements=requirements,
-                config=config
+                provider=name, task_type=task_type, requirements=requirements, config=config
             )
             available_providers.append((name, score))
-    
+
     # Select best provider
     best_provider = max(available_providers, key=lambda x: x[1])
     return best_provider[0]
 
-def calculate_provider_score(provider: str, task_type: str, 
-                           requirements: dict, config: dict) -> float:
+
+def calculate_provider_score(
+    provider: str, task_type: str, requirements: dict, config: dict
+) -> float:
     """Calculate provider score based on multiple factors"""
     score = 0.0
-    
+
     # Cost factor (lower is better)
     cost = requirements.get("cost_budget", 1.0)
     score += (1 - config["cost_per_token"]) * 0.3
-    
+
     # Latency factor
     latency = requirements.get("max_latency", 5.0)
     provider_latency = await get_provider_latency(provider)
     if provider_latency < latency:
         score += 0.4
-    
+
     # Quality factor
     quality = requirements.get("min_quality", 0.8)
     if config["quality_score"] >= quality:
         score += 0.3
-    
+
     return score
 ```
 
