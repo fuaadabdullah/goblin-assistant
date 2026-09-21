@@ -48,9 +48,9 @@ RATE_LIMIT_ENABLED=true
 RATE_LIMIT_REQUESTS=100
 RATE_LIMIT_WINDOW=60
 
-# GCP LLM Endpoints
-OLLAMA_GCP_URL=http://34.60.255.199:11434
-LLAMACPP_GCP_URL=http://34.132.226.143:8000
+# GCP LLM Endpoints — omitted: those VMs were terminated 2026-01-11.
+# Set OLLAMA_GCP_URL / LLAMACPP_GCP_URL only after redeploying GCP infra,
+# and keep them in step with render.yaml.
 ```
 
 ### Step 3: Add Secret Environment Variables

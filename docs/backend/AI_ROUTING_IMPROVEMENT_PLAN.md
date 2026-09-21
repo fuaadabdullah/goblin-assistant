@@ -15,8 +15,8 @@ This document outlines a comprehensive plan to improve the Goblin Assistant's AI
 
 | Provider | Endpoint | Status | Models Available |
 |----------|----------|--------|------------------|
-| GCP Ollama | `34.60.255.199:11434` | ✅ **HEALTHY** | `qwen2.5:3b`, `llama3.2:1b` |
-| GCP llama.cpp | `34.132.226.143:8000` | ✅ **HEALTHY** | `qwen2.5-3b-instruct-q4_k_m` |
+| GCP Ollama | `34.60.255.199:11434` | ❌ **TERMINATED** (2026-01-11) | `qwen2.5:3b`, `llama3.2:1b` |
+| GCP llama.cpp | `34.132.226.143:8000` | ❌ **TERMINATED** (2026-01-11) | `qwen2.5-3b-instruct-q4_k_m` |
 | Kamatera Server 1 | `45.61.51.220:8000` | ❌ **UNREACHABLE** | - |
 | Kamatera Server 2 | `192.175.23.150:8002` | ❌ **UNREACHABLE** | - |
 

@@ -132,11 +132,11 @@ When auto-selecting, providers are tried in this order:
 
 ## Current Working Providers
 
-✅ **Ollama GCP** - <http://34.60.255.199:11434>
-
-- Status: Working
-- Average latency: ~8.7s (needs optimization)
-- Models: qwen2.5:latest, phi3:latest, gemma2:latest
+❌ **Ollama GCP** — the VM behind `34.60.255.199:11434` was terminated
+2026-01-11, so this route is unavailable until GCP infra is redeployed.
+`render.yaml` no longer sets `OLLAMA_GCP_URL` for the same reason. Earlier
+measurements (~8.7s average latency; qwen2.5, phi3, gemma2) described that
+now-decommissioned host.
 
 ⚠️ Other providers need API keys configured
 

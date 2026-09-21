@@ -9,11 +9,16 @@ import sys
 import time
 
 import httpx
+import pytest
 
 # Add parent directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from api.providers.dispatcher import ProviderDispatcher
+
+pytestmark = pytest.mark.skip(
+    reason="Manual smoke script; requires live SiliconeFlow and LlamaCPP endpoints"
+)
 
 
 async def test_siliconeflow():
@@ -78,7 +83,7 @@ async def test_llamacpp_detailed():
     print("🧪 Testing LlamaCPP GCP Provider (Detailed)")
     print("=" * 70)
 
-    endpoint = os.getenv("LLAMACPP_GCP_URL", "http://34.132.226.143:8000")
+    endpoint = os.getenv("LLAMACPP_GCP_URL", "http://localhost:8000")
     print(f"\n🔗 Endpoint: {endpoint}")
 
     # Test 1: Basic connectivity
@@ -168,7 +173,7 @@ async def diagnose_llamacpp():
     print("🔍 LlamaCPP Diagnostics")
     print("=" * 70)
 
-    endpoint = os.getenv("LLAMACPP_GCP_URL", "http://34.132.226.143:8000")
+    endpoint = os.getenv("LLAMACPP_GCP_URL", "http://localhost:8000")
 
     # Try different paths
     paths = [
@@ -257,9 +262,10 @@ async def main():
 
     if not llamacpp_ok:
         print("\n💡 LlamaCPP Troubleshooting:")
-        print("   1. Check if server is running: ssh to 34.132.226.143")
-        print("   2. Verify port 8000 is open: telnet 34.132.226.143 8000")
-        print("   3. Check firewall rules on GCP")
+        target = os.getenv("LLAMACPP_GCP_URL", "http://localhost:8000")
+        print(f"   1. Check if a server is reachable at {target}")
+        print("   2. Verify LLAMACPP_GCP_URL points at a running instance")
+        print("   3. Check firewall rules on the host")
         print("   4. Try alternative endpoint if available")
 
     print("=" * 70)
