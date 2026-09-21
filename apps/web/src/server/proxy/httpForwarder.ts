@@ -18,21 +18,69 @@ async function safeJson<T = unknown>(response: Response): Promise<T | null> {
   }
 }
 
+type TimedFetchResponse = {
+  response: Response;
+  clearTimeout: () => void;
+};
+
 async function fetchWithTimeout(
   url: string,
   options: RequestInit,
   timeoutMs: number
-): Promise<Response> {
+): Promise<TimedFetchResponse> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  let cleared = false;
+  const clearTimeoutOnce = () => {
+    if (cleared) {
+      return;
+    }
+    cleared = true;
+    clearTimeout(timeout);
+  };
+
   try {
-    return await fetch(url, {
+    const response = await fetch(url, {
       ...options,
       signal: controller.signal,
     });
-  } finally {
-    clearTimeout(timeout);
+    return { response, clearTimeout: clearTimeoutOnce };
+  } catch (error) {
+    clearTimeoutOnce();
+    throw error;
   }
+}
+
+function streamBodyWithCleanup(
+  body: ReadableStream<Uint8Array> | null,
+  clearTimeout: () => void
+): ReadableStream<Uint8Array> | null {
+  if (!body) {
+    clearTimeout();
+    return null;
+  }
+
+  const reader = body.getReader();
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read();
+        if (done) {
+          clearTimeout();
+          controller.close();
+          return;
+        }
+        controller.enqueue(value);
+      } catch (error) {
+        clearTimeout();
+        controller.error(error);
+      }
+    },
+    async cancel(reason) {
+      clearTimeout();
+      await reader.cancel(reason);
+    },
+  });
 }
 
 function buildHeaders(req: Request): Record<string, string> {
@@ -91,7 +139,11 @@ export async function forwardRequest(
   const backendUrl = buildBackendUrl(req, backendBasePath, suffixPath);
 
   try {
-    const response = await fetchWithTimeout(backendUrl, await buildRequestInit(req), 10000);
+    const { response, clearTimeout } = await fetchWithTimeout(
+      backendUrl,
+      await buildRequestInit(req),
+      10000
+    );
     const nextHeaders = new Headers();
 
     const correlationId = response.headers.get('x-correlation-id');
@@ -101,24 +153,33 @@ export async function forwardRequest(
 
     const contentType = response.headers.get('content-type') || '';
     if (contentType.toLowerCase().includes('application/json')) {
-      const payload = (await safeJson(response)) ?? {
-        detail: 'Backend returned a non-JSON response',
-      };
-      return NextResponse.json(payload, {
-        status: response.status,
-        headers: nextHeaders,
-      });
+      try {
+        const payload = (await safeJson(response)) ?? {
+          detail: 'Backend returned a non-JSON response',
+        };
+        return NextResponse.json(payload, {
+          status: response.status,
+          headers: nextHeaders,
+        });
+      } finally {
+        clearTimeout();
+      }
     }
 
-    const payload = await response.text();
     if (contentType) {
       nextHeaders.set('Content-Type', contentType);
     }
 
-    return new NextResponse(payload, {
-      status: response.status,
-      headers: nextHeaders,
-    });
+    const body = streamBodyWithCleanup(response.body, clearTimeout);
+    try {
+      return new NextResponse(body, {
+        status: response.status,
+        headers: nextHeaders,
+      });
+    } catch (error) {
+      clearTimeout();
+      throw error;
+    }
   } catch {
     return NextResponse.json({ detail: 'Backend unreachable' }, { status: 502 });
   }
