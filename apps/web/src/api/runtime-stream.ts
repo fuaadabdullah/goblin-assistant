@@ -91,6 +91,8 @@ const buildTaskResponse = (payload: Record<string, unknown>): TaskResponse => ({
   model: payload['model'],
   tokens: payload['tokens'],
   cost: payload['cost'],
+  cost_estimated: payload['cost_estimated'],
+  usage_estimated: payload['usage_estimated'],
   duration_ms: payload['duration_ms'],
   done: true,
 });

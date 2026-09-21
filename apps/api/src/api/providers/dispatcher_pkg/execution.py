@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import os
-from contextlib import nullcontext
+from contextlib import aclosing, nullcontext
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
@@ -16,6 +17,7 @@ from ..base import (
 from ..metrics import record_dispatch
 from ..quota_service import quota_service
 from ..router_service import get_router_model_names
+from ..stream_usage import StreamUsage
 from ..supabase_events import insert_routing_audit
 from .selection import SelectionEngine
 
@@ -94,74 +96,112 @@ async def stream_wrap(
     **kwargs: Any,
 ) -> ProviderResult:
     started_at = asyncio.get_running_loop().time()
+    timeout_ms = kwargs.pop("_stream_timeout_ms", 30_000)
+    deadline = started_at + timeout_ms / 1000
+    gen = None
+
+    async def next_chunk():
+        remaining = deadline - asyncio.get_running_loop().time()
+        if remaining <= 0:
+            raise TimeoutError("stream deadline exceeded")
+        return await asyncio.wait_for(anext(gen), timeout=remaining)
+
     try:
         await dispatcher._apply_test_mode_delay(provider_id)
         injected = await dispatcher._maybe_inject_test_failure(provider_id, model)
         if injected is not None:
             return injected
         gen = provider.stream(messages, model, **kwargs)
-        first = None
-        async for chunk in gen:
-            first = chunk
-            break
+        if inspect.isawaitable(gen):
+            gen = await gen
+        first = await next_chunk()
+    except (Exception, asyncio.CancelledError) as exc:
+        if gen is not None and hasattr(gen, "aclose"):
+            await gen.aclose()
+        if isinstance(exc, asyncio.CancelledError):
+            raise
+        # The attempt owner records startup failures exactly once and may fail over.
+        error = "empty provider stream" if isinstance(exc, StopAsyncIteration) else str(exc)
+        return ProviderResult(
+            ok=False,
+            provider=provider_id,
+            model=model,
+            error=dispatcher._sanitize_error(error),
+            error_category=classify_provider_error(error).value,
+        )
 
-        async def combined() -> AsyncGenerator[Dict[str, Any], None]:
-            if first is not None:
-                yield first
-            async for item in gen:
+    async def combined() -> AsyncGenerator[Dict[str, Any], None]:
+        usage = StreamUsage(messages, kwargs.get("prompt", ""))
+        try:
+            usage.update(first)
+            yield first
+            while True:
+                try:
+                    item = await next_chunk()
+                except StopAsyncIteration:
+                    break
+                usage.update(item)
                 yield item
+        except Exception as exc:
+            error = dispatcher._sanitize_error(exc)
+            category = (
+                ProviderErrorCategory.TIMEOUT
+                if isinstance(exc, TimeoutError)
+                else classify_provider_error(exc)
+            )
+            await _record_provider_failure(provider_id, provider, error, category=category)
+            dispatcher.record_routing_outcome(provider_id, ok=False)
+            dispatcher.note_provider_result(provider_id, ok=False, error=error)
+            record_dispatch(
+                provider_id=provider_id,
+                model=model,
+                latency_ms=0.0,
+                ok=False,
+                error_category=category.value,
+            )
+            if category == ProviderErrorCategory.RATE_LIMIT:
+                await quota_service.mark_rate_limited(provider_id, model)
+            raise
+        else:
+            latency = (asyncio.get_running_loop().time() - started_at) * 1000
+            summary = usage.summary(provider, model)
+            provider.record_success()
+            dispatcher.record_routing_outcome(
+                provider_id, ok=True, latency_ms=latency, cost_usd=summary["cost_usd"]
+            )
+            dispatcher.note_provider_result(provider_id, ok=True, latency_ms=latency)
+            record_dispatch(provider_id=provider_id, model=model, latency_ms=latency, ok=True)
+            logger.bind(provider=provider_id, model=model, latency_ms=round(latency, 1)).info(
+                "dispatch_stream_success"
+            )
+            yield summary
+        finally:
+            if hasattr(gen, "aclose"):
+                await gen.aclose()
 
-        latency = (asyncio.get_running_loop().time() - started_at) * 1000
-        provider.record_success()
-        dispatcher.record_routing_outcome(provider_id, ok=True, latency_ms=latency, cost_usd=0.0)
-        dispatcher.note_provider_result(provider_id, ok=True, latency_ms=latency)
-        record_dispatch(
-            provider_id=provider_id,
-            model=model,
-            latency_ms=latency,
-            ok=True,
-        )
-        logger.bind(
-            provider=provider_id,
-            model=model,
-            latency_ms=round(latency, 1),
-        ).info("dispatch_stream_success")
-        return ProviderResult(
-            ok=True,
-            provider=provider_id,
-            model=model,
-            latency_ms=latency,
-            raw={"stream_gen": combined()},
-        )
-    except Exception as exc:
-        safe_error = dispatcher._sanitize_error(exc)
-        error_category = classify_provider_error(exc).value
-        await _record_provider_failure(
-            provider_id,
-            provider,
-            safe_error,
-            category=error_category,
-        )
-        dispatcher.record_routing_outcome(provider_id, ok=False)
-        dispatcher.note_provider_result(provider_id, ok=False, error=safe_error)
-        record_dispatch(
-            provider_id=provider_id,
-            model=model,
-            latency_ms=0.0,
-            ok=False,
-            error_category=error_category,
-        )
-        logger.bind(
-            provider=provider_id,
-            model=model,
-            error_category=error_category,
-        ).warning("dispatch_stream_failure", error=safe_error)
-        return ProviderResult(
-            ok=False,
-            provider=provider_id,
-            model=model,
-            error=safe_error,
-            error_category=error_category,
+    return ProviderResult(
+        ok=True,
+        provider=provider_id,
+        model=model,
+        latency_ms=(asyncio.get_running_loop().time() - started_at) * 1000,
+        raw={"stream_gen": combined()},
+    )
+
+
+async def _settle_stream_quota(stream, reservation, messages, prompt):
+    """Hold concurrency until consumption ends; account for partial output on cancellation."""
+    usage = StreamUsage(messages, prompt)
+    try:
+        async with aclosing(stream):
+            async for chunk in stream:
+                usage.update(chunk)
+                yield chunk
+    finally:
+        input_tokens, output_tokens = usage.tokens()
+        await quota_service.commit(
+            reservation,
+            actual_input_tokens=input_tokens,
+            actual_output_tokens=output_tokens,
         )
 
 
@@ -331,6 +371,7 @@ async def _execute_dispatch_attempt_impl(
                     payload.get("messages", []),
                     model_name,
                     prompt=payload.get("prompt", ""),
+                    _stream_timeout_ms=timeout_ms,
                     **kwargs,
                 ),
                 timeout=timeout_ms / 1000,
@@ -338,15 +379,16 @@ async def _execute_dispatch_attempt_impl(
             if result.ok:
                 _tag(aspan, "dispatch.outcome", "success")
                 _tag(rspan, "dispatch.final_provider", provider_id)
-                await quota_service.commit(
+                settled_stream = _settle_stream_quota(
+                    result.raw["stream_gen"],
                     reservation,
-                    actual_input_tokens=reservation.estimated_input_tokens,
-                    actual_output_tokens=reservation.estimated_output_tokens,
+                    payload.get("messages", []),
+                    payload.get("prompt", ""),
                 )
                 return (
                     {
                         "ok": True,
-                        "stream": result.raw.get("stream_gen"),
+                        "stream": settled_stream,
                         "provider": provider_id,
                         "model": model_name,
                     },
@@ -481,6 +523,10 @@ async def _execute_dispatch_attempt_impl(
             error_category=error_cat.value if error_cat else None,
         )
         return None, error_msg, error_cat
+
+    except asyncio.CancelledError:
+        await quota_service.release(reservation)
+        raise
 
     except asyncio.TimeoutError:
         await quota_service.release(reservation)

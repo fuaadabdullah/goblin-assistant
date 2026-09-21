@@ -124,15 +124,6 @@ def upload_artifacts_to_s3(job_path: str, job_id: str) -> bool:
         return False
 
 
-# Domain allowlist for jobs that request network access (financial data APIs)
-FINANCE_NETWORK_ALLOWLIST = {
-    "query1.finance.yahoo.com",
-    "query2.finance.yahoo.com",
-    "fc.yahoo.com",
-    "www.alphavantage.co",
-}
-
-
 def _parse_runtime_args(runtime_args: str) -> list[str]:
     """Parse runtime args without invoking a shell."""
     if not runtime_args:
@@ -174,6 +165,8 @@ def run_job(
     job_key = f"sandbox:job:{job_id}"
 
     try:
+        if allow_network:
+            raise ValueError("Sandbox network access is disabled until egress policy is enforced")
         # Update job status to running
         redis_client.hset(job_key, "status", "running")
         redis_client.hset(job_key, "started_at", datetime.utcnow().isoformat())
@@ -219,8 +212,9 @@ def run_job(
             "detach": True,
             "stdin_open": False,
             "tty": False,
-            "network_disabled": not allow_network,  # Allow network only for finance jobs
+            "network_disabled": True,
             "mem_limit": MAX_JOB_MEMORY,
+            "pids_limit": 128,
             "cpu_quota": int(MAX_JOB_CPUS * 100000),  # Docker CPU quota
             "cap_drop": ["ALL"],  # Drop all capabilities
             "security_opt": [

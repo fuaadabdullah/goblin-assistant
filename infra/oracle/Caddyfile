@@ -1,0 +1,61 @@
+# Global options — apply to the whole Caddy process.
+{
+    # Let's Encrypt uses this for certificate expiry warnings.
+    # Caddy works without it; set CADDY_ACME_EMAIL in .env to receive alerts.
+    email {$CADDY_ACME_EMAIL:}
+
+    # Disable the admin API. Config changes happen via container restart, not
+    # caddy reload — there's no reason to leave a management socket open.
+    admin off
+}
+
+# Redirect all HTTP traffic to HTTPS.
+# Caddy does this automatically for named sites, but being explicit makes the
+# intent clear and avoids depending on undocumented implicit behaviour.
+http://{$GOBLIN_API_DOMAIN} {
+    redir https://{$GOBLIN_API_DOMAIN}{uri} permanent
+}
+
+# HTTPS site.
+# Caddy handles ACME certificate issuance and renewal automatically.
+# Nothing else to configure for TLS — Caddy's defaults are correct.
+{$GOBLIN_API_DOMAIN} {
+
+    # Compress responses. Prefers zstd (modern browsers), falls back to gzip.
+    encode zstd gzip
+
+    # Reverse proxy to FastAPI. Caddy is the TLS terminator; FastAPI only
+    # ever sees plain HTTP on the internal Docker network.
+    reverse_proxy api:8000 {
+        # Drop any client-supplied X-Forwarded-For before Caddy sets a fresh
+        # one. Without this, clients can inject IPs into the chain and spoof
+        # their apparent origin to the upstream app.
+        header_up -X-Forwarded-For
+        header_up X-Forwarded-For   {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Real-IP         {remote_host}
+    }
+
+    # Security response headers.
+    header {
+        # Prevent MIME-type sniffing.
+        X-Content-Type-Options "nosniff"
+        # Deny framing on all pages (clickjacking protection).
+        X-Frame-Options "DENY"
+        # Don't send full Referer header cross-origin.
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Tell browsers to use HTTPS for this domain for one year.
+        # Only set this after you are certain the domain will stay on HTTPS.
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        # Don't advertise that this is Caddy.
+        -Server
+    }
+
+    # Structured access log to stderr. Docker captures and surfaces it via
+    # `docker compose logs caddy`. Format json so log aggregators can parse it.
+    log {
+        output stderr
+        format json
+        level  INFO
+    }
+}

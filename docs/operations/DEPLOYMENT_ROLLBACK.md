@@ -2,8 +2,8 @@
 
 Use this runbook when a deploy to `main` has shipped a regression and
 production needs to go back to a known-good state. See
-`DEPLOYMENT_ARCHITECTURE.md` for the canonical two-platform model
-(Render backend, Vercel frontend) this runbook assumes.
+`DEPLOYMENT_ARCHITECTURE.md` for the canonical Vercel frontend + OCI backend
+model this runbook assumes.
 
 ## 1. Confirm It's a Deploy, Not a Config/Data Issue
 
@@ -12,29 +12,31 @@ production needs to go back to a known-good state. See
    downstream provider outage looks identical to a bad deploy at first
    glance.
 2. Identify which platform(s) actually shipped the regression:
-   - Backend-only: `apps/api/**`, `Dockerfile`, `render.yaml` changed.
+   - Backend-only: `apps/api/**`, `Dockerfile`, `infra/oracle/**`,
+     `render.yaml` (archived), or `fly.toml` (archived) changed.
    - Frontend-only: `apps/web/**` changed.
    - Both, if the same commit touched both — check the commit range.
 
-## 2. Roll Back the Backend (Render)
+## 2. Roll Back the Backend (OCI)
 
-Render deploys are triggered by CircleCI's `deploy-render` job
-(`.circleci/config.yml`), which POSTs to the Render Deploys API with
-`clearCache: do_not_clear` — there is no separate "rollback" API call.
+OCI deployments are triggered by the `deploy-prod.yml` workflow, which SSHes
+into the Oracle VM, pulls `main`, and runs the compose stack from
+`infra/oracle/`.
 
-1. In the Render dashboard, open the `goblin-backend` service's Deploys
-   tab and find the last deploy that was known-good.
-2. Use Render's "Redeploy" action on that prior deploy, or revert the bad
-   commit(s) on `main` and let CI redeploy normally — prefer the latter
-   for anything beyond a same-day hotfix, since a dashboard-triggered
-   redeploy diverges from what git history says is on `main`.
-3. Watch CircleCI's `smoke-test` job (runs after `deploy-render`) —
-   it polls `/health` and is the fastest signal the rollback actually
-   took effect.
-4. `DATABASE_URL`/`REDIS_URL` are wired via Render's `fromDatabase`/
-   `fromService` references in `render.yaml`, not hardcoded — a rollback
-   does not need separate credential handling unless the regression was a
-   migration (see §4).
+1. Revert the bad commit(s) on `main`, or use `git revert` to create a
+   corrective commit if the bad change already shipped.
+2. SSH into the Oracle VM and redeploy the reverted branch state:
+
+```bash
+ssh ubuntu@<oracle-vm> "cd ~/goblin-assistant && git pull origin main && cd infra/oracle && docker compose pull && docker compose up -d --no-build --remove-orphans"
+```
+
+3. Watch `GET /api/v1/health` on the Oracle backend URL and confirm the
+   reverted build is live.
+4. `DATABASE_URL` stays external via Supabase, while `REDIS_URL` is local to
+   the OCI compose stack, so a code rollback usually does not need separate
+   credential handling unless the regression was a schema migration or Redis
+   state issue (see §4).
 
 ## 3. Roll Back the Frontend (Vercel)
 
@@ -45,7 +47,7 @@ Render deploys are triggered by CircleCI's `deploy-render` job
    sync): revert the bad commit(s), push to `main`, and let CircleCI's
    `deploy-vercel` job run normally.
 3. Frontend rollback is independent of the backend — you can roll back
-   Vercel without touching Render and vice versa, since the frontend
+   Vercel without touching OCI and vice versa, since the frontend
    talks to the backend over the stable `/api/v1` contract
    (see ADR-0002).
 
@@ -73,8 +75,8 @@ Render deploys are triggered by CircleCI's `deploy-render` job
 ## Notes
 
 - Fly.io (`fly.toml`) is explicitly archived — do not use it as a
-  rollback target; Render is canonical (see
-  `docs/operations/DEPLOYMENT_ARCHITECTURE.md` and enforced by
-  `scripts/architecture/check_operational_policy.py`).
+  rollback target. Render (`render.yaml`) is also archived. OCI is the
+  canonical backend target (see `docs/operations/DEPLOYMENT_ARCHITECTURE.md`
+  and enforced by `scripts/architecture/check_operational_policy.py`).
 - There is no automated rollback trigger today — every path above is a
   manual dashboard action or a git revert + normal CI redeploy.

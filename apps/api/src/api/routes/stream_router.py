@@ -1,5 +1,6 @@
 import json
 import logging
+from contextlib import aclosing
 from typing import Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
@@ -43,25 +44,28 @@ async def generate_stream_events(
     )
 
     try:
-        async for chunk in iter_task_stream_chunks(
-            task_id=task_id,
-            messages=messages,
-            provider=provider,
-            model=model,
-        ):
-            await store.append_chunk(task_id, chunk)
-            yield f"data: {json.dumps(chunk)}\n\n"
-            if chunk.get("done") is True:
-                if chunk.get("error"):
-                    await store.mark_status(
-                        task_id,
-                        status="failed",
-                        done=True,
-                        updates={"error": chunk.get("error")},
-                    )
-                else:
-                    await store.mark_status(task_id, status="completed", done=True)
-                return
+        async with aclosing(
+            iter_task_stream_chunks(
+                task_id=task_id,
+                messages=messages,
+                provider=provider,
+                model=model,
+            )
+        ) as chunks:
+            async for chunk in chunks:
+                await store.append_chunk(task_id, chunk)
+                yield f"data: {json.dumps(chunk)}\n\n"
+                if chunk.get("done") is True:
+                    if chunk.get("error"):
+                        await store.mark_status(
+                            task_id,
+                            status="failed",
+                            done=True,
+                            updates={"error": chunk.get("error")},
+                        )
+                    else:
+                        await store.mark_status(task_id, status="completed", done=True)
+                    return
         await store.mark_status(task_id, status="completed", done=True)
     except Exception as exc:
         logger.error("Streaming error for task %s: %s", task_id, exc)

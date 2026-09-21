@@ -7,15 +7,22 @@ echo "🚀 Goblin Assistant - Quick Deployment Status"
 echo "=============================================="
 echo ""
 
-BACKEND_URL="https://goblin-backend-dt30.onrender.com"
-FRONTEND_URL="https://goblin-assistant.vercel.app"
+if [ -n "${BACKEND_URL:-}" ]; then
+    :
+elif [ -n "${GOBLIN_API_DOMAIN:-}" ]; then
+    BACKEND_URL="https://${GOBLIN_API_DOMAIN}"
+else
+    BACKEND_URL="http://127.0.0.1:8000"
+fi
+
+FRONTEND_URL="${FRONTEND_URL:-https://goblin-assistant.vercel.app}"
 
 # Quick timeout check (3 second timeout)
 echo "⏱️  Quick backend check (3s timeout)..."
-if timeout 3 curl -s -o /dev/null -w "%{http_code}" "${BACKEND_URL}/health" 2>/dev/null | grep -q "200"; then
+if timeout 3 curl -s -o /dev/null -w "%{http_code}" "${BACKEND_URL}/api/v1/health" 2>/dev/null | grep -q "200"; then
     echo "✅ Backend responding"
 else
-    echo "⏳ Backend still starting (this is normal, typically 2-5 minutes)"
+    echo "⏳ Backend still starting or unreachable; check the Oracle VM logs"
 fi
 
 echo ""
@@ -30,8 +37,8 @@ echo ""
 echo "📊 Dashboard Links:"
 echo "==================="
 echo ""
-echo "Render Backend Dashboard:"
-echo "  https://dashboard.render.com/services/goblin-backend"
+echo "Oracle VM:"
+echo "  ssh ubuntu@${ORACLE_VM_IP:-<oracle-vm>}"
 echo ""
 echo "Vercel Frontend Dashboard:"
 echo "  https://vercel.com/dashboard/projects/goblin-assistant"
@@ -43,7 +50,7 @@ echo ""
 echo "💡 Typical deployment timeline:"
 echo "   • Git push to main: ✅ Complete"
 echo "   • Auto-deploy trigger: ✅ Initiated"
-echo "   • Backend build + start: ⏳ 2-5 minutes"
+echo "   • Oracle backend build + start: ⏳ 2-5 minutes"
 echo "   • Frontend build + deploy: ⏳ 1-3 minutes"
 echo ""
 echo "Next steps:"
