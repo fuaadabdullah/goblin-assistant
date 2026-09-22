@@ -4,11 +4,11 @@ from contextlib import aclosing
 from typing import Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from ..services.stream_state_store import get_stream_state_store
 from ..services.task_streaming import iter_task_stream_chunks
+from ..sse_transport import event_source_response
 
 router = APIRouter(prefix="/stream", tags=["stream"])
 logger = logging.getLogger(__name__)
@@ -78,17 +78,14 @@ async def generate_stream_events(
 async def stream_task(request: StreamTaskRequest):
     """Stream task execution results using Server-Sent Events with real provider"""
     try:
-        return StreamingResponse(
+        return event_source_response(
             generate_stream_events(
                 task_id=request.task_id,
                 messages=request.messages,
                 provider=request.provider or "groq",
                 model=request.model or "llama-3.3-70b-versatile",
             ),
-            media_type="text/event-stream",
             headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Headers": "Cache-Control",
             },
