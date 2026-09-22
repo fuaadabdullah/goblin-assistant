@@ -11,6 +11,7 @@ the user is looked up by email and auto-provisioned if they don't exist yet.
 """
 
 import uuid
+from datetime import datetime, timezone
 from typing import Annotated, Optional
 
 from fastapi import Depends, HTTPException, Request, status
@@ -37,6 +38,18 @@ def _is_user_active(value: object) -> bool:
     return False
 
 
+def _supabase_email_verified(payload: dict) -> bool:
+    if payload.get("email_verified") is True:
+        return True
+    if payload.get("email_confirmed_at"):
+        return True
+    user_metadata = payload.get("user_metadata")
+    if isinstance(user_metadata, dict) and user_metadata.get("email_verified") is True:
+        return True
+    app_metadata = payload.get("app_metadata")
+    return isinstance(app_metadata, dict) and app_metadata.get("email_verified") is True
+
+
 async def _get_authenticated_user_model(
     db: AsyncSession,
     user_id: str,
@@ -60,8 +73,12 @@ async def _get_authenticated_user_model(
             return None
 
         user_model, session_model = row
-        if session_model is not None and session_model.is_revoked:
+        if session_model is None or session_model.is_revoked:
             return None
+        if session_model.expires_at is not None:
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
+            if session_model.expires_at <= now:
+                return None
         return user_model
 
     result = await db.execute(select(UserModel).where(UserModel.id == user_id))
@@ -87,7 +104,12 @@ async def _provision_supabase_user(
 
     if user_model is None and email:
         result = await db.execute(select(UserModel).where(UserModel.email == email))
-        user_model = result.scalar_one_or_none()
+        email_user = result.scalar_one_or_none()
+        if email_user is not None:
+            if _supabase_email_verified(supabase_payload):
+                user_model = email_user
+            else:
+                return None
 
     if user_model is not None:
         return user_model

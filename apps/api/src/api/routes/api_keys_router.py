@@ -3,12 +3,17 @@ import json
 import os
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from api.auth.router.admin import require_admin_user
 from api.services.api_key_service import create_api_key_store
 
-router = APIRouter(prefix="/api-keys", tags=["api-keys"])
+router = APIRouter(
+    prefix="/api-keys",
+    tags=["api-keys"],
+    dependencies=[Depends(require_admin_user)],
+)
 
 
 def _detail_message(prefix: str, error: Exception) -> str:
@@ -25,6 +30,7 @@ class ApiKeyRequest(BaseModel):
 class ApiKeyResponse(BaseModel):
     key: Optional[str] = None
     provider: str
+    configured: bool = False
 
 
 # Simple file-based storage for API keys (in production, use proper secrets management)
@@ -73,7 +79,11 @@ async def get_api_key(provider: str):
     try:
         store = create_api_key_store()
         key = await store.get(provider)
-        return ApiKeyResponse(key=key, provider=provider)
+        return ApiKeyResponse(
+            key="configured" if key else None,
+            provider=provider,
+            configured=bool(key),
+        )
     except Exception as e:
         raise HTTPException(
             status_code=500,

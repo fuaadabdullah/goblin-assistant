@@ -11,6 +11,15 @@ from api import health, health_core
 from api.services import provider_health
 
 
+@pytest.fixture(autouse=True)
+def reset_rate_limiter_health_gauge():
+    from api.observability.telemetry import set_rate_limiter_degraded
+
+    set_rate_limiter_degraded(degraded=False)
+    yield
+    set_rate_limiter_degraded(degraded=False)
+
+
 class _DummyConn:
     def __init__(self) -> None:
         self.execute = AsyncMock(return_value=None)
@@ -273,6 +282,77 @@ async def test_health_returns_warnings_on_security_issues() -> None:
 
     assert response.data["status"] == "warnings"
     assert response.data["components"]["security"]["status"] == "warnings"
+
+
+@pytest.mark.asyncio
+async def test_health_reports_rate_limiter_degraded_when_fallback_active() -> None:
+    from api.observability.telemetry import set_rate_limiter_degraded
+
+    provider_monitor = _provider_health_monitor({"openai": {"status": "healthy"}})
+
+    set_rate_limiter_degraded(degraded=True)
+    try:
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch.object(
+                    provider_health,
+                    "health_monitor",
+                    provider_monitor,
+                    create=True,
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    health,
+                    "check_chroma_health",
+                    new=AsyncMock(return_value={"status": "healthy"}),
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    health,
+                    "check_routing_health",
+                    new=AsyncMock(return_value={"status": "healthy"}),
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    health,
+                    "check_db_health",
+                    new=AsyncMock(return_value={"status": "healthy"}),
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    health,
+                    "check_redis_health",
+                    new=AsyncMock(return_value={"status": "healthy"}),
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    health,
+                    "check_api_health",
+                    new=AsyncMock(return_value={"status": "healthy"}),
+                )
+            )
+            stack.enter_context(
+                patch("api.security_config.SecurityConfig.validate_config", return_value=[])
+            )
+            stack.enter_context(patch("api.security_config.SecurityConfig.DEBUG", False))
+            stack.enter_context(
+                patch(
+                    "api.security_config.SecurityConfig.ALLOWED_ORIGINS",
+                    ["https://example.com"],
+                )
+            )
+            response = await health.health_check()
+    finally:
+        set_rate_limiter_degraded(degraded=False)
+
+    assert response.data["components"]["rate_limiter"]["status"] == "degraded"
+    assert response.data["components"]["rate_limiter"]["backend"] == "fallback"
+    assert response.data["status"] == "degraded"
 
 
 @pytest.mark.asyncio

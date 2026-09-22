@@ -73,6 +73,7 @@ from .sessions import (  # noqa: F401
     _db_create_session,
     _db_is_session_valid,
     _db_revoke_session,
+    _db_rotate_session,
     _session_cache_key,
     _session_ttl_seconds,
     create_session_id,

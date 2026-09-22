@@ -46,7 +46,7 @@ const MobileDrawer: React.FC<{
 
           {/* Drawer panel */}
           <div
-            className="fixed top-0 left-0 bottom-0 w-72 z-50 bg-surface border-r border-border shadow-lg overflow-auto"
+            className="fixed top-0 left-0 bottom-0 w-72 z-50 bg-surface border-r border-border shadow-lg overflow-auto pt-[max(0px,env(safe-area-inset-top))] pb-[max(0px,env(safe-area-inset-bottom))]"
             role="dialog"
             aria-label={ariaLabel}
           >

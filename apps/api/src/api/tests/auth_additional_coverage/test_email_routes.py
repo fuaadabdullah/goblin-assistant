@@ -53,6 +53,11 @@ class TestEmailRoutes:
         )
         monkeypatch.setattr(routes_email, "create_access_token", lambda **_kwargs: "new-access")
         monkeypatch.setattr(routes_email, "create_refresh_token", lambda *_args: "new-refresh")
+        monkeypatch.setattr(
+            routes_email,
+            "_db_rotate_session",
+            AsyncMock(return_value="session-2"),
+        )
         set_cookies = MagicMock()
         monkeypatch.setattr(routes_email, "_set_auth_cookies", set_cookies)
 
@@ -95,13 +100,22 @@ class TestEmailRoutes:
             "verify_token",
             lambda _token: decode(access_like, SECRET_KEY, algorithms=["HS256"]),
         )
-        user_service = MagicMock()
-        user_service.get_user_by_id = AsyncMock(return_value=active_user)
-        monkeypatch.setattr(routes_email._ar, "UserService", lambda _db: user_service)
+        monkeypatch.setattr(
+            routes_email,
+            "_get_authenticated_user_model",
+            AsyncMock(return_value=active_user),
+        )
 
         valid = await routes_email.validate_token(TokenValidationRequest(token=access_like), db)
         assert valid.data.valid is True
         assert valid.data.user.email == active_user.email
+
+        monkeypatch.setattr(routes_email, "verify_token", verify_auth_token)
+        refresh_validation = await routes_email.validate_token(
+            TokenValidationRequest(token=valid_refresh),
+            db,
+        )
+        assert refresh_validation.data.valid is False
 
     @pytest.mark.asyncio
     async def test_validate_token_accepts_supabase_jwt_payload(self, monkeypatch):
@@ -248,6 +262,7 @@ class TestEmailRoutes:
         monkeypatch.setattr(routes_email, "create_session_id", lambda _uid: "session-1")
         monkeypatch.setattr(routes_email, "_db_create_session", AsyncMock())
         monkeypatch.setattr(routes_email, "_db_revoke_session", AsyncMock())
+        monkeypatch.setattr(routes_email, "_db_rotate_session", AsyncMock(return_value="session-2"))
         monkeypatch.setattr(routes_email, "create_access_token", lambda **_kwargs: "access-token")
         monkeypatch.setattr(routes_email, "create_refresh_token", lambda *_args: "refresh-token")
         monkeypatch.setattr(routes_email, "_set_auth_cookies", MagicMock())
@@ -333,6 +348,8 @@ class TestEmailRoutes:
         monkeypatch.setattr(
             routes_email, "_get_authenticated_user_model", AsyncMock(return_value=active_user)
         )
+        rotate_session = AsyncMock(return_value="session-456")
+        monkeypatch.setattr(routes_email, "_db_rotate_session", rotate_session)
         set_cookies = MagicMock()
         monkeypatch.setattr(routes_email, "_set_auth_cookies", set_cookies)
 
@@ -347,5 +364,33 @@ class TestEmailRoutes:
         # Verify new tokens were issued
         assert refreshed.data.access_token
         assert refreshed.data.refresh_token
+        assert verify_auth_token(refreshed.data.refresh_token)["session_id"] == "session-456"
+        rotate_session.assert_awaited_once_with(session_id, active_user.id, db)
         # Verify cookies were set with new tokens
         set_cookies.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_refresh_token_endpoint_rejects_consumed_session(self, monkeypatch):
+        active_user = _user_model()
+        db = MagicMock()
+        monkeypatch.setattr(
+            routes_email,
+            "verify_token",
+            lambda _token: {
+                "type": "refresh",
+                "sub": active_user.id,
+                "session_id": "session-1",
+            },
+        )
+        monkeypatch.setattr(
+            routes_email, "_get_authenticated_user_model", AsyncMock(return_value=active_user)
+        )
+        monkeypatch.setattr(routes_email, "_db_rotate_session", AsyncMock(return_value=None))
+
+        with pytest.raises(HTTPException, match="already been used"):
+            await routes_email.refresh_token_endpoint(
+                RefreshTokenRequest(refresh_token="used-refresh-token"),
+                SimpleNamespace(cookies={}),
+                Response(),
+                db,
+            )

@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-from .conftest import _FakeRedis, sandbox_api
+from .conftest import _FakeRedis, _request, sandbox_api
 
 
 async def test_run_and_logs_aliases_and_list_jobs_error_paths(tmp_path: Path) -> None:
@@ -35,6 +35,7 @@ async def test_run_and_logs_aliases_and_list_jobs_error_paths(tmp_path: Path) ->
     ):
         alias = await sandbox_api.run_sandbox_code(
             sandbox_api.SubmitJobRequest(language="python", source="print(1)"),
+            request=_request(),
             x_api_key="secret",
         )
         logs = await sandbox_api.get_job_logs_alias("1", x_api_key="secret")
@@ -58,6 +59,7 @@ async def test_run_and_logs_aliases_and_list_jobs_error_paths(tmp_path: Path) ->
 
     with (
         patch.object(sandbox_api, "SANDBOX_ENABLED", True),
+        patch.object(sandbox_api, "API_KEY", "secret"),
         patch.object(
             sandbox_api,
             "r",
@@ -65,12 +67,12 @@ async def test_run_and_logs_aliases_and_list_jobs_error_paths(tmp_path: Path) ->
         ),
     ):
         with pytest.raises(HTTPException) as list_error:
-            await sandbox_api.list_sandbox_jobs()
+            await sandbox_api.list_sandbox_jobs(x_api_key="secret")
     assert list_error.value.status_code == 500
 
     with patch.object(sandbox_api, "SANDBOX_ENABLED", False):
         with pytest.raises(HTTPException) as alias_disabled:
-            await sandbox_api.get_job_logs_alias("1")
+            await sandbox_api.get_job_logs_alias("1", x_api_key="secret")
     assert alias_disabled.value.status_code == 503
 
 

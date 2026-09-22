@@ -3,6 +3,7 @@ Middleware for Goblin Assistant API
 Includes error handling, logging, and other cross-cutting concerns.
 """
 
+import hmac
 import os
 import time
 import uuid
@@ -50,7 +51,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
 
         # Check development mode upfront
-        environment = os.getenv("ENVIRONMENT", "development").lower()
+        environment = os.getenv("ENVIRONMENT", "production").lower()
         is_development = environment in ["development", "dev", "local"]
         allow_unauth = os.getenv("ALLOW_UNAUTHENTICATED_REQUESTS", "false").lower() == "true"
 
@@ -133,7 +134,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 ).model_dump(exclude_none=True),
             )
 
-        if not api_key_header or api_key_header != self.api_key:
+        if not api_key_header or not hmac.compare_digest(api_key_header, self.api_key):
             request_id = str(uuid.uuid4())
             timestamp = datetime.now(timezone.utc).isoformat()
             logger.warning(
@@ -174,7 +175,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         }
 
         # Add HSTS only for HTTPS (in production)
-        environment = os.getenv("ENVIRONMENT", "development").lower()
+        environment = os.getenv("ENVIRONMENT", "production").lower()
         if environment == "production":
             self.security_headers["Strict-Transport-Security"] = (
                 "max-age=31536000; includeSubDomains"

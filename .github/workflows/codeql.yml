@@ -1,9 +1,30 @@
 name: CodeQL
 
-# Overrides GitHub's auto-generated CodeQL analysis to prevent billing failures.
-# CircleCI handles security scanning. Re-enable push/PR triggers when billing resolved.
+# Static analysis gate for PRs touching application code. Push is limited to
+# main/develop (the auto-generated CodeQL workflow was disabled entirely to
+# prevent billing failures); PR runs are path-filtered so docs-only changes
+# cost nothing.
+#
+# Zero-cost alternative if Actions minutes stay locked: `make lint` already
+# runs ESLint + Ruff on every PR, and CircleCI's security-scan runs
+# secret-scan + pip-audit + audit-ci. This workflow adds CodeQL's
+# deeper dataflow analysis, which those linters do not cover.
 
 on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'scripts/**'
+      - 'tooling/**'
+      - '.github/workflows/codeql.yml'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'apps/api/**'
+      - 'apps/web/src/**'
+      - 'packages/**'
   workflow_dispatch:
     inputs:
       language:
@@ -31,6 +52,7 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
+          queries: security-extended
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@v3

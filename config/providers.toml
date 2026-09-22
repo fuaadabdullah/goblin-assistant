@@ -641,20 +641,21 @@ is_active               = true
 selectable_requires_env = true
 
 # ---------------------------------------------------------------------------
-# GCP VM  (google_cloud_selfhosted — Colab + Vertex backends)
-# Ollama/LlamaCPP VM backends removed (preemptible VMs terminated 2026-01-11)
+# GCP VM  (google_cloud_selfhosted — llama.cpp on Oracle A1 + Vertex backends)
+# Backends only register when their env vars are set.
 # ---------------------------------------------------------------------------
 [providers.gcp_vm]
 name                    = "GCP Self-Hosted"
 tier                    = "self_hosted"
 priority_tier           = 70
 cost_score              = 0.05
-default_timeout_ms      = 60000
+default_timeout_ms      = 180000
 default_model           = "gemini-2.5-flash"
 bandwidth_score         = 0.5
 rate_limit_per_min      = 120
 capabilities            = ["chat", "reasoning", "code"]
 models                  = [
+  "goblin-core",
   "gemini-2.5-flash",
   "gemini-2.0-flash",
   "gemini-2.0-flash-lite",
@@ -665,9 +666,21 @@ models                  = [
 supports_cot            = true
 cot_suppression_prompt  = "Be concise."
 display_name            = "GCP Self-Hosted"
-is_active               = false
+is_active               = true
 selectable_requires_env = true
 hidden                  = true
+
+# Oracle A1 VM (goblin-small) — Qwen3-4B-abliterated served by llama-server as "goblin-core".
+# Setup: oracle-a1-setup.sh. 1 ARM core, so expect a few tokens/sec.
+[[providers.gcp_vm.backends]]
+engine        = "llamacpp"
+endpoint_env  = "LLAMACPP_ORACLE_ENDPOINT"
+api_key_env   = "LLAMACPP_ORACLE_API_KEY"
+proxy_env     = "LLAMACPP_ORACLE_PROXY"
+invoke_timeout_s = 600
+default_model = "goblin-core"
+models        = ["goblin-core"]
+priority      = 0
 
 [[providers.gcp_vm.backends]]
 engine        = "vertex"

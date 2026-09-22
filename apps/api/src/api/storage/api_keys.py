@@ -183,7 +183,7 @@ class DatabaseAPIKeyStore(APIKeyStore):
 # Factory function to create appropriate store based on environment
 def create_api_key_store() -> APIKeyStore:
     """Factory function that returns the appropriate API key store for the current environment."""
-    environment = os.getenv("ENVIRONMENT", "development")
+    environment = os.getenv("ENVIRONMENT", "production")
 
     if environment == "production":
         return SecretManagerAPIKeyStore()

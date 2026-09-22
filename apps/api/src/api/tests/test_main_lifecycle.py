@@ -41,6 +41,24 @@ def test_app_registers_runtime_middlewares_and_core_routes() -> None:
     assert "/api/v1/search/query" in paths
 
 
+def test_create_app_disables_docs_and_openapi_in_production(monkeypatch) -> None:
+    from api.app_factory import create_app
+
+    # Production guards require explicit CORS origins + enabled rate limiting;
+    # supply both so this test exercises docs/openapi gating, not the guards
+    # (which have their own dedicated coverage in test_bootstrap_middleware_policy).
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("ALLOWED_ORIGINS", "https://app.example.com")
+    monkeypatch.setenv("RATE_LIMIT_ENABLED", "true")
+
+    app = create_app()
+
+    paths = {route.path for route in app.routes if hasattr(route, "path")}
+    assert "/docs" not in paths
+    assert "/redoc" not in paths
+    assert "/openapi.json" not in paths
+
+
 def test_app_auth_middleware_excludes_public_auth_bootstrap_routes() -> None:
     auth_middleware = next(
         middleware

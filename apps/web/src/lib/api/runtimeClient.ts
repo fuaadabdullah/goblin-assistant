@@ -1,4 +1,3 @@
-import { providerKeys } from '@/lib/provider-keys';
 import { streamRuntimeTask } from '@/api/runtime-stream';
 import { hasMockFallbackSignal } from './fallback';
 import type {
@@ -120,19 +119,19 @@ const runtimeClientImpl: RuntimeClient = {
   },
 
   async setProviderApiKey(provider: string, key: string): Promise<void> {
-    providerKeys.set(provider, key);
+    await apiClient.setProviderApiKey(provider, key);
   },
 
   async storeApiKey(provider: string, key: string): Promise<void> {
-    providerKeys.set(provider, key);
+    await apiClient.storeApiKey(provider, key);
   },
 
   async getApiKey(provider: string): Promise<string | null> {
-    return providerKeys.get(provider);
+    return apiClient.getApiKey(provider);
   },
 
   async clearApiKey(provider: string): Promise<void> {
-    providerKeys.remove(provider);
+    await apiClient.clearApiKey(provider);
   },
 
   async getHistory(goblin: string, limit?: number): Promise<MemoryEntry[]> {

@@ -155,3 +155,10 @@ async def reset_rate_limit(client_ip: str, endpoint: str = "login") -> bool:
     except Exception as e:
         logger.error("Failed to reset rate limit for %s: %s", client_ip, e)
         return _reset_rate_limit_fallback(client_ip, endpoint)
+
+
+def get_auth_rate_limit_client_ip(request) -> str:
+    """Return the auth limiter IP using trusted proxy metadata only."""
+    from api.middleware.rate_limiter import _client_ip_from_request
+
+    return _client_ip_from_request(request)

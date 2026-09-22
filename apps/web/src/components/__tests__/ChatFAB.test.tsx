@@ -1,16 +1,18 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-const { pushMock, setChatSidebarOpenMock, trackEventMock } = vi.hoisted(() => ({
+const { pushMock, setChatSidebarOpenMock, trackEventMock, pathnameMock } = vi.hoisted(() => ({
   pushMock: vi.fn().mockResolvedValue(undefined),
   setChatSidebarOpenMock: vi.fn(),
   trackEventMock: vi.fn(),
+  pathnameMock: vi.fn().mockReturnValue('/'),
 }));
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
   }),
+  usePathname: () => pathnameMock(),
 }));
 
 vi.mock('../../store/uiStore', () => ({
@@ -28,6 +30,8 @@ import ChatFAB from '../ChatFAB';
 describe('ChatFAB', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    pathnameMock.mockReturnValue('/');
+    pushMock.mockResolvedValue(undefined);
   });
 
   it('navigates to chat, tracks the click, and opens the drawer', async () => {
@@ -48,5 +52,13 @@ describe('ChatFAB', () => {
 
     await waitFor(() => expect(trackEventMock).toHaveBeenCalledWith('chat_fab_clicked'));
     expect(setChatSidebarOpenMock).toHaveBeenCalledWith(true);
+  });
+
+  it('renders nothing on /chat so it cannot cover the composer Send button', () => {
+    pathnameMock.mockReturnValue('/chat');
+
+    render(<ChatFAB />);
+
+    expect(screen.queryByRole('button', { name: 'Open Chat' })).not.toBeInTheDocument();
   });
 });

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { MessageSquare } from 'lucide-react';
 import { useUIStore } from '../store/uiStore';
 import { trackEvent } from '../utils/analytics';
@@ -9,6 +9,12 @@ import { trackEvent } from '../utils/analytics';
 const ChatFAB: React.FC = () => {
   const setChatOpen = useUIStore((s) => s.setChatSidebarOpen);
   const router = useRouter();
+  const pathname = usePathname();
+
+  // The FAB's job is "jump to chat". Rendered on /chat it is redundant and its
+  // fixed bottom-right position sits directly on top of the composer's Send
+  // button.
+  if (pathname === '/chat') return null;
 
   const handleClick = async () => {
     // Navigate to chat page first so the chat view is mounted, then open the drawer

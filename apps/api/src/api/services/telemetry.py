@@ -36,7 +36,7 @@ from .sanitization import hash_message_id, mask_sensitive, redact_for_logging
 logger = logging.getLogger(__name__)
 
 # Check if we're in production
-IS_PRODUCTION = os.getenv("ENVIRONMENT", "development") == "production"
+IS_PRODUCTION = os.getenv("ENVIRONMENT", "production") == "production"
 ENABLE_DATADOG = os.getenv("ENABLE_DATADOG", "false").lower() == "true"
 
 # Try to import Datadog (optional dependency)

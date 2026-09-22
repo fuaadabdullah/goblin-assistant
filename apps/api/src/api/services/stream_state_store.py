@@ -318,7 +318,7 @@ def get_stream_state_store() -> StreamStateStore:
     ttl_seconds = int(os.getenv("STREAM_STATE_TTL_SECONDS", "3600"))
     fallback_env = os.getenv("STREAM_STATE_ALLOW_INMEMORY_FALLBACK")
     if fallback_env is None:
-        environment = os.getenv("ENVIRONMENT", "development").strip().lower()
+        environment = os.getenv("ENVIRONMENT", "production").strip().lower()
         allow_inmemory_fallback = environment != "production"
     else:
         allow_inmemory_fallback = fallback_env.lower() == "true"

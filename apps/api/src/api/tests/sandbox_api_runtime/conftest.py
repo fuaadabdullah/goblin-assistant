@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import sys
+from types import SimpleNamespace
 
 sys.modules.pop("api.sandbox_api", None)
 sandbox_api = importlib.import_module("api.sandbox_api")
@@ -54,3 +55,11 @@ class _FakeQueue:
 
     def __len__(self) -> int:
         return self.depth
+
+
+def _request(host: str = "127.0.0.1"):
+    return SimpleNamespace(
+        client=SimpleNamespace(host=host),
+        headers={},
+        state=SimpleNamespace(),
+    )

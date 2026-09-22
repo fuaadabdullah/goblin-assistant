@@ -113,11 +113,37 @@ groups:
           runbook_url: "https://goblin-assistant.vercel.app/docs/sandbox/slo#latency"
           response_time_expectation: "P95 job duration must stay below 120s over a 7-day window"
 
+  - name: api_operational
+    rules:
+      # Rate limiter backend health: fires when Redis is unreachable and any
+      # replica enforces via the in-process fallback (not shared across pods).
+      - alert: RateLimiterDegraded
+        expr: max(goblin_rate_limiter_degraded) > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: goblin-api
+          slo: rate-limiting
+        annotations:
+          summary: "Rate limiter serving from in-process fallback"
+          description: "Redis is unreachable; per-process counters are enforcing instead of shared ones. Failover window may admit over-limit traffic across replicas — restore Redis."
+          runbook_url: "https://goblin-assistant.vercel.app/docs/operations/slo#rate-limiter-runbook"
+          response_time_expectation: "Shared Redis-backed enforcement should be restored; fallback counters diverge across replicas"
+
   - name: api_slos
     rules:
-      # API Availability SLO: 99.9% — error budget 43.8 min/month
+      # API Availability SLO: 99.9% — error budget 43.8 min/month.
+      # The app exposes goblin_http_requests_total (labels: method, route,
+      # status_code); sum across the high-cardinality route label for the SLI.
       - alert: APIAvailabilityLow
-        expr: (1 - (rate(http_requests_total{status=~"5.."}[7d]) / rate(http_requests_total[7d]))) < 0.999
+        expr: |
+          (
+            1 - (
+              sum(rate(goblin_http_requests_total{status_code=~"5.."}[7d]))
+              /
+              clamp_min(sum(rate(goblin_http_requests_total[7d])), 1e-9)
+            )
+          ) < 0.999
         for: 1h
         labels:
           severity: critical
@@ -143,9 +169,16 @@ groups:
           runbook_url: "https://goblin-assistant.vercel.app/docs/operations/slo#chat-latency-runbook"
           response_time_expectation: "95th percentile chat completion must be under 2 seconds over a 7-day window"
 
-      # Auth Success Rate SLO: 99.9% — error budget 43.8 min/month
+      # Auth Success Rate SLO: 99.9% — error budget 43.8 min/month.
+      # auth_attempts_total/auth_success_total are emitted by record_auth_event
+      # (labels: event, method); sum across events for the aggregate SLI.
       - alert: AuthSuccessRateLow
-        expr: (rate(auth_success_total[7d]) / rate(auth_attempts_total[7d])) < 0.999
+        expr: |
+          (
+            sum(rate(auth_success_total[7d]))
+            /
+            clamp_min(sum(rate(auth_attempts_total[7d])), 1e-9)
+          ) < 0.999
         for: 1h
         labels:
           severity: critical
@@ -157,9 +190,16 @@ groups:
           runbook_url: "https://goblin-assistant.vercel.app/docs/operations/slo#auth-success-rate-runbook"
           response_time_expectation: "Less than 0.1% of authentication attempts may fail over a 7-day window"
 
-      # LLM Provider Availability SLO: 99.5% — error budget 219 min/month
+      # LLM Provider Availability SLO: 99.5% — error budget 219 min/month.
+      # goblin_provider_requests_total{result="success|failure"} is incremented
+      # by record_dispatch for every provider outcome; sum across providers.
       - alert: LLMProviderAvailabilityLow
-        expr: (rate(goblin_provider_requests_total{result="success"}[7d]) / rate(goblin_provider_requests_total[7d])) < 0.995
+        expr: |
+          (
+            sum(rate(goblin_provider_requests_total{result="success"}[7d]))
+            /
+            clamp_min(sum(rate(goblin_provider_requests_total[7d])), 1e-9)
+          ) < 0.995
         for: 1h
         labels:
           severity: warning

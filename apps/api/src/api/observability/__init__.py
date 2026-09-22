@@ -30,10 +30,13 @@ from .retrieval_tracer import (
 from .telemetry import (
     record_agent_task_event,
     record_auth_event,
+    record_chat_completion,
     record_llm_callback,
+    record_provider_request,
     record_request_observation,
     record_router_cost_guard_event,
     redact_payload,
+    set_rate_limiter_degraded,
 )
 
 
@@ -90,6 +93,9 @@ __all__ = [
     "record_agent_task_event",
     "record_llm_callback",
     "record_router_cost_guard_event",
+    "record_chat_completion",
+    "record_provider_request",
+    "set_rate_limiter_degraded",
     "redact_payload",
     # Functions
     "log_write_time_decision",

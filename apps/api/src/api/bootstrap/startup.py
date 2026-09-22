@@ -54,7 +54,7 @@ def init_sentry() -> None:
         if not sentry_dsn:
             raise RuntimeError("SENTRY_DSN not configured, skipping Sentry init")
 
-        sentry_environment = os.getenv("ENVIRONMENT", "development").lower()
+        sentry_environment = os.getenv("ENVIRONMENT", "production").lower()
         default_traces_rate = 0.1 if sentry_environment == "production" else 1.0
         default_profiles_rate = 0.01 if sentry_environment == "production" else 1.0
 
@@ -112,7 +112,7 @@ def init_ddtrace() -> None:
             raise RuntimeError("DD_API_KEY not configured, skipping Datadog init")
 
         dd_service = os.getenv("DD_SERVICE", "goblin-api")
-        dd_env = os.getenv("ENVIRONMENT", "development").lower()
+        dd_env = os.getenv("ENVIRONMENT", "production").lower()
         dd_version = os.getenv("RELEASE_VERSION", "goblin-assistant@1.0.0")
 
         tracer.configure(
@@ -141,6 +141,40 @@ def init_ddtrace() -> None:
         logger.warning("Datadog APM disabled", reason="DD_API_KEY not set")
     except Exception as exc:
         logger.warning("Failed to initialize Datadog APM", error=str(exc))
+
+
+def init_langtrace() -> None:
+    try:
+        from langtrace_python_sdk import langtrace
+
+        langtrace_api_key = os.getenv("LANGTRACE_API_KEY")
+        if not langtrace_api_key:
+            raise RuntimeError("LANGTRACE_API_KEY not configured, skipping LangTrace init")
+
+        langtrace_api_host = os.getenv("LANGTRACE_API_HOST") or None
+        service_name = os.getenv("OTEL_SERVICE_NAME", "goblin-assistant-api")
+
+        langtrace.init(
+            api_key=langtrace_api_key,
+            api_host=langtrace_api_host,
+            service_name=service_name,
+        )
+        logger.info(
+            "LangTrace initialized",
+            provider="langtrace",
+            service_name=service_name,
+            api_host=langtrace_api_host or "https://langtrace.ai",
+        )
+    except ImportError:
+        logger.warning(
+            "LangTrace SDK not available",
+            reason="package not installed",
+            suggestion="pip install langtrace-python-sdk",
+        )
+    except RuntimeError:
+        logger.warning("LangTrace tracing disabled", reason="LANGTRACE_API_KEY not set")
+    except Exception as exc:
+        logger.warning("Failed to initialize LangTrace", error=str(exc))
 
 
 def init_otel() -> None:

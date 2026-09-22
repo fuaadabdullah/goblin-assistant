@@ -5,8 +5,7 @@
  * has moved to apiClient — see src/lib/api/__tests__/providers.model-registry.test.ts
  * for the authoritative tests of that logic.
  *
- * These tests verify that the runtimeClient adapter correctly delegates to
- * apiClient and providerKeys.
+ * These tests verify that the runtimeClient adapter correctly delegates to apiClient.
  */
 
 import { runtimeClient } from '@/lib/api/runtimeClient';
@@ -30,18 +29,12 @@ vi.mock('@/lib/api', () => ({
     register: vi.fn(),
     logout: vi.fn(),
     validateToken: vi.fn(),
+    setProviderApiKey: vi.fn(),
+    storeApiKey: vi.fn(),
+    getApiKey: vi.fn(),
+    clearApiKey: vi.fn(),
   },
 }));
-
-vi.mock('@/lib/provider-keys', () => ({
-  providerKeys: {
-    get: vi.fn(),
-    set: vi.fn(),
-    remove: vi.fn(),
-  },
-}));
-
-import { providerKeys } from '@/lib/provider-keys';
 
 const mockGetProviders = apiClient.getProviders as vi.MockedFunction<typeof apiClient.getProviders>;
 const mockGetGoblins = apiClient.getGoblins as vi.MockedFunction<typeof apiClient.getGoblins>;
@@ -64,14 +57,26 @@ const mockGetCostSummary = apiClient.getCostSummary as vi.MockedFunction<
 >;
 const mockLogin = apiClient.login as vi.MockedFunction<typeof apiClient.login>;
 const mockLogout = apiClient.logout as vi.MockedFunction<typeof apiClient.logout>;
-const mockPKGet = providerKeys.get as vi.MockedFunction<typeof providerKeys.get>;
-const mockPKSet = providerKeys.set as vi.MockedFunction<typeof providerKeys.set>;
-const mockPKRemove = providerKeys.remove as vi.MockedFunction<typeof providerKeys.remove>;
+const mockSetProviderApiKey = apiClient.setProviderApiKey as vi.MockedFunction<
+  typeof apiClient.setProviderApiKey
+>;
+const mockStoreApiKey = apiClient.storeApiKey as vi.MockedFunction<typeof apiClient.storeApiKey>;
+const mockGetApiKey = apiClient.getApiKey as vi.MockedFunction<typeof apiClient.getApiKey>;
+const mockClearApiKey = apiClient.clearApiKey as vi.MockedFunction<typeof apiClient.clearApiKey>;
 
 beforeEach(() => {
   vi.clearAllMocks();
   (globalThis as typeof globalThis & { fetch: vi.Mock }).fetch = vi.fn();
   (globalThis as typeof globalThis & { TextDecoder: typeof TextDecoder }).TextDecoder = TextDecoder;
+  Object.defineProperty(window, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    },
+  });
 });
 
 describe('runtimeClient model-registry delegation', () => {
@@ -110,26 +115,26 @@ describe('runtimeClient model-registry delegation', () => {
 });
 
 describe('runtimeClient provider API key management', () => {
-  it('delegates setProviderApiKey to providerKeys.set', async () => {
+  it('delegates setProviderApiKey to apiClient.setProviderApiKey', async () => {
     await runtimeClient.setProviderApiKey('openai', 'sk-test-key');
-    expect(mockPKSet).toHaveBeenCalledWith('openai', 'sk-test-key');
+    expect(mockSetProviderApiKey).toHaveBeenCalledWith('openai', 'sk-test-key');
   });
 
-  it('delegates storeApiKey to providerKeys.set', async () => {
+  it('delegates storeApiKey to apiClient.storeApiKey', async () => {
     await runtimeClient.storeApiKey('anthropic', 'ant-key');
-    expect(mockPKSet).toHaveBeenCalledWith('anthropic', 'ant-key');
+    expect(mockStoreApiKey).toHaveBeenCalledWith('anthropic', 'ant-key');
   });
 
-  it('delegates getApiKey to providerKeys.get', async () => {
-    mockPKGet.mockReturnValue('sk-stored');
+  it('delegates getApiKey to apiClient.getApiKey', async () => {
+    mockGetApiKey.mockResolvedValue('sk-stored');
     const key = await runtimeClient.getApiKey('openai');
     expect(key).toBe('sk-stored');
-    expect(mockPKGet).toHaveBeenCalledWith('openai');
+    expect(mockGetApiKey).toHaveBeenCalledWith('openai');
   });
 
-  it('delegates clearApiKey to providerKeys.remove', async () => {
+  it('delegates clearApiKey to apiClient.clearApiKey', async () => {
     await runtimeClient.clearApiKey('openai');
-    expect(mockPKRemove).toHaveBeenCalledWith('openai');
+    expect(mockClearApiKey).toHaveBeenCalledWith('openai');
   });
 });
 

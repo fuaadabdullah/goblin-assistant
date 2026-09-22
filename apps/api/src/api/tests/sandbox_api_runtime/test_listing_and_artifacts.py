@@ -130,6 +130,7 @@ async def test_list_jobs_filters_by_status_and_limit() -> None:
 
     with (
         patch.object(sandbox_api, "SANDBOX_ENABLED", True),
+        patch.object(sandbox_api, "API_KEY", "secret"),
         patch.object(
             sandbox_api,
             "r",
@@ -138,6 +139,7 @@ async def test_list_jobs_filters_by_status_and_limit() -> None:
         patch.object(sandbox_api.event_emitter, "emit", AsyncMock()),
     ):
         resp = await sandbox_api.list_sandbox_jobs(
+            x_api_key="secret",
             status="queued",
             limit=1,
         )
