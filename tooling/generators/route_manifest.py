@@ -217,6 +217,8 @@ def build_manifest(api_app, schema: dict[str, object] | None = None) -> dict[str
 
 
 def export_manifest(output_path: Path = OUTPUT_PATH) -> dict[str, object]:
+    os.environ.setdefault("ENVIRONMENT", "test")
+    os.environ.setdefault("OPS_ALLOWED_ENVIRONMENTS", "development,staging,test")
     if str(API_SRC) not in sys.path:
         sys.path.insert(0, str(API_SRC))
 
