@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-from .conftest import _FakeQueue, _FakeRedis, sandbox_api
+from .conftest import _FakeQueue, _FakeRedis, _request, sandbox_api
 
 
 async def test_submit_job_rejects_when_sandbox_disabled() -> None:
@@ -14,7 +14,7 @@ async def test_submit_job_rejects_when_sandbox_disabled() -> None:
 
     with patch.object(sandbox_api, "SANDBOX_ENABLED", False):
         with pytest.raises(HTTPException) as exc:
-            await sandbox_api.submit_job(req, x_api_key="any-key")
+            await sandbox_api.submit_job(req, request=_request(), x_api_key="any-key")
 
     assert exc.value.status_code == 503
 
@@ -34,6 +34,7 @@ async def test_submit_job_validates_language_and_timeout() -> None:
                     language="go",
                     source="fmt.Println(1)",
                 ),
+                request=_request(),
                 x_api_key="secret",
             )
 
@@ -44,6 +45,7 @@ async def test_submit_job_validates_language_and_timeout() -> None:
                     source="print(1)",
                     timeout=500,
                 ),
+                request=_request(),
                 x_api_key="secret",
             )
 
@@ -52,18 +54,22 @@ async def test_submit_job_validates_language_and_timeout() -> None:
 
 
 async def test_submit_job_validates_missing_source_and_applies_rate_limit() -> None:
-    rate_limit = AsyncMock()
+    rate_limit = AsyncMock(return_value={"allowed": True})
 
     with (
         patch.object(sandbox_api, "SANDBOX_ENABLED", True),
         patch.object(sandbox_api, "API_KEY", "secret"),
-        patch.object(sandbox_api, "sandbox_rate_limiter", MagicMock(__call__=rate_limit)),
+        patch.object(
+            sandbox_api,
+            "sandbox_rate_limiter",
+            MagicMock(check_rate_limit=rate_limit),
+        ),
     ):
         with pytest.raises(HTTPException) as exc:
             await sandbox_api.submit_job(
                 sandbox_api.SubmitJobRequest(language="python", source="   "),
                 x_api_key="secret",
-                request=object(),
+                request=_request(),
             )
 
     assert exc.value.status_code == 400
@@ -110,7 +116,7 @@ async def test_submit_job_stores_metadata_and_enqueues(tmp_path: Path) -> None:
             return_value="job-123",
         ),
     ):
-        result = await sandbox_api.submit_job(req, x_api_key="secret")
+        result = await sandbox_api.submit_job(req, request=_request(), x_api_key="secret")
 
     assert result.data.job_id == "job-123"
     assert "sandbox:job:job-123" in fake_redis.store
@@ -138,6 +144,7 @@ async def test_submit_job_cleans_up_when_queue_enqueue_fails(tmp_path: Path) -> 
         with pytest.raises(HTTPException) as exc:
             await sandbox_api.submit_job(
                 sandbox_api.SubmitJobRequest(language="python", source="print(1)"),
+                request=_request(),
                 x_api_key="secret",
             )
 

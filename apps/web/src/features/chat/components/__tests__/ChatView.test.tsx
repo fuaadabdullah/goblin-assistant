@@ -72,11 +72,15 @@ vi.mock('../../../../hooks/api/useAuthSession', () => ({
 
 const mockChatSidebarOpen = vi.fn().mockReturnValue(false);
 const mockSetChatSidebarOpen = vi.fn();
+const mockChatGuestBannerDismissed = vi.fn().mockReturnValue(false);
+const mockDismissChatGuestBanner = vi.fn();
 vi.mock('../../../../store/uiStore', () => ({
   useUIStore: (selector: (state: Record<string, unknown>) => unknown) => {
     const state = {
       chatSidebarOpen: mockChatSidebarOpen(),
       setChatSidebarOpen: mockSetChatSidebarOpen,
+      chatGuestBannerDismissed: mockChatGuestBannerDismissed(),
+      dismissChatGuestBanner: mockDismissChatGuestBanner,
     };
     return selector(state);
   },
@@ -125,6 +129,7 @@ describe('ChatView', () => {
     vi.clearAllMocks();
     mockIsAuthenticated.mockReturnValue(true);
     mockChatSidebarOpen.mockReturnValue(false);
+    mockChatGuestBannerDismissed.mockReturnValue(false);
   });
 
   it('renders chat UI when authenticated', () => {
@@ -193,5 +198,23 @@ describe('ChatView', () => {
     mockIsAuthenticated.mockReturnValue(false);
     render(<ChatView session={mockSession as never} isAdmin={false} />);
     expect(screen.getByTestId('seo')).toHaveAttribute('data-title', 'Chat - Sign In Required');
+  });
+
+  it('renders a dismissible guest banner in guest mode', () => {
+    render(<ChatView session={mockSession as never} isAdmin={false} isGuest />);
+    expect(screen.getByText('Guest session')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Dismiss guest notice'));
+    expect(mockDismissChatGuestBanner).toHaveBeenCalled();
+  });
+
+  it('hides the guest banner once dismissed', () => {
+    mockChatGuestBannerDismissed.mockReturnValue(true);
+    render(<ChatView session={mockSession as never} isAdmin={false} isGuest />);
+    expect(screen.queryByText('Guest session')).not.toBeInTheDocument();
+  });
+
+  it('does not render the guest banner for signed-in users', () => {
+    render(<ChatView session={mockSession as never} isAdmin={false} />);
+    expect(screen.queryByText('Guest session')).not.toBeInTheDocument();
   });
 });

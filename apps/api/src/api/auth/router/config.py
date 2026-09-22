@@ -15,7 +15,7 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
-ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
+ENVIRONMENT = os.getenv("ENVIRONMENT", "production").lower()
 
 
 def _parse_bool_env(name: str, default: bool) -> bool:

@@ -127,6 +127,8 @@ def _verify_via_auth_api(token: str) -> Optional[dict]:
         payload = {
             "sub": user.get("id") or unverified.get("sub"),
             "email": user.get("email") or unverified.get("email"),
+            "email_confirmed_at": user.get("email_confirmed_at"),
+            "email_verified": bool(user.get("email_confirmed_at")),
             "user_metadata": user.get("user_metadata") or {},
             "aud": "authenticated",
             "exp": unverified.get("exp"),

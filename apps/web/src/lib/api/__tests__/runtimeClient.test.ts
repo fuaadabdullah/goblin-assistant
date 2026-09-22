@@ -6,18 +6,11 @@ const {
   mockSendConversationMessage,
   mockChatCompletion,
   mockStreamRuntimeTask,
-  mockPKGet,
-  mockPKSet,
-  mockPKRemove,
 } = vi.hoisted(() => {
   const mockCreateConversation = vi.fn();
   const mockSendConversationMessage = vi.fn();
   const mockChatCompletion = vi.fn();
   const mockStreamRuntimeTask = vi.fn();
-  const mockPKGet = vi.fn();
-  const mockPKSet = vi.fn();
-  const mockPKRemove = vi.fn();
-
   const mockApiClient = {
     createConversation: mockCreateConversation,
     sendConversationMessage: mockSendConversationMessage,
@@ -34,6 +27,10 @@ const {
     register: vi.fn(),
     logout: vi.fn(),
     validateToken: vi.fn(),
+    setProviderApiKey: vi.fn(),
+    storeApiKey: vi.fn(),
+    getApiKey: vi.fn(),
+    clearApiKey: vi.fn(),
   };
 
   return {
@@ -42,9 +39,6 @@ const {
     mockSendConversationMessage,
     mockChatCompletion,
     mockStreamRuntimeTask,
-    mockPKGet,
-    mockPKSet,
-    mockPKRemove,
   };
 });
 
@@ -54,14 +48,6 @@ vi.mock('@/lib/api', () => ({
 
 vi.mock('@/api/runtime-stream', () => ({
   streamRuntimeTask: mockStreamRuntimeTask,
-}));
-
-vi.mock('@/lib/provider-keys', () => ({
-  providerKeys: {
-    set: mockPKSet,
-    get: mockPKGet,
-    remove: mockPKRemove,
-  },
 }));
 
 let runtimeClient: any;
@@ -125,6 +111,10 @@ describe('runtimeClient', () => {
     mockApiClient.register.mockResolvedValue({ access_token: 'tok' });
     mockApiClient.logout.mockResolvedValue(undefined);
     mockApiClient.validateToken.mockResolvedValue({ valid: true, user: { id: 'user-1' } });
+    mockApiClient.setProviderApiKey.mockResolvedValue(undefined);
+    mockApiClient.storeApiKey.mockResolvedValue(undefined);
+    mockApiClient.getApiKey.mockResolvedValue('stored-key');
+    mockApiClient.clearApiKey.mockResolvedValue(undefined);
 
     await expect(
       runtimeClient.executeTask(
@@ -162,9 +152,9 @@ describe('runtimeClient', () => {
     await runtimeClient.setProviderApiKey('openai', 'key-1');
     await runtimeClient.storeApiKey('openai', 'key-2');
     await runtimeClient.clearApiKey('openai');
-    expect(mockPKSet).toHaveBeenCalledWith('openai', 'key-1');
-    expect(mockPKSet).toHaveBeenCalledWith('openai', 'key-2');
-    expect(mockPKRemove).toHaveBeenCalledWith('openai');
+    expect(mockApiClient.setProviderApiKey).toHaveBeenCalledWith('openai', 'key-1');
+    expect(mockApiClient.storeApiKey).toHaveBeenCalledWith('openai', 'key-2');
+    expect(mockApiClient.clearApiKey).toHaveBeenCalledWith('openai');
 
     await expect(runtimeClient.getHistory('docs', 5)).resolves.toEqual([{ id: 'memory-1' }]);
     await expect(runtimeClient.getStats('docs')).resolves.toEqual({ total: 1 });
@@ -172,9 +162,8 @@ describe('runtimeClient', () => {
     await expect(runtimeClient.parseOrchestration('plan this', 'docs')).resolves.toEqual({
       plan: [],
     });
-    mockPKGet.mockReturnValue('stored-key');
     await expect(runtimeClient.getApiKey('openai')).resolves.toBe('stored-key');
-    expect(mockPKGet).toHaveBeenCalledWith('openai');
+    expect(mockApiClient.getApiKey).toHaveBeenCalledWith('openai');
 
     await expect(runtimeClient.login('user@example.com', 'secret')).resolves.toEqual({
       access_token: 'tok',

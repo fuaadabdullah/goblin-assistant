@@ -54,7 +54,7 @@ def init_sentry() -> None:
         if not sentry_dsn:
             raise RuntimeError("SENTRY_DSN not configured, skipping Sentry init")
 
-        sentry_environment = os.getenv("ENVIRONMENT", "development").lower()
+        sentry_environment = os.getenv("ENVIRONMENT", "production").lower()
         default_traces_rate = 0.1 if sentry_environment == "production" else 1.0
         default_profiles_rate = 0.01 if sentry_environment == "production" else 1.0
 
@@ -112,7 +112,7 @@ def init_ddtrace() -> None:
             raise RuntimeError("DD_API_KEY not configured, skipping Datadog init")
 
         dd_service = os.getenv("DD_SERVICE", "goblin-api")
-        dd_env = os.getenv("ENVIRONMENT", "development").lower()
+        dd_env = os.getenv("ENVIRONMENT", "production").lower()
         dd_version = os.getenv("RELEASE_VERSION", "goblin-assistant@1.0.0")
 
         tracer.configure(

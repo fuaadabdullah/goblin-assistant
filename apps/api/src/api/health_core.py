@@ -177,6 +177,32 @@ async def build_health_payload(
     except Exception as e:
         security_status = {"status": "unknown", "error": str(e)}
 
+    # Rate-limiter backend status: when Redis is unreachable the limiter serves
+    # from per-process fallback counters. That keeps enforcement on, but it is
+    # not equivalent to shared enforcement — surface it so the gauge
+    # `goblin_rate_limiter_degraded` and this payload agree for alerting.
+    try:
+        from .observability.telemetry import RATE_LIMITER_DEGRADED
+
+        degraded_samples = list(RATE_LIMITER_DEGRADED.collect())
+        degraded = any(
+            sample.value > 0
+            for metric in degraded_samples
+            for sample in metric.samples
+            if sample.name == "goblin_rate_limiter_degraded"
+        )
+        rate_limiter_status: Dict[str, Any] = {
+            "status": "degraded" if degraded else "healthy",
+            "backend": "fallback" if degraded else "redis",
+        }
+        if degraded:
+            rate_limiter_status["note"] = (
+                "Redis unreachable; enforcing via in-process fallback counters "
+                "(per-process, not shared across replicas)."
+            )
+    except Exception as e:
+        rate_limiter_status = {"status": "unknown", "error": str(e)}
+
     overall_status = overall_status_from(
         [
             routing_health["status"],
@@ -186,6 +212,7 @@ async def build_health_payload(
             api_health["status"],
             provider_health["status"],
             security_status["status"],
+            rate_limiter_status["status"],
         ]
     )
 
@@ -199,6 +226,7 @@ async def build_health_payload(
             "routing": routing_health,
             "database": db_health,
             "redis": redis_health,
+            "rate_limiter": rate_limiter_status,
             "providers": provider_health,
             "security": security_status,
         },

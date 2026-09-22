@@ -6,14 +6,14 @@ vi.mock('../../components/streaming/StreamingView', () => ({
     return <div data-testid="streaming-view" />;
   },
 }));
-vi.mock('../../api', () => ({
+vi.mock('@/lib/api/runtimeClient', () => ({
   runtimeClient: {
-    parseOrchestration: vi.fn(),
+    parseOrchestration: vi.fn().mockResolvedValue({ steps: [], total_batches: 0 }),
     executeTaskStreaming: vi.fn(),
     executeTask: vi.fn(),
   },
   runtimeClientDemo: {
-    parseOrchestration: vi.fn(),
+    parseOrchestration: vi.fn().mockResolvedValue({ steps: [], total_batches: 0 }),
     executeTaskStreaming: vi.fn(),
     executeTask: vi.fn(),
   },
@@ -77,29 +77,31 @@ import GoblinDemo from '../GoblinDemo';
 describe('GoblinDemo', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('renders the demo page with orchestration input', () => {
+  it('renders the demo page with orchestration input', async () => {
     render(<GoblinDemo />);
-    expect(screen.getByTestId('template-select-label')).toBeInTheDocument();
+    expect(await screen.findByTestId('template-select-label')).toBeInTheDocument();
   });
 
-  it('renders with provider and model props', () => {
+  it('renders with provider and model props', async () => {
     render(<GoblinDemo provider="openai" model="gpt-4" />);
-    expect(screen.getByTestId('template-select-label')).toBeInTheDocument();
+    expect(await screen.findByTestId('template-select-label')).toBeInTheDocument();
   });
 
-  it('renders in demo mode', () => {
+  it('renders in demo mode', async () => {
     render(<GoblinDemo demoMode />);
-    expect(screen.getByTestId('template-select-label')).toBeInTheDocument();
+    expect(await screen.findByTestId('template-select-label')).toBeInTheDocument();
   });
 
-  it('renders code input area', () => {
+  it('renders code input area', async () => {
     const { container } = render(<GoblinDemo />);
+    await screen.findByTestId('template-select-label');
     const textareas = container.querySelectorAll('textarea');
     expect(textareas.length).toBeGreaterThan(0);
   });
 
-  it('allows typing in code input', () => {
+  it('allows typing in code input', async () => {
     const { container } = render(<GoblinDemo />);
+    await screen.findByTestId('template-select-label');
     const textareas = container.querySelectorAll('textarea');
     if (textareas.length > 0) {
       fireEvent.change(textareas[0], { target: { value: 'print("hello")' } });

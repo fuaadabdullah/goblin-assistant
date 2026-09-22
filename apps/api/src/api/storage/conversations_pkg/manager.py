@@ -18,7 +18,7 @@ class ConversationStoreManager:
         if os.getenv("DATABASE_URL"):
             return DatabaseConversationStore()
 
-        env = os.getenv("ENVIRONMENT", "development").lower()
+        env = os.getenv("ENVIRONMENT", "production").lower()
         if env in ["production", "staging"]:
             return DatabaseConversationStore()
         return InMemoryConversationStore()

@@ -1,14 +1,16 @@
+'use client';
+
 import Link from 'next/link';
 import { Input } from '../../../components/ui/input';
 
 const ChatPreviewPanel = () => {
-  const loginHref = { pathname: '/login' };
+  // String hrefs (not `{ pathname, query }` objects): deterministic SSR
+  // serialization, no hydration mismatch on locale/trailing-slash edge cases.
+  const loginHref = '/login';
   const samplePrompt =
     "Hey Goblin, can you summarize last quarter's revenue and flag anything surprising?";
-  const loginWithPrompt = (prompt: string) => ({
-    pathname: '/login',
-    query: { from: `/chat?prompt=${encodeURIComponent(prompt)}` },
-  });
+  const loginWithPrompt = (prompt: string) =>
+    `/login?from=${encodeURIComponent(`/chat?prompt=${encodeURIComponent(prompt)}`)}`;
 
   return (
     <div className="flex flex-col h-full">
@@ -21,9 +23,9 @@ const ChatPreviewPanel = () => {
               href={loginWithPrompt(samplePrompt)}
               aria-label="Sign in to continue this conversation"
             >
-              <div className="rounded-2xl px-4 py-3 bg-primary text-text-inverse shadow-glow-primary text-sm">
+              <span className="block rounded-2xl px-4 py-3 bg-primary text-text-inverse shadow-glow-primary text-sm">
                 {samplePrompt}
-              </div>
+              </span>
             </Link>
           </div>
 
@@ -33,9 +35,9 @@ const ChatPreviewPanel = () => {
               href={loginWithPrompt(samplePrompt)}
               aria-label="Sign in to continue this conversation"
             >
-              <div className="rounded-2xl px-4 py-3 bg-surface text-text border border-border shadow-card text-sm">
+              <span className="block rounded-2xl px-4 py-3 bg-surface text-text border border-border shadow-card text-sm">
                 Sure — here's a quick summary: revenue up 12% YoY, gross margin improved by 3 pts.
-              </div>
+              </span>
             </Link>
           </div>
 
@@ -82,7 +84,7 @@ const ChatPreviewPanel = () => {
             Sign in to Goblin →
           </Link>
           <Link
-            href={{ pathname: '/login', query: { mode: 'register' } }}
+            href="/login?mode=register"
             className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-primary text-primary font-medium"
           >
             Create account

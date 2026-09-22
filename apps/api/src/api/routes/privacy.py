@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/privacy", tags=["privacy", "gdpr", "ccpa"])
 
 _VECTOR_STORE_DEFAULT = (
-    "false" if os.getenv("ENVIRONMENT", "development").lower() == "production" else "true"
+    "false" if os.getenv("ENVIRONMENT", "production").lower() == "production" else "true"
 )
 VECTOR_STORE_AVAILABLE = (
     os.getenv("ENABLE_VECTOR_STORE", _VECTOR_STORE_DEFAULT).strip().lower()

@@ -5,7 +5,7 @@ Legacy auth compatibility is removed for the v0.x -> v1.0 cutoff.
 """
 
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, cast
 
 from sqlalchemy import select, update
@@ -47,6 +47,10 @@ async def _db_create_session(
     skip_commit: bool = False,
 ) -> None:
     """Persist a new session to the database."""
+    if expires_at is None:
+        expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(
+            seconds=REFRESH_MAX_AGE
+        )
     record = UserSessionModel(
         session_id=session_id,
         user_id=user_id,
@@ -84,7 +88,57 @@ async def _db_is_session_valid(session_id: str, db: AsyncSession) -> bool:
         {"user_id": record.user_id, "revoked": bool(record.is_revoked)},
         expire=_record_ttl_seconds(record),
     )
+    if record.expires_at is not None:
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        if record.expires_at <= now:
+            return False
     return not record.is_revoked
+
+
+async def _db_rotate_session(
+    session_id: str,
+    user_id: str,
+    db: AsyncSession,
+) -> Optional[str]:
+    """Consume one session and return its replacement within the same deadline."""
+    result = await db.execute(
+        select(UserSessionModel)
+        .where(
+            UserSessionModel.session_id == session_id,
+            UserSessionModel.user_id == user_id,
+        )
+        .with_for_update()
+    )
+    record = cast(Any, result.scalar_one_or_none())
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    if (
+        record is None
+        or record.is_revoked
+        or (record.expires_at is not None and record.expires_at <= now)
+    ):
+        return None
+
+    replacement_id = create_session_id(user_id)
+    record.is_revoked = True
+    db.add(
+        UserSessionModel(
+            session_id=replacement_id,
+            user_id=user_id,
+            is_revoked=False,
+            created_at=now,
+            expires_at=record.expires_at,
+        )
+    )
+    await db.commit()
+
+    ttl = _session_ttl_seconds(record.expires_at)
+    await cache.set(_session_cache_key(session_id), {"revoked": True}, expire=ttl)
+    await cache.set(
+        _session_cache_key(replacement_id),
+        {"user_id": user_id, "revoked": False},
+        expire=ttl,
+    )
+    return replacement_id
 
 
 async def _db_revoke_session(session_id: str, db: AsyncSession) -> bool:

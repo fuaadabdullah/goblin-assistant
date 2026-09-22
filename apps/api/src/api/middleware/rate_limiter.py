@@ -1,6 +1,8 @@
 """Rate limiting middleware for Goblin Assistant API."""
 
 import asyncio
+import ipaddress
+import os
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -12,6 +14,48 @@ from fastapi.responses import JSONResponse
 from ..core.contracts import ApiErrorPayload, ErrorEnvelope
 from ..core.error_types import ErrorType
 from ..core.redis_client import get_redis_client
+from ..observability.telemetry import set_rate_limiter_degraded
+
+
+def _trusted_proxy_networks() -> list[Any]:
+    raw = os.getenv("TRUSTED_PROXY_CIDRS", "")
+    networks: list[Any] = []
+    for item in raw.split(","):
+        value = item.strip()
+        if not value:
+            continue
+        try:
+            networks.append(ipaddress.ip_network(value, strict=False))
+        except ValueError:
+            continue
+    return networks
+
+
+def _is_trusted_proxy(host: str | None) -> bool:
+    if not host:
+        return False
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return any(ip in network for network in _trusted_proxy_networks())
+
+
+def _client_ip_from_request(request: Request) -> str:
+    peer_ip = request.client.host if request.client else "unknown"
+    if not _is_trusted_proxy(peer_ip):
+        return peer_ip
+
+    forwarded = request.headers.get("X-Forwarded-For")
+    if not forwarded:
+        return peer_ip
+
+    candidate = forwarded.split(",")[0].strip()
+    try:
+        ipaddress.ip_address(candidate)
+    except ValueError:
+        return peer_ip
+    return candidate
 
 
 class RateLimiter:
@@ -21,9 +65,14 @@ class RateLimiter:
         self,
         requests_per_minute: int = 100,
         requests_per_hour: int = 1000,
+        environment: str | None = None,
     ):
         self.requests_per_minute = requests_per_minute
         self.requests_per_hour = requests_per_hour
+        self.environment = str(
+            environment if environment is not None else os.getenv("ENVIRONMENT", "development")
+        ).lower()
+        self._backend_degraded = False
         self._fallback_counts: dict[str, tuple[int, float]] = {}
         self._fallback_lock = asyncio.Lock()
 
@@ -34,16 +83,28 @@ class RateLimiter:
         if user_id:
             return f"user:{user_id}"
 
-        # Fall back to IP address
-        forwarded = request.headers.get("X-Forwarded-For")
-        if forwarded:
-            ip = forwarded.split(",")[0].strip()
-        else:
-            ip = request.client.host if request.client else "unknown"
+        ip = _client_ip_from_request(request)
 
         return f"ip:{ip}"
 
     async def _check_rate_limit_fallback(self, client_id: str, now: datetime) -> dict[str, Any]:
+        # Redis is unreachable: fall back to in-process counters so a backend
+        # outage cannot silently disable rate limiting. The fallback is
+        # per-process (not shared across replicas), and we mark the limiter as
+        # degraded so /api/v1/ops health consumers can alert on it.
+        if not self._backend_degraded:
+            self._backend_degraded = True
+            try:
+                set_rate_limiter_degraded(degraded=True)
+            except Exception:  # pragma: no cover - metrics must never break limiting
+                pass
+            import structlog as _structlog
+
+            _structlog.get_logger().warning(
+                "Rate limiter backend unavailable; using in-process fallback",
+                environment=self.environment,
+                severity="security_warning" if self.environment == "production" else "warning",
+            )
         now_ts = time.time()
         minute_window_end = now_ts + (60 - now.second)
         hour_window_end = now_ts + ((60 - now.minute) * 60 - now.second)
@@ -138,6 +199,11 @@ class RateLimiter:
             }
         except Exception:
             return await self._check_rate_limit_fallback(client_id, now)
+
+    @property
+    def backend_degraded(self) -> bool:
+        """Whether the Redis backend has failed over to in-process counters."""
+        return self._backend_degraded
 
     async def __call__(self, request: Request, call_next):
         """Middleware handler."""

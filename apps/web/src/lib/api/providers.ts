@@ -1,7 +1,10 @@
 import {
   ProviderUpdatePayload,
+  deleteBackend,
+  getBackend,
   getFrontend,
   patchFrontend,
+  postBackend,
   postFrontend,
   putFrontend,
 } from './shared';
@@ -18,6 +21,12 @@ type ModelRegistryItem = {
 
 type ProviderRegistryItem = {
   id?: string;
+};
+
+type ProviderApiKeyResponse = {
+  key?: string | null;
+  provider: string;
+  configured?: boolean;
 };
 
 type ModelRegistryResponse = {
@@ -155,6 +164,25 @@ export const providersMethods = {
 
   async testProviderWithPrompt(providerId: number | string, prompt: string) {
     return postFrontend(`/api/providers/${providerId}/test-prompt`, { prompt });
+  },
+
+  async setProviderApiKey(provider: string, key: string): Promise<void> {
+    await postBackend(`/api/v1/api-keys/${encodeURIComponent(provider)}`, { key });
+  },
+
+  async storeApiKey(provider: string, key: string): Promise<void> {
+    await providersMethods.setProviderApiKey(provider, key);
+  },
+
+  async getApiKey(provider: string): Promise<string | null> {
+    const response = await getBackend<ProviderApiKeyResponse>(
+      `/api/v1/api-keys/${encodeURIComponent(provider)}`
+    );
+    return response.configured || response.key ? (response.key ?? 'configured') : null;
+  },
+
+  async clearApiKey(provider: string): Promise<void> {
+    await deleteBackend(`/api/v1/api-keys/${encodeURIComponent(provider)}`);
   },
 
   async getProviders(): Promise<string[]> {

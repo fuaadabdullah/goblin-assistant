@@ -14,5 +14,7 @@ def pytest_configure(config):
     absent, so we must set a dummy before pytest imports any test file that
     does 'from api.main import app' at module level.
     """
+    os.environ.setdefault("ENVIRONMENT", "test")
+    os.environ.setdefault("OPS_ALLOWED_ENVIRONMENTS", "development,staging,test")
     os.environ.setdefault("JWT_SECRET_KEY", "test-secret-pytest-only-not-for-production")
     os.environ.setdefault("RATE_LIMIT_ENABLED", "false")

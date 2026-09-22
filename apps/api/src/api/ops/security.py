@@ -23,7 +23,7 @@ class OpsSecurityConfig:
     """Security configuration for operational endpoints"""
 
     # Environment-based access control
-    ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
+    ENVIRONMENT = os.getenv("ENVIRONMENT", "production").lower()
     OPS_READ_ONLY = os.getenv("OPS_READ_ONLY", "true").lower() == "true"
     OPS_ALLOWED_ENVIRONMENTS = os.getenv("OPS_ALLOWED_ENVIRONMENTS", "development,staging").split(
         ","
@@ -47,6 +47,7 @@ class OpsSecurityConfig:
     # Allowed operations per environment
     ENVIRONMENT_PERMISSIONS = {
         "development": ["read", "write", "reset", "debug"],
+        "test": ["read", "write", "reset", "debug"],
         "staging": ["read", "write", "reset"],
         "production": ["read"],  # Production is read-only by default
     }

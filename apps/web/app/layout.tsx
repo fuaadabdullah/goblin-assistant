@@ -16,7 +16,15 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
   themeColor: '#161008',
+  // Without viewportFit=cover every `env(safe-area-inset-*)` in the app resolves
+  // to 0 on iOS, so the home indicator overlaps fixed UI (e.g. the chat composer).
+  viewportFit: 'cover',
+  // On-screen keyboard shrinks the layout viewport (Chromium/Android) so pinned
+  // composers stay visible. iOS ignores this — see useVisualViewportHeight.
+  interactiveWidget: 'resizes-content',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

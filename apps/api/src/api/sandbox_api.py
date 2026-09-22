@@ -4,13 +4,14 @@ Provides endpoints for submitting, monitoring, and managing sandbox jobs.
 """
 
 import asyncio
+import hmac
 import os
 import uuid
 from datetime import datetime
 from typing import Any, Optional
 
 import structlog
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
 from .artifact_service import artifact_service  # noqa: F401 — re-exported for tests
@@ -70,17 +71,42 @@ def _path_exists(path: str) -> bool:
 
 def require_api_key(x_api_key: str = Header(default="")) -> None:
     """Validate the X-Api-Key header. Defined here so tests can patch module-level API_KEY."""
-    if SANDBOX_ENABLED and os.getenv("ENVIRONMENT", "development") == "development":
-        return
-    # Use the module-level binding so tests can override via patch.object(sandbox_api, "API_KEY", …)
-    # without the env-var re-read shadowing the patched value.
-    if not API_KEY:
+    # Read the key from the live sandbox_config module at call time so
+    # monkeypatch.setattr("api.sandbox_config.API_KEY", …) is honored, while
+    # tests that patch the mounted route function's own globals
+    # (monkeypatch.setitem(route.endpoint.__globals__, "API_KEY", …)) also win.
+    import inspect as _inspect
+
+    from . import sandbox_config as _sandbox_config
+
+    api_key = _sandbox_config.API_KEY or API_KEY
+    frame = _inspect.currentframe()
+    try:
+        caller_globals = frame.f_back.f_globals if frame and frame.f_back else None
+        if caller_globals is not None and caller_globals.get("API_KEY"):
+            api_key = caller_globals["API_KEY"]
+    finally:
+        del frame
+    if not api_key:
         raise HTTPException(
             status_code=500,
             detail="sandbox API key is not configured (set API_AUTH_KEY)",
         )
-    if x_api_key != API_KEY:
+    if not hmac.compare_digest(x_api_key, api_key):
         raise HTTPException(status_code=403, detail="unauthorized")
+
+
+async def _enforce_sandbox_rate_limit(request: Request) -> None:
+    result = await sandbox_rate_limiter.check_rate_limit(request)
+    if not result["allowed"]:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "message": "Rate limit exceeded",
+                "limit_type": result["limit_type"],
+                "reset_at": result["reset_at"],
+            },
+        )
 
 
 router = APIRouter(prefix="/sandbox", tags=["sandbox"])
@@ -89,8 +115,8 @@ router = APIRouter(prefix="/sandbox", tags=["sandbox"])
 @router.post("/submit", response_model=SuccessEnvelope[SubmitJobResponse])
 async def submit_job(
     req: SubmitJobRequest,
+    request: Request,
     x_api_key: str = Header(default=""),
-    request: Any = None,
 ) -> SuccessEnvelope[SubmitJobResponse]:
     """Submit a job for sandbox execution"""
 
@@ -99,8 +125,7 @@ async def submit_job(
 
     require_api_key(x_api_key)
 
-    if request:
-        await sandbox_rate_limiter.__call__(request)
+    await _enforce_sandbox_rate_limit(request)
 
     if not req.source or len(req.source.strip()) == 0:
         raise HTTPException(status_code=400, detail="source code is required")
@@ -201,9 +226,6 @@ async def get_job_status_alias(
     job_id: str, x_api_key: str = Header(default="")
 ) -> SuccessEnvelope[JobStatus]:
     """Legacy alias for `/status/{job_id}` used by public contract tests."""
-    job_data = await _run_blocking(r.hgetall, f"sandbox:job:{job_id}")
-    if not job_data:
-        raise HTTPException(status_code=404, detail="job not found")
     return await get_job_status(job_id, x_api_key)
 
 
@@ -405,10 +427,11 @@ async def sandbox_health_legacy() -> SuccessEnvelope[SandboxHealthResponse]:
 @router.post("/run", response_model=SuccessEnvelope[SubmitJobResponse])
 async def run_sandbox_code(
     req: SubmitJobRequest,
+    request: Request,
     x_api_key: str = Header(default=""),
 ) -> SuccessEnvelope[SubmitJobResponse]:
     """Alias for /submit - Execute code in sandbox"""
-    return await submit_job(req, x_api_key)
+    return await submit_job(req, request, x_api_key)
 
 
 @router.get("/jobs", response_model=SuccessEnvelope[SandboxJobsResponse])
@@ -421,9 +444,7 @@ async def list_sandbox_jobs(
     if not SANDBOX_ENABLED:
         raise HTTPException(status_code=503, detail="sandbox service is disabled")
 
-    if x_api_key and x_api_key != API_KEY:
-        if os.getenv("ENVIRONMENT", "development") != "development":
-            raise HTTPException(status_code=401, detail="Unauthorized")
+    require_api_key(x_api_key)
 
     jobs: list[SandboxJobSummary] = []
     try:
@@ -455,9 +476,7 @@ async def get_job_logs_alias(
     if not SANDBOX_ENABLED:
         raise HTTPException(status_code=503, detail="sandbox service is disabled")
 
-    if x_api_key and x_api_key != API_KEY:
-        if os.getenv("ENVIRONMENT", "development") != "development":
-            raise HTTPException(status_code=401, detail="Unauthorized")
+    require_api_key(x_api_key)
 
     return await get_job_logs(job_id, x_api_key)
 
