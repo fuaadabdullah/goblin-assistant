@@ -12,7 +12,6 @@ from typing import Any, Optional
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
 
 from ..auth.router import User as AuthenticatedUser
 from ..auth.router import get_current_user
@@ -22,6 +21,7 @@ from ..core.contracts import ChatMessageCreatedPayload
 from ..observability.events import event_emitter
 from ..storage.tasks import get_task_store
 from ..storage.usage_events import get_usage_event_store
+from ..sse_transport import event_source_response
 from . import _runtime as _cr
 from .archiving import schedule_conversation_archive
 from .chat_router_support import _format_sse_event
@@ -545,7 +545,7 @@ async def stream_chat(
 ):
     """Stream chat response using Server-Sent Events."""
     try:
-        return StreamingResponse(
+        return event_source_response(
             generate_chat_stream(
                 message=request.message,
                 conversation_id=request.conversation_id,
@@ -556,10 +556,7 @@ async def stream_chat(
                 mode=request.mode,
                 glossary=request.glossary,
             ),
-            media_type="text/event-stream",
             headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Headers": "Cache-Control",
             },
