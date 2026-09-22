@@ -696,6 +696,7 @@
         "code"
       ],
       "models": [
+        "goblin-core",
         "gemini-2.5-flash",
         "gemini-2.0-flash",
         "gemini-2.0-flash-lite",
@@ -708,10 +709,10 @@
       "cost_output_per1k": 0.0,
       "costs": {},
       "rate_limits": {},
-      "default_timeout_ms": 60000,
+      "default_timeout_ms": 180000,
       "rate_limit_per_min": 120,
       "display_name": "GCP Self-Hosted",
-      "is_active": false
+      "is_active": true
     },
     "mock": {
       "endpoint": "mock://localhost",

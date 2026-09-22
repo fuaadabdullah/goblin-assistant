@@ -19,6 +19,7 @@ async def test_gcp_vm_vertex_default_model_routes_real_provider(monkeypatch) -> 
     monkeypatch.delenv("OLLAMA_GCP_ENDPOINT", raising=False)
     monkeypatch.delenv("OLLAMA_GCP_URL", raising=False)
     monkeypatch.delenv("LLAMACPP_GCP_ENDPOINT", raising=False)
+    monkeypatch.delenv("LLAMACPP_ORACLE_ENDPOINT", raising=False)
     monkeypatch.delenv("COLAB_WORKER_ENDPOINT", raising=False)
     monkeypatch.delenv("COLAB_WORKER_API_KEY", raising=False)
     monkeypatch.setenv("VERTEX_AI_PROJECT", "goblin-assistant-489711")
@@ -35,10 +36,8 @@ async def test_gcp_vm_vertex_default_model_routes_real_provider(monkeypatch) -> 
     dispatcher = ProviderDispatcher(configs={"gcp_vm": gcp_vm_cfg})
 
     assert dispatcher.is_configured("gcp_vm")
-    # gcp_vm is intentionally hidden + inactive in config/providers.toml since
-    # its preemptible VM backends were terminated (2026-01-11) — it's kept
-    # configured for direct/explicit dispatch (this test), just excluded from
-    # default visible listings. include_hidden=True reflects that.
+    # gcp_vm is hidden in config/providers.toml, so it's excluded from default
+    # visible listings. include_hidden=True reflects that.
     assert dispatcher.provider_ids(include_hidden=True) == ["gcp_vm"]
     assert gcp_vm_cfg["default_model"] == "gemini-2.5-flash"
 
