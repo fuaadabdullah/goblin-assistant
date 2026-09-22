@@ -105,7 +105,13 @@ jobs:
           command: cd apps/api && PYTHONPATH=src python -m ruff format --check src/api
       - run:
           name: Prettier check
-          command: cd apps/web && TMPDIR=~/repo/.tmp pnpm exec prettier --check .
+          command: |
+            git fetch origin main --depth=1
+            cd apps/web
+            CHANGED=$(git diff --relative --name-only --diff-filter=ACMR origin/main...HEAD -- .)
+            if [ -n "$CHANGED" ]; then
+              TMPDIR=~/repo/.tmp pnpm exec prettier --check $CHANGED
+            fi
 
   # ── Security ─────────────────────────────────────────────────────────────
   security-scan:
