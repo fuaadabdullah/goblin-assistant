@@ -112,6 +112,17 @@ class GoogleCloudSelfhostedProvider(BaseProvider):
     def warmup_targets(self) -> list[tuple[str, BaseProvider]]:
         return [(backend.provider_id, backend) for backend in self._backends]
 
+    def invoke_timeout_ms(self) -> Optional[int]:
+        """Slowest declared backend timeout: the aggregate invoke fans out to
+        backends in priority order, so the outer deadline must accommodate the
+        slowest backend's declared patience."""
+        declared = [backend.invoke_timeout_ms() for backend in self._backends]
+        declared = [ms for ms in declared if ms]
+        own = super().invoke_timeout_ms()
+        if own:
+            declared.append(own)
+        return max(declared) if declared else None
+
     async def invoke(
         self,
         messages: Optional[List[Dict[str, str]]] = None,

@@ -346,6 +346,26 @@ class ProviderDispatcher:
     def _ensure_provider(self, provider_id: str) -> Optional[ProviderAdapter]:
         return _ensure_provider_fn(self, provider_id, canonical_provider_id, logger)
 
+    def provider_invoke_timeout_ms(self, provider_id: str) -> Optional[int]:
+        """A provider's declared invoke patience in milliseconds, or None when
+        the provider is unknown or declares no timeout.
+
+        Uses getattr defensively: not every ProviderAdapter is a BaseProvider.
+        """
+        try:
+            provider = self._ensure_provider(provider_id)
+        except Exception:
+            return None
+        if provider is None:
+            return None
+        accessor = getattr(provider, "invoke_timeout_ms", None)
+        if not callable(accessor):
+            return None
+        try:
+            return accessor()
+        except Exception:
+            return None
+
     def _canonical_provider_id(self, provider_id: str) -> Optional[str]:
         return canonical_provider_id(provider_id)
 

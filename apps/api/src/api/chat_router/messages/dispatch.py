@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 import structlog
 
 from ...assistant_tools.executor import extract_tool_calls_contract, run_tool_loop
+from ...providers.dispatcher import dispatcher as _provider_dispatcher
 from .. import _runtime as _cr
 from .rovo_task import create_rovo_task, update_rovo_task
 from .stages import resolve_provider_call
@@ -12,6 +13,24 @@ from .stages import resolve_provider_call
 logger = structlog.get_logger()
 
 PROVIDER_TIMEOUT_MS = 30000
+
+
+def _timeout_for_provider(provider_id: str) -> int:
+    """Effective dispatch timeout for one provider.
+
+    The provider's declared invoke timeout (e.g. ``invoke_timeout_s`` in
+    providers.toml) is its own patience for slow generations; the outer
+    dispatcher deadline must not be shorter, or the provider is cancelled
+    before its own timeout can take effect. Falls back to the default chat
+    timeout when the provider is unknown or declares none.
+    """
+    try:
+        declared_ms = _provider_dispatcher.provider_invoke_timeout_ms(provider_id)
+    except Exception:
+        declared_ms = None
+    if declared_ms:
+        return max(PROVIDER_TIMEOUT_MS, declared_ms)
+    return PROVIDER_TIMEOUT_MS
 
 
 async def dispatch_with_fallback(
@@ -48,7 +67,7 @@ async def dispatch_with_fallback(
             pid=resolved_provider,
             model=model,
             payload=payload,
-            timeout_ms=PROVIDER_TIMEOUT_MS,
+            timeout_ms=_timeout_for_provider(resolved_provider),
             stream=False,
         )
     )
@@ -79,7 +98,7 @@ async def dispatch_with_fallback(
                     pid=fallback_pid,
                     model=None,
                     payload=fallback_payload,
-                    timeout_ms=PROVIDER_TIMEOUT_MS,
+                    timeout_ms=_timeout_for_provider(fallback_pid),
                     stream=False,
                 )
             )
@@ -104,7 +123,7 @@ async def dispatch_with_fallback(
             provider=resolved_provider,
             model=model,
             tools=registered_tools,
-            timeout_ms=PROVIDER_TIMEOUT_MS,
+            timeout_ms=_timeout_for_provider(resolved_provider),
             user_id=user_id,
             conversation_id=conversation_id,
         )

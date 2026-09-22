@@ -292,6 +292,21 @@ class BaseProvider(ABC):
     def default_model(self) -> str:
         return str(self.config.get("default_model", ""))
 
+    def invoke_timeout_ms(self) -> Optional[int]:
+        """Provider-declared patience for a single invoke, in milliseconds.
+
+        Dispatch layers must not impose a shorter outer deadline than this,
+        otherwise slow providers are cancelled before their own timeout
+        (e.g. their HTTP client timeout) can take effect. Returns None when
+        the provider declares no timeout.
+        """
+        raw = self.config.get("invoke_timeout_s")
+        try:
+            seconds = float(raw) if raw is not None else 0.0
+        except (TypeError, ValueError):
+            return None
+        return int(seconds * 1000) if seconds > 0 else None
+
     @property
     def circuit_state(self) -> str:
         return self._circuit_state.value
