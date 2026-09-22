@@ -108,7 +108,7 @@ jobs:
           command: |
             git fetch origin main --depth=1
             cd apps/web
-            CHANGED=$(git diff --relative --name-only --diff-filter=ACMR origin/main...HEAD -- .)
+            CHANGED=$(git diff --relative --name-only --diff-filter=ACMR origin/main...HEAD -- . | grep -v '^next-env\.d\.ts$' || true)
             if [ -n "$CHANGED" ]; then
               TMPDIR=~/repo/.tmp pnpm exec prettier --check $CHANGED
             fi
