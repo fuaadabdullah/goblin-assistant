@@ -1,0 +1,24 @@
+{
+  "commands": [
+    {
+      "name": "api-focused",
+      "run": "cd apps/api && python -m pytest src/api/tests/test_ollama_provider.py src/api/tests/test_background_task_retries.py -q",
+      "timeout": 300
+    },
+    {
+      "name": "lint",
+      "run": "make lint",
+      "timeout": 600
+    },
+    {
+      "name": "type-check",
+      "run": "make type-check",
+      "timeout": 600
+    },
+    {
+      "name": "api-tests",
+      "run": "make test-api",
+      "timeout": 1200
+    }
+  ]
+}
