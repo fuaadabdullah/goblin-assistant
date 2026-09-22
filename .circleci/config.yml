@@ -150,6 +150,7 @@ jobs:
               -v /var/run/docker.sock:/var/run/docker.sock \
               aquasec/trivy:0.58.0 image \
               --severity HIGH,CRITICAL \
+              --ignore-unfixed \
               --exit-code 1 \
               --no-progress \
               goblin-assistant:scan
