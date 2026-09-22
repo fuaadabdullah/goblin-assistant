@@ -8,12 +8,20 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
+from tenacity import AsyncRetrying, retry_if_exception, stop_after_attempt, wait_random_exponential
+
+from ..providers.base import ProviderErrorCategory
 from ..providers.dispatcher import invoke_provider
+from ..providers.retry import is_retryable_provider_exception
 from ..storage.conversations import conversation_store
 from ..storage.database import get_db_context, get_readonly_db_context
 from .retrieval_service import retrieval_service as _retrieval_singleton
 
 logger = logging.getLogger(__name__)
+
+
+class _RetryableSummaryError(RuntimeError):
+    """Internal marker for transient summary-generation failures."""
 
 
 class BackgroundTaskManager:
@@ -256,40 +264,71 @@ Working Memory Summary:"""
     async def _generate_summary_with_retry(
         self, prompt: str, max_retries: int = 3
     ) -> Optional[str]:
-        """Generate summary with retry logic"""
+        """Generate a summary, retrying only transient provider failures."""
+        payload = {
+            "messages": [{"role": "user", "content": prompt}],
+            "model": "gpt-3.5-turbo",
+            "max_tokens": 400,
+            "temperature": 0.3,
+        }
+        retryable_categories = {
+            ProviderErrorCategory.RATE_LIMIT.value,
+            ProviderErrorCategory.TIMEOUT.value,
+            ProviderErrorCategory.SERVER_ERROR.value,
+            ProviderErrorCategory.CONNECTION.value,
+        }
 
-        for attempt in range(max_retries):
-            try:
-                payload = {
-                    "messages": [{"role": "user", "content": prompt}],
-                    "model": "gpt-3.5-turbo",
-                    "max_tokens": 400,
-                    "temperature": 0.3,
-                }
+        retrying = AsyncRetrying(
+            stop=stop_after_attempt(max(1, max_retries)),
+            wait=wait_random_exponential(multiplier=0.25, max=4.0),
+            retry=retry_if_exception(
+                lambda exc: isinstance(exc, _RetryableSummaryError)
+                or is_retryable_provider_exception(exc)
+            ),
+            reraise=True,
+        )
 
-                provider_response = await invoke_provider(
-                    pid=None,
-                    model="gpt-3.5-turbo",
-                    payload=payload,
-                    timeout_ms=30000,
-                    stream=False,
-                )
-
-                if isinstance(provider_response, dict) and provider_response.get("ok"):
-                    return provider_response["result"]["text"]
-                else:
-                    logger.warning(
-                        "Summary generation attempt %s failed: %s", attempt + 1, provider_response
+        try:
+            async for attempt in retrying:
+                with attempt:
+                    provider_response = await invoke_provider(
+                        pid=None,
+                        model="gpt-3.5-turbo",
+                        payload=payload,
+                        timeout_ms=30000,
+                        stream=False,
                     )
 
-            except Exception as e:
-                logger.warning("Summary generation attempt %s error: %s", attempt + 1, e)
+                    if isinstance(provider_response, dict) and provider_response.get("ok"):
+                        return provider_response["result"]["text"]
 
-            # Wait before retry (exponential backoff)
-            if attempt < max_retries - 1:
-                await asyncio.sleep(2**attempt)
+                    category = ""
+                    if isinstance(provider_response, dict):
+                        category = str(provider_response.get("error_category") or "")
 
-        logger.error("All summary generation attempts failed")
+                    attempt_number = attempt.retry_state.attempt_number
+                    logger.warning(
+                        "Summary generation attempt %s failed: %s",
+                        attempt_number,
+                        provider_response,
+                    )
+                    if category in retryable_categories:
+                        raise _RetryableSummaryError(
+                            f"transient provider failure ({category or 'unknown'})"
+                        )
+
+                    logger.error(
+                        "Summary generation failed with non-retryable provider error category=%s",
+                        category or "unknown",
+                    )
+                    return None
+        except Exception as exc:
+            if isinstance(exc, _RetryableSummaryError) or is_retryable_provider_exception(exc):
+                logger.error("All summary generation attempts failed: %s", exc)
+                return None
+            logger.warning("Summary generation failed without retry: %s", exc)
+            return None
+
         return None
 
     async def _cleanup_old_embeddings(self):
