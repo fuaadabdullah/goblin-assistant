@@ -6,14 +6,6 @@
 # them, so the assertions are about observed behaviour rather than a
 # re-implementation of the regexes.
 #
-# The case that matters most is "ignores synthetic merge commits". On a
-# pull_request event actions/checkout checks out refs/pull/N/merge, a merge
-# commit GitHub creates between the PR head and the base, whose subject is
-# always "Merge <sha> into <sha>". That subject cannot satisfy a
-# conventional-commit regex, so before --no-merges the policy job failed on
-# every pull request ever opened against this repo. If someone later
-# "tidies up" that flag, this file is what stops it shipping.
-#
 #   bash tooling/automation/tests/test-ci-policy-check.sh
 
 set -uo pipefail
@@ -31,9 +23,7 @@ trap 'rm -rf "$WORK"' EXIT
 
 # The checker ends by invoking `python3 check-structure-policy.py`. These
 # tests are about branch and commit-subject rules, so shim python3 to a
-# no-op and put it first on PATH. That also keeps the suite hermetic on
-# Windows, where a bare `python3` hits the Microsoft Store alias stub and
-# exits 49 regardless of what the policy check decided.
+# no-op and put it first on PATH.
 SHIM="$WORK/bin"
 mkdir -p "$SHIM"
 printf '#!/usr/bin/env bash\nexit 0\n' > "$SHIM/python3"
@@ -44,10 +34,10 @@ PASS=0
 FAIL=0
 
 # ---------------------------------------------------------------------------
-# Build a repo with a real origin, so the script's `git fetch origin <base>`
-# behaves the way it does in CI.
+# Build a repo with a real origin, so the script's fetch behaviour matches CI.
 #
 # $1 destination, $2.. commit subjects to place on the feature branch.
+# BASE_SUBJECT may override the base commit subject for regression cases.
 # ---------------------------------------------------------------------------
 make_repo() {
   local dir="$1"; shift
@@ -64,15 +54,13 @@ make_repo() {
     git config commit.gpgsign false
     git config core.autocrlf false
 
-    # The checker shells out to the structure policy at the end; stub it so
-    # these tests stay focused on branch and commit-subject rules.
     mkdir -p tooling/automation
     cp "$SCRIPT" tooling/automation/ci-policy-check.sh
     printf 'import sys\nsys.exit(0)\n' > tooling/automation/check-structure-policy.py
 
     echo base > file.txt
     git add -A
-    git commit --quiet -m "chore: base commit"
+    git commit --quiet -m "${BASE_SUBJECT:-chore: base commit}"
 
     git remote add origin "$upstream"
     git push --quiet origin main
@@ -90,7 +78,6 @@ make_repo() {
   echo "$work"
 }
 
-# Run the checker as GitHub Actions would for a pull_request.
 run_as_pr() {
   local work="$1" branch="$2"
   (
@@ -135,8 +122,6 @@ else
 fi
 
 # --- 3. synthetic merge commits are ignored --------------------------------
-# Reproduces refs/pull/N/merge: check out the base and merge the PR head with
-# GitHub's generated subject, then run the checker from that detached commit.
 work="$(make_repo "$WORK/merge" "feat(nodes): add a thing")"
 (
   cd "$work"
@@ -156,7 +141,26 @@ else
   PASS=$((PASS + 1))
 fi
 
-# --- 4. branch naming is still enforced ------------------------------------
+# --- 4. shallow PR checkout excludes base-only commit subjects --------------
+BASE_SUBJECT="merge: base commit outside pull request" \
+  work="$(make_repo "$WORK/shallow-source" "fix(api): valid pull request commit")"
+(
+  cd "$work"
+  git push --quiet origin feature/example
+)
+git clone --quiet --depth=1 --branch feature/example \
+  "file://$WORK/shallow-source/upstream" "$WORK/shallow-checkout"
+out="$(run_as_pr "$WORK/shallow-checkout" feature/example)"; rc=$?
+assert "excludes base-only subjects in shallow PR checkout" 0 "$rc" "$out"
+if [[ "$out" == *"merge: base commit outside pull request"* ]]; then
+  echo "  FAIL  base-only subject must not be evaluated"
+  FAIL=$((FAIL + 1))
+else
+  echo "  PASS  base-only subject is not evaluated"
+  PASS=$((PASS + 1))
+fi
+
+# --- 5. branch naming is still enforced ------------------------------------
 work="$(make_repo "$WORK/branch" "feat(nodes): add a thing")"
 (cd "$work" && git branch --quiet -m feature/example feat/example)
 out="$(run_as_pr "$work" feat/example)"; rc=$?
