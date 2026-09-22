@@ -332,6 +332,76 @@ class TestResolveModel:
         assert model == "default"
 
 
+class TestAuthHeaders:
+    def test_no_auth_header_without_key(self, monkeypatch):
+        monkeypatch.delenv("LLAMACPP_TEST_KEY", raising=False)
+        provider = LlamaCPPProvider(
+            "llamacpp",
+            {"endpoint": "http://llama.test:8081", "api_key_env": "LLAMACPP_TEST_KEY"},
+        )
+        assert "Authorization" not in provider._headers()
+
+    @pytest.mark.asyncio
+    async def test_bearer_key_sent_on_invoke(self, monkeypatch):
+        monkeypatch.setenv("LLAMACPP_TEST_KEY", "sekret")
+        provider = LlamaCPPProvider(
+            "llamacpp",
+            {
+                "endpoint": "http://llama.test:8081",
+                "api_key_env": "LLAMACPP_TEST_KEY",
+                "default_model": "goblin-core",
+            },
+        )
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = _chat_response("hi", model="goblin-core")
+        mock_resp.raise_for_status = MagicMock()
+
+        with patch("httpx.AsyncClient") as MockClient:
+            instance = AsyncMock()
+            instance.post = AsyncMock(return_value=mock_resp)
+            instance.__aenter__ = AsyncMock(return_value=instance)
+            instance.__aexit__ = AsyncMock(return_value=False)
+            MockClient.return_value = instance
+
+            result = await provider.invoke(prompt="hello")
+
+        assert result.ok is True
+        sent_headers = instance.post.call_args.kwargs["headers"]
+        assert sent_headers["Authorization"] == "Bearer sekret"
+
+
+class TestAvailability:
+    def test_unavailable_without_endpoint(self, monkeypatch):
+        monkeypatch.delenv("LLAMACPP_TEST_ENDPOINT", raising=False)
+        provider = LlamaCPPProvider("llamacpp", {"endpoint_env": "LLAMACPP_TEST_ENDPOINT"})
+        assert provider.is_available() is False
+
+    def test_available_with_endpoint_env(self, monkeypatch):
+        monkeypatch.setenv("LLAMACPP_TEST_ENDPOINT", "http://100.64.0.1:8081")
+        provider = LlamaCPPProvider("llamacpp", {"endpoint_env": "LLAMACPP_TEST_ENDPOINT"})
+        assert provider.is_available() is True
+
+
+class TestProxy:
+    def test_proxy_from_env(self, monkeypatch):
+        monkeypatch.setenv("LLAMACPP_TEST_PROXY", "http://localhost:1055")
+        provider = LlamaCPPProvider(
+            "llamacpp",
+            {"endpoint": "http://100.64.0.1:8081", "proxy_env": "LLAMACPP_TEST_PROXY"},
+        )
+        with patch("httpx.AsyncClient") as MockClient:
+            provider._http_client(timeout=5)
+        MockClient.assert_called_once_with(timeout=5, proxy="http://localhost:1055")
+
+    def test_no_proxy_when_env_unset(self, monkeypatch):
+        monkeypatch.delenv("LLAMACPP_TEST_PROXY", raising=False)
+        provider = LlamaCPPProvider(
+            "llamacpp",
+            {"endpoint": "http://llama.test:8081", "proxy_env": "LLAMACPP_TEST_PROXY"},
+        )
+        assert provider._proxy is None
+
+
 # ---------------------------------------------------------------------------
 # Async iter helper for stream mocking
 # ---------------------------------------------------------------------------

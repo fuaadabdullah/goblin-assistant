@@ -36,6 +36,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=deps /usr/local /usr/local
+COPY --from=docker.io/tailscale/tailscale:stable /usr/local/bin/tailscaled /usr/local/bin/tailscale /usr/local/bin/
 RUN groupadd --system --gid 1000 appuser \
     && useradd --system --uid 1000 --gid appuser --home-dir /app --shell /usr/sbin/nologin appuser \
     && mkdir -p /app/apps/api /app/config /app/packages /app/logs /app/chroma_db /app/state \
@@ -47,6 +48,7 @@ COPY --chown=appuser:appuser apps/api/alembic.ini /app/apps/api/alembic.ini
 COPY --chown=appuser:appuser apps/api/pyproject.toml /app/apps/api/pyproject.toml
 COPY --chown=appuser:appuser config /app/config
 COPY --chown=appuser:appuser packages/shared /app/packages/shared
+COPY --chown=appuser:appuser --chmod=755 infra/render/start.sh /app/start.sh
 
 ENV PYTHONPATH=/app/apps/api/src \
     PYTHONDONTWRITEBYTECODE=1
@@ -58,4 +60,4 @@ RUN if [ -d /app/apps/api/src/api ] && [ ! -f /app/apps/api/src/api/__init__.py 
 
 USER appuser
 
-CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
+CMD ["/app/start.sh"]

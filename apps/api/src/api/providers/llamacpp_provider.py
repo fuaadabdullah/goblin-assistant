@@ -25,16 +25,31 @@ class LlamaCPPProvider(BaseProvider):
         env_key = str(self.config.get("endpoint_env", "LLAMACPP_GCP_ENDPOINT"))
         self._base_url = os.getenv(env_key, self.endpoint).rstrip("/")
         self.endpoint = self._base_url
+        # e.g. tailscaled's userspace proxy when the endpoint is a tailnet address.
+        proxy_env = self.config.get("proxy_env")
+        self._proxy = (os.getenv(str(proxy_env), "").strip() or None) if proxy_env else None
+        # Non-streaming calls get no bytes until generation finishes; slow CPU nodes need headroom.
+        self._invoke_timeout = float(self.config.get("invoke_timeout_s", 120))
+
+    def is_available(self) -> bool:
+        return bool(self._base_url) and super().is_available()
+
+    def _http_client(self, timeout: float) -> httpx.AsyncClient:
+        return httpx.AsyncClient(timeout=timeout, proxy=self._proxy)
 
     def _headers(self) -> Dict[str, str]:
-        return {"Content-Type": "application/json"}
+        headers = {"Content-Type": "application/json"}
+        key = self.api_key()
+        if key:
+            headers["Authorization"] = f"Bearer {key}"
+        return headers
 
     async def _resolve_model(self) -> str:
         if self.default_model:
             return self.default_model
         try:
-            async with httpx.AsyncClient(timeout=5) as client:
-                resp = await client.get(f"{self._base_url}/v1/models")
+            async with self._http_client(timeout=5) as client:
+                resp = await client.get(f"{self._base_url}/v1/models", headers=self._headers())
             if resp.status_code == 200:
                 models = resp.json().get("data", [])
                 if models:
@@ -74,7 +89,7 @@ class LlamaCPPProvider(BaseProvider):
         }
         t0 = time.perf_counter()
         try:
-            async with httpx.AsyncClient(timeout=120) as client:
+            async with self._http_client(timeout=self._invoke_timeout) as client:
                 resp = await client.post(
                     f"{self._base_url}/v1/chat/completions",
                     headers=self._headers(),
@@ -135,7 +150,7 @@ class LlamaCPPProvider(BaseProvider):
             **kwargs,
         }
         async with (
-            httpx.AsyncClient(timeout=180) as client,
+            self._http_client(timeout=180) as client,
             client.stream(
                 "POST",
                 f"{self._base_url}/v1/chat/completions",
@@ -163,7 +178,7 @@ class LlamaCPPProvider(BaseProvider):
             return ProviderHealth(self.provider_id, False, error="No endpoint")
         t0 = time.perf_counter()
         try:
-            async with httpx.AsyncClient(timeout=8) as client:
+            async with self._http_client(timeout=8) as client:
                 resp = await client.get(f"{self._base_url}/health")
             latency = (time.perf_counter() - t0) * 1000
             ok = resp.status_code == 200 and resp.json().get("status") == "ok"
