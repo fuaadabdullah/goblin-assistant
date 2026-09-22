@@ -28,6 +28,8 @@ interface UIState {
   mobileNavOpen: boolean;
   chatSidebarOpen: boolean;
   chatPreviewOpen: boolean;
+  /** Guest-session banner dismissed by the user this session. */
+  chatGuestBannerDismissed: boolean;
   activeModal: string | null;
   toasts: Toast[];
 
@@ -42,6 +44,7 @@ interface UIState {
   toggleChatPreview: () => void;
   setChatPreviewOpen: (open: boolean) => void;
   setChatSidebarOpen: (open: boolean) => void;
+  dismissChatGuestBanner: () => void;
   openModal: (modalId: string) => void;
   closeModal: () => void;
   addToast: (toast: Omit<Toast, 'id'>) => void;
@@ -77,6 +80,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   chatSidebarOpen: false,
   // Preview drawer open (mobile)
   chatPreviewOpen: false,
+  chatGuestBannerDismissed: false,
   activeModal: null,
   toasts: [],
 
@@ -131,6 +135,10 @@ export const useUIStore = create<UIState>((set, get) => ({
 
   setChatSidebarOpen: (open: boolean) => {
     set({ chatSidebarOpen: open });
+  },
+
+  dismissChatGuestBanner: () => {
+    set({ chatGuestBannerDismissed: true });
   },
 
   // Modal actions

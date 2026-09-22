@@ -1,10 +1,12 @@
 """Provider dispatch stage: invoke, department-chain fallback, tool loop."""
 
+import time
 from typing import Any, Dict, Optional
 
 import structlog
 
 from ...assistant_tools.executor import extract_tool_calls_contract, run_tool_loop
+from ...observability.telemetry import record_chat_completion
 from .. import _runtime as _cr
 from .rovo_task import create_rovo_task, update_rovo_task
 from .stages import resolve_provider_call
@@ -43,6 +45,7 @@ async def dispatch_with_fallback(
         complexity_score,
         intent_meta,
     )
+    chat_start_s = time.monotonic()
     provider_response = await resolve_provider_call(
         _cr.invoke_provider(
             pid=resolved_provider,
@@ -51,6 +54,10 @@ async def dispatch_with_fallback(
             timeout_ms=PROVIDER_TIMEOUT_MS,
             stream=False,
         )
+    )
+    record_chat_completion(
+        provider=resolved_provider,
+        latency_s=time.monotonic() - chat_start_s,
     )
 
     # Department chain fallback: when the user didn't pin a provider and the

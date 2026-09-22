@@ -43,3 +43,12 @@ def record_dispatch(
     ).inc()
     if ok:
         dispatch_latency.labels(provider_id=provider_id, model=model).observe(latency_ms)
+    # SLO aggregate: LLMProviderAvailabilityLow reads goblin_provider_requests_total.
+    try:
+        from ..observability.telemetry import record_provider_request
+    except Exception:  # pragma: no cover - telemetry must never break dispatch
+        return
+    try:
+        record_provider_request(provider_id=provider_id, ok=ok)
+    except Exception:  # pragma: no cover - metrics must never break dispatch
+        pass

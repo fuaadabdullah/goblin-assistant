@@ -8,12 +8,17 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.auth.router.admin import require_admin_user
 from api.core.contracts import SuccessEnvelope
 from api.core.errors import DomainError
 from api.services.platform_settings_service import SaaSSettingsService
 from api.services.platform_settings_service import get_platform_db as get_db
 
-router = APIRouter(prefix="/feature-flags", tags=["feature-flags"])
+router = APIRouter(
+    prefix="/feature-flags",
+    tags=["feature-flags"],
+    dependencies=[Depends(require_admin_user)],
+)
 
 
 class FeatureFlagUpsert(BaseModel):

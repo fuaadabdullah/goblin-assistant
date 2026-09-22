@@ -59,22 +59,30 @@ def create_app() -> FastAPI:
         resolve_optional_routing_analytics_router()
     )
 
+    environment = os.getenv("ENVIRONMENT", "production").lower()
+    docs_enabled = environment != "production"
+
     app = FastAPI(
         title="Goblin Assistant API",
         description="AI-powered development assistant with multi-provider routing",
         version=get_version(),
         lifespan=lifespan,
+        docs_url="/docs" if docs_enabled else None,
+        redoc_url="/redoc" if docs_enabled else None,
+        openapi_url="/openapi.json" if docs_enabled else None,
     )
     instrument_fastapi_app(app)
 
     @app.get("/")
     async def root() -> dict[str, str]:
-        return {
+        payload = {
             "message": "Goblin Assistant API",
             "version": get_version(),
-            "docs": "/docs",
             "health": "/health",
         }
+        if docs_enabled:
+            payload["docs"] = "/docs"
+        return payload
 
     @app.get("/test")
     async def test() -> dict[str, str]:
@@ -83,7 +91,6 @@ def create_app() -> FastAPI:
     app.middleware("http")(add_contract_lifecycle_headers)
     register_exception_handlers(app)
 
-    environment = os.getenv("ENVIRONMENT", "development").lower()
     install_runtime_middlewares(app, environment=environment)
 
     register_routes(

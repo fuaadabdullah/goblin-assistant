@@ -29,7 +29,10 @@
 body {
   margin: 0;
   min-width: 320px;
+  /* 100vh is the *large* viewport on mobile Safari (taller than the visible
+     screen), which forced every page to scroll. 100dvh tracks what is visible. */
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg-gradient);
   background-attachment: fixed;
   color: var(--text);
@@ -38,67 +41,101 @@ body {
 }
 
 /* ==========================================================================
-   TYPOGRAPHY SCALE
-   Consistent heading sizes and line-height
+   VIEWPORT SHELL
+   Height for full-bleed app shells (chat) that must track the *visible*
+   viewport rather than the initial layout viewport.
+
+   1. `100vh`   — baseline for browsers without `dvh`.
+   2. `100dvh`  — tracks the visible viewport (collapsing URL bar).
+   3. `--vvh`   — tracks the *visual* viewport (written by
+      `useVisualViewportHeight`), which is the only way to keep a pinned
+      composer above the keyboard on iOS Safari. Falls back to `100dvh` when
+      unset.
+
+   Each declaration invalidates to the previous one where unsupported.
    ========================================================================= */
-h1,
-h2,
-h3 {
-  font-family: var(
-    --font-display,
-    var(--font-sans, system-ui, -apple-system, 'Segoe UI', sans-serif)
-  );
-  line-height: var(--heading-line-height);
-  letter-spacing: -0.015em;
-  margin: 0 0 0.5rem; /* Minimal vertical rhythm */
+.chat-viewport {
+  height: 100vh;
+  height: 100dvh;
+  height: var(--vvh, 100dvh);
 }
 
-::selection {
-  background: rgba(6, 208, 106, 0.22);
-  color: var(--text);
+.chat-viewport-min {
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
-h1 {
-  font-size: var(--h1-size);
-}
-h2 {
-  font-size: var(--h2-size);
-}
-h3 {
-  font-size: var(--h3-size);
+/* ==========================================================================
+   TYPOGRAPHY SCALE
+   Consistent heading sizes and line-heights.
+
+   These element rules live in `@layer base` on purpose. Tailwind v4 emits its
+   utilities in `@layer utilities`, and *unlayered* CSS beats any layered CSS
+   regardless of specificity. Left unlayered, the `h1`/`p` rules below silently
+   override utilities like `text-base` or `mb-0` anywhere in the app.
+   ========================================================================= */
+@layer base {
+  h1,
+  h2,
+  h3 {
+    font-family: var(
+      --font-display,
+      var(--font-sans, system-ui, -apple-system, 'Segoe UI', sans-serif)
+    );
+    line-height: var(--heading-line-height);
+    letter-spacing: -0.015em;
+    margin: 0 0 0.5rem; /* Minimal vertical rhythm */
+  }
+
+  ::selection {
+    background: rgba(6, 208, 106, 0.22);
+    color: var(--text);
+  }
+
+  h1 {
+    font-size: var(--h1-size);
+  }
+  h2 {
+    font-size: var(--h2-size);
+  }
+  h3 {
+    font-size: var(--h3-size);
+  }
 }
 
 /* ==========================================================================
    PARAGRAPHS & LISTS — small typographic scale
    Harmonize spacing with Tailwind defaults (roughly 1rem rhythm)
    ========================================================================= */
-p {
-  margin: 0 0 1rem; /* space after paragraphs */
-}
+@layer base {
+  p {
+    margin: 0 0 1rem; /* space after paragraphs */
+  }
 
-ul,
-ol {
-  margin: 0 0 1rem; /* space below lists */
-  padding-left: 1.25rem; /* indent consistent with Tailwind prose */
-}
+  ul,
+  ol {
+    margin: 0 0 1rem; /* space below lists */
+    padding-left: 1.25rem; /* indent consistent with Tailwind prose */
+  }
 
-ul {
-  list-style-type: disc;
-}
+  ul {
+    list-style-type: disc;
+  }
 
-ol {
-  list-style-type: decimal;
-}
+  ol {
+    list-style-type: decimal;
+  }
 
-li {
-  margin: 0.25rem 0; /* gentle item spacing */
-}
+  li {
+    margin: 0.25rem 0; /* gentle item spacing */
+  }
 
-/* Nested lists get slightly less spacing to avoid excessive gaps */
-li > ul,
-li > ol {
-  margin-top: 0.5rem;
-  margin-bottom: 0.5rem;
+  /* Nested lists get slightly less spacing to avoid excessive gaps */
+  li > ul,
+  li > ol {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
 }
 
 /* Optional: tighten spacing for small text blocks inside containers */

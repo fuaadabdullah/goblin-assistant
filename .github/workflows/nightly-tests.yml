@@ -78,3 +78,34 @@ jobs:
             echo "❌ Readiness check returned $status"
             exit 1
           fi
+
+  # ==============================================================================
+  # SLO smoke-load (staging) — cheap availability/latency budgets, no LLM quota
+  # ==============================================================================
+  slo-smoke-load:
+    name: SLO smoke-load (staging)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install harness deps
+        run: pip install --quiet aiohttp
+
+      - name: Run SLO smoke-load against staging
+        env:
+          GOBLIN_API_BASE_URL: ${{ secrets.STAGING_API_BASE_URL }}
+        run: |
+          BASE_URL="${GOBLIN_API_BASE_URL:-https://goblin-assistant-backend.onrender.com}"
+          python tests/performance/test_slo_smoke_load.py \
+            --base-url "$BASE_URL" \
+            --requests 50 \
+            --concurrency 5 \
+            --json | tee /tmp/slo-smoke.json
+          echo "SLO smoke-load summary:"
+          python -c "import json; d=json.load(open('/tmp/slo-smoke.json')); print('\n'.join(f\"{e['path']}: ok={e['ok']}/{e['total']} p95={e['p95_ms']}ms\" for e in d['endpoints']))"

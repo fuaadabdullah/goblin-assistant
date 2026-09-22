@@ -17,6 +17,12 @@ interface ChatComposerProps {
   isSending: boolean;
   /** Inline prompts shown beneath the composer. */
   quickPrompts: QuickPrompt[];
+  /**
+   * Whether the conversation already has messages. Quick prompts are a
+   * blank-state affordance (ChatEmptyState renders the full grid), so they are
+   * dropped once a thread is underway to reclaim vertical space.
+   */
+  hasMessages?: boolean | undefined;
   /** Whether authentication is required (401/403 error). */
   authError?: boolean | undefined;
   /** Update input value. */
@@ -56,6 +62,7 @@ const ChatComposer = ({
   inputRef,
   isSending,
   quickPrompts,
+  hasMessages = false,
   authError,
   onInputChange,
   onClear,
@@ -88,24 +95,26 @@ const ChatComposer = ({
   };
 
   return (
-    <div className="border-t border-border bg-surface/85 backdrop-blur px-4 py-4">
+    <div className="border-t border-border bg-surface/85 backdrop-blur px-3 py-2.5 md:px-4 md:py-4 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
       <div className="max-w-3xl mx-auto">
         {authError && (
           <div className="mb-4">
             <AuthRequired />
           </div>
         )}
-        <div className="bg-surface-hover border border-border rounded-2xl p-4 focus-within:ring-1 focus-within:ring-primary/40 focus-within:border-primary/40 transition">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-3 text-xs text-muted">
+        <div className="bg-surface-hover border border-border rounded-2xl p-2.5 md:p-4 focus-within:ring-1 focus-within:ring-primary/40 focus-within:border-primary/40 transition">
+          {/* Metadata is decorative detail: collapsed to `Model` + `Est` below sm
+              so it reflows to a single line instead of wrapping to three. */}
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-2 md:mb-3 text-xs text-muted">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="font-mono">
+              <span className="hidden sm:inline font-mono">
                 Provider: <span className="text-text">{selectedProvider || 'auto'}</span>
               </span>
               <span className="font-mono">
                 Model: <span className="text-text">{selectedModel || 'auto'}</span>
               </span>
-              <Link href="/settings" className="text-primary hover:underline">
-                Settings
+              <Link href="/settings" className="hidden sm:inline text-primary hover:underline">
+                <span>Settings</span>
               </Link>
             </div>
             <div className="flex flex-wrap items-center gap-3 font-mono" id="chat-composer-meta">
@@ -117,7 +126,7 @@ const ChatComposer = ({
                 · <span className="text-text">~{estimatedTokens || 0}</span> tok
               </span>
               <span className="hidden sm:inline-block opacity-70">|</span>
-              <span>
+              <span className="hidden sm:inline">
                 Session: <span className="text-text">{totalTokens || 0}</span> tok ·{' '}
                 <span className="text-text">
                   {formatCost(totalCostUsd || 0, { mode: 'per-message' })}
@@ -135,9 +144,9 @@ const ChatComposer = ({
             onChange={(e) => onInputChange(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder={CHAT_COMPOSER_PLACEHOLDER}
-            rows={3}
+            rows={1}
             maxLength={MAX_MESSAGE_LENGTH}
-            className="w-full px-3 py-2 bg-transparent focus:outline-none text-text placeholder-muted resize-none min-h-[112px] text-sm md:text-base leading-relaxed"
+            className="w-full px-3 py-2 bg-transparent focus:outline-none text-text placeholder-muted resize-none min-h-[52px] md:min-h-[112px] text-base leading-relaxed"
             disabled={isSending}
             aria-label="Chat message input"
             aria-describedby="chat-composer-meta"
@@ -170,9 +179,9 @@ const ChatComposer = ({
               )}
             </div>
           )}
-          <div className="flex flex-wrap items-center justify-between gap-3 mt-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 md:gap-3 mt-2 md:mt-3">
             <div className="flex items-center gap-3">
-              <div className="text-xs text-muted">Tip: {CHAT_COMPOSER_TIP}</div>
+              <div className="hidden sm:block text-xs text-muted">Tip: {CHAT_COMPOSER_TIP}</div>
               {showCounter && (
                 <div
                   className={`text-xs font-mono ${
@@ -196,7 +205,7 @@ const ChatComposer = ({
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isSending}
-                className="px-3 py-2 rounded-lg text-sm font-medium border border-border text-text hover:bg-surface-active disabled:opacity-50"
+                className="min-h-11 px-3 py-2 rounded-lg text-sm font-medium border border-border text-text hover:bg-surface-active disabled:opacity-50"
                 type="button"
                 aria-label="Attach file"
                 title="Attach file"
@@ -205,7 +214,7 @@ const ChatComposer = ({
               </button>
               <button
                 onClick={onClear}
-                className="px-3 py-2 rounded-lg text-sm font-medium border border-border text-text hover:bg-surface-active"
+                className="min-h-11 px-3 py-2 rounded-lg text-sm font-medium border border-border text-text hover:bg-surface-active"
                 type="button"
               >
                 Clear
@@ -213,7 +222,7 @@ const ChatComposer = ({
               <button
                 onClick={onSend}
                 disabled={isSending || !input.trim() || isOverLimit}
-                className="bg-primary hover:brightness-110 disabled:opacity-50 text-text-inverse px-4 py-2 rounded-lg font-medium shadow-glow-primary transition-all"
+                className="min-h-11 flex-1 sm:flex-none bg-primary hover:brightness-110 disabled:opacity-50 text-text-inverse px-4 py-2 rounded-lg font-medium shadow-glow-primary transition-all"
                 type="button"
                 aria-label={
                   isOverLimit
@@ -234,20 +243,22 @@ const ChatComposer = ({
           </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-2">
-          {quickPrompts.slice(0, 3).map((item) => (
-            <button
-              key={`inline-${item.label}`}
-              onClick={() => onPromptClick(item.prompt)}
-              className="px-3 py-2 rounded-full border border-border text-xs text-text hover:bg-surface-hover"
-              type="button"
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+        {!hasMessages && quickPrompts.length > 0 && (
+          <div className="mt-2 flex flex-nowrap overflow-x-auto gap-1.5 sm:gap-2 pb-0.5">
+            {quickPrompts.slice(0, 3).map((item) => (
+              <button
+                key={`inline-${item.label}`}
+                onClick={() => onPromptClick(item.prompt)}
+                className="shrink-0 min-h-11 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-full border border-border text-xs text-text hover:bg-surface-hover"
+                type="button"
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        )}
 
-        <p className="text-xs text-muted text-center mt-2">
+        <p className="hidden sm:block text-xs text-muted text-center mt-2">
           Press Enter or Ctrl+Enter to send, Shift+Enter for new line
         </p>
       </div>

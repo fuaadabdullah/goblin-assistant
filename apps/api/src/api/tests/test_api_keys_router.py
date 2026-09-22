@@ -8,12 +8,18 @@ from unittest.mock import AsyncMock, MagicMock
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from api.auth.router.admin import require_admin_user
+from api.auth.router.schemas import User
 from api.routes import api_keys_router
 
 
 def _client() -> TestClient:
     app = FastAPI()
     app.include_router(api_keys_router.router, prefix="/api/v1")
+    app.dependency_overrides[require_admin_user] = lambda: User(
+        id="admin",
+        email="admin@example.com",
+    )
     return TestClient(app)
 
 
@@ -47,13 +53,13 @@ def test_store_get_and_delete_api_key_round_trip(tmp_path, monkeypatch):
     assert stored.json()["message"] == "API key stored for openai"
 
     assert fetched.status_code == 200
-    assert fetched.json() == {"key": "secret-123", "provider": "openai"}
+    assert fetched.json() == {"key": "configured", "provider": "openai", "configured": True}
 
     assert deleted.status_code == 200
     assert deleted.json()["message"] == "API key deleted for openai"
 
     assert missing.status_code == 200
-    assert missing.json() == {"key": None, "provider": "openai"}
+    assert missing.json() == {"key": None, "provider": "openai", "configured": False}
     assert fake_store.keys == {}
 
 
@@ -100,3 +106,13 @@ def test_save_api_keys_writes_indented_json(tmp_path, monkeypatch):
     assert keys_file.exists()
     assert keys_file.read_text(encoding="utf-8").strip().startswith("{")
     assert json.loads(keys_file.read_text(encoding="utf-8")) == {"openai": "secret-123"}
+
+
+def test_api_key_routes_require_authentication() -> None:
+    app = FastAPI()
+    app.include_router(api_keys_router.router, prefix="/api/v1")
+    client = TestClient(app)
+
+    response = client.get("/api/v1/api-keys/openai")
+
+    assert response.status_code == 401

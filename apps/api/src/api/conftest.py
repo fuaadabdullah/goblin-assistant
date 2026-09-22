@@ -13,6 +13,11 @@ sys.modules.setdefault("conftest", sys.modules[__name__])
 # Set test environment BEFORE any app imports.
 # JWT_SECRET_KEY must be set before auth.router.config is imported at module
 # level — pytest_configure runs before collection so test files can import api.main.
+# ENVIRONMENT is pinned to "test" so fail-fast production guards in
+# api.bootstrap.middleware (CORS origins, mandatory rate limiting) never fire
+# during the suite — those guards are covered by dedicated monkeypatched tests.
+os.environ.setdefault("ENVIRONMENT", "test")
+os.environ.setdefault("OPS_ALLOWED_ENVIRONMENTS", "development,staging,test")
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-pytest-only-not-for-production")
 

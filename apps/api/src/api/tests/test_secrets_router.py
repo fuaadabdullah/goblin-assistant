@@ -11,6 +11,8 @@ import pytest
 from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
 
+from api.auth.router.admin import require_admin_user
+from api.auth.router.schemas import User
 from api.integrations.secrets import (
     SecretBackendError,
     SecretNotFoundError,
@@ -33,6 +35,10 @@ def _build_app_with_working_adapter(
     """FastAPI app with a working mock secrets adapter."""
     app = FastAPI()
     app.include_router(router, prefix="/api/v1")
+    app.dependency_overrides[require_admin_user] = lambda: User(
+        id="admin",
+        email="admin@example.com",
+    )
 
     secrets_data = secrets_data or {}
 
@@ -74,6 +80,10 @@ def _build_app_with_failed_adapter(error: Exception) -> FastAPI:
     """FastAPI app where get_secrets_adapter raises an exception."""
     app = FastAPI()
     app.include_router(router, prefix="/api/v1")
+    app.dependency_overrides[require_admin_user] = lambda: User(
+        id="admin",
+        email="admin@example.com",
+    )
 
     class FailingAdapter:
         async def list_secrets(self, prefix: str = "", limit: int = 100):
@@ -367,24 +377,30 @@ class TestSecretsHealth:
 
 def test_router_registered_endpoints() -> None:
     """Verify the router registers all expected endpoints."""
-    app = FastAPI()
-    app.include_router(router, prefix="/api/v1")
-    routes = {(r.path, frozenset(r.methods or [])) for r in app.routes}
+    routes = {(r.path, frozenset(r.methods or [])) for r in router.routes if hasattr(r, "path")}
 
     # Check list endpoint (GET /)
-    assert any(r[0] in {"/api/v1/secrets", "/api/v1/secrets/"} and "GET" in r[1] for r in routes), (
-        "Missing GET /"
-    )
+    assert any(r[0] in {"/secrets", "/secrets/"} and "GET" in r[1] for r in routes), "Missing GET /"
 
     # Check detail endpoint (GET /{path}, DELETE /{path})
-    assert any(r[0] == "/api/v1/secrets/{path:path}" and "GET" in r[1] for r in routes), (
+    assert any(r[0] == "/secrets/{path:path}" and "GET" in r[1] for r in routes), (
         "Missing GET /{path}"
     )
-    assert any(r[0] == "/api/v1/secrets/{path:path}" and "DELETE" in r[1] for r in routes), (
+    assert any(r[0] == "/secrets/{path:path}" and "DELETE" in r[1] for r in routes), (
         "Missing DELETE /{path}"
     )
 
     # Check rotate endpoint
-    assert any(r[0] == "/api/v1/secrets/{path:path}/rotate" and "POST" in r[1] for r in routes), (
+    assert any(r[0] == "/secrets/{path:path}/rotate" and "POST" in r[1] for r in routes), (
         "Missing POST /rotate"
     )
+
+
+def test_secrets_routes_require_authentication() -> None:
+    app = FastAPI()
+    app.include_router(router, prefix="/api/v1")
+    client = TestClient(app, raise_server_exceptions=False)
+
+    response = client.get("/api/v1/secrets/")
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED

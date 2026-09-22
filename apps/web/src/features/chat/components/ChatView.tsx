@@ -9,9 +9,11 @@ import Seo from '../../../components/Seo';
 import { useAuthSession } from '../../../hooks/api/useAuthSession';
 import ChatPreviewPanel from './ChatPreviewPanel';
 import Link from 'next/link';
+import { X } from 'lucide-react';
 import { Input } from '../../../components/ui/input';
 import { useUIStore } from '../../../store/uiStore';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
+import { useVisualViewportHeight } from '../../../hooks/useVisualViewportHeight';
 
 type MobileChatPanelTab = 'conversations' | 'preview';
 
@@ -28,6 +30,10 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
   const { isAuthenticated } = useAuthSession();
   const chatSidebarOpen = useUIStore((state) => state.chatSidebarOpen);
   const setChatSidebarOpen = useUIStore((state) => state.setChatSidebarOpen);
+  const chatGuestBannerDismissed = useUIStore((state) => state.chatGuestBannerDismissed);
+  const dismissChatGuestBanner = useUIStore((state) => state.dismissChatGuestBanner);
+  // Keeps the pinned composer above the on-screen keyboard on iOS Safari.
+  useVisualViewportHeight();
   const [mobilePanelTab, setMobilePanelTab] = useState<MobileChatPanelTab>('conversations');
   const {
     messages,
@@ -72,8 +78,7 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
         const provider = msg?.meta?.provider;
         const department = msg?.meta?.department || msg?.meta?.department_reason;
         // Use the active thread id as conversation_id for feedback context
-        const conversationId =
-          session.threads.find((t) => t.threadKey === session.activeThreadKey)?.id || '';
+        const conversationId = threads.find((t) => t.threadKey === activeThreadKey)?.id || '';
         await apiClient.submitRoutingFeedback({
           requestId,
           rating,
@@ -87,7 +92,7 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
         // best-effort — feedback failure is silent
       }
     },
-    [messages]
+    [messages, threads, activeThreadKey]
   );
 
   const closeMobilePanel = useCallback(() => setChatSidebarOpen(false), [setChatSidebarOpen]);
@@ -108,7 +113,7 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
 
   if (!isAuthenticated && !isGuest) {
     return (
-      <div className="min-h-[calc(100vh-64px)] bg-bg flex items-center justify-center px-4">
+      <div className="chat-viewport-min bg-bg flex items-center justify-center px-4">
         <Seo
           title="Chat - Sign In Required"
           description="Sign in to chat with Goblin Assistant"
@@ -164,13 +169,13 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
   }
 
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-bg">
+    <div className="chat-viewport flex flex-col overflow-hidden bg-bg">
       <Seo
         title="Chat"
         description="Chat with Goblin Assistant. See the model and cost as you go."
         robots="noindex,nofollow"
       />
-      <div className="relative flex">
+      <div className="relative flex flex-1 min-h-0">
         <div
           ref={mobilePanelRef}
           role="dialog"
@@ -252,7 +257,7 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
         )}
 
         <main
-          className="flex-1 flex flex-col bg-bg"
+          className="flex-1 min-h-0 flex flex-col bg-bg"
           id="main-content"
           tabIndex={-1}
           aria-label="Chat"
@@ -265,27 +270,32 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
             isMobilePanelOpen={chatSidebarOpen}
             activeMobilePanelTab={mobilePanelTab}
           />
-          {isGuest && (
-            <div className="mx-4 mt-4 rounded-xl border border-primary/40 bg-surface p-4 text-sm flex items-start justify-between gap-4">
-              <div>
-                <p className="font-semibold text-primary">Guest session</p>
-                <p className="text-muted mt-1">
-                  Messages are not saved.{' '}
-                  <Link href="/login" className="text-primary hover:underline font-medium">
-                    Sign in
-                  </Link>{' '}
-                  to keep your history.
-                </p>
-              </div>
+          {isGuest && !chatGuestBannerDismissed && (
+            <div className="shrink-0 mx-3 mt-2 flex items-center gap-2 rounded-xl border border-primary/40 bg-surface px-3 py-2 sm:mx-4 sm:mt-4 sm:gap-3 sm:px-4 sm:py-3">
+              <p className="min-w-0 flex-1 truncate text-xs text-muted sm:text-sm">
+                <span className="font-semibold text-primary">Guest session</span>
+                <span className="hidden sm:inline"> — messages are not saved.</span>{' '}
+                <Link href="/login" className="text-primary hover:underline font-medium">
+                  <span>Sign in to save history</span>
+                </Link>
+              </p>
               <Link
                 href="/login"
-                className="shrink-0 px-3 py-1.5 rounded-lg bg-primary text-text-inverse text-sm font-medium"
+                className="inline-flex min-h-11 shrink-0 items-center rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-text-inverse sm:text-sm"
               >
-                Sign in
+                <span>Sign in</span>
               </Link>
+              <button
+                type="button"
+                onClick={dismissChatGuestBanner}
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-surface-hover hover:text-text"
+                aria-label="Dismiss guest notice"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
             </div>
           )}
-          <section className="flex-1 overflow-y-auto px-4 py-8">
+          <section className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-3 md:px-4 md:py-8">
             <ChatMessageList
               messages={messages}
               quickPrompts={quickPrompts}
@@ -301,13 +311,14 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
               onRateFeedback={rateFeedback}
             />
           </section>
-          <footer>
+          <footer className="shrink-0">
             <ChatComposer
               input={input}
               inputRef={inputRef}
               authError={authError}
               isSending={isSending}
               quickPrompts={quickPrompts}
+              hasMessages={messages.length > 0}
               onInputChange={setInput}
               onClear={handleClearChat}
               onSend={() => sendMessage()}

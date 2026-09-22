@@ -2,6 +2,17 @@
 
 This file is the canonical task map for coding agents and developers.
 
+## Response Style
+
+- Answer in concise bullet points by default.
+- For implementation output, provide just the code unless explanation is requested or required for safety.
+- Limit routine responses to five sentences or fewer.
+- Avoid chatty progress narration and unnecessary explanation.
+- Show only changed lines as a diff or focused snippet instead of repeating full files.
+- Cache and reuse stable embeddings, summaries, and derived context when supported; do not resend unchanged context or cache secrets and volatile data.
+- Use smaller Instant/mini-class models for boilerplate, formatting, and routine transformations; reserve heavier models for difficult reasoning.
+- Set conservative `max_tokens` caps appropriate to the task so generated output cannot sprawl.
+
 ## Where To Edit
 
 - Frontend features/pages/components: `apps/web/src`

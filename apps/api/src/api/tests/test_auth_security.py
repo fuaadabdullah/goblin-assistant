@@ -242,6 +242,10 @@ class TestSandboxSecurity:
         for route in client.app.routes:
             if isinstance(route, APIRoute) and route.path.endswith("/sandbox/submit"):
                 monkeypatch.setitem(route.endpoint.__globals__, "SANDBOX_ENABLED", True)
+                # require_api_key reads the module-global API_KEY; align it with
+                # the test key so these tests exercise language validation
+                # rather than auth rejection.
+                monkeypatch.setitem(route.endpoint.__globals__, "API_KEY", SANDBOX_TEST_API_KEY)
                 break
 
     def test_sandbox_bash_not_supported(self, client):
@@ -311,3 +315,4 @@ class TestSandboxSecurity:
         assert response.status_code == 400
         data = response.json()
         assert "unsupported" in data["detail"].lower()
+        assert "python" in data["detail"].lower() or "javascript" in data["detail"].lower()

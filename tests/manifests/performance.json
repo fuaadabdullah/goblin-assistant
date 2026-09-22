@@ -4,7 +4,8 @@
   "paths": [
     "apps/api/src/api/tests/test_benchmarks.py",
     "apps/api/src/api/tests/test_concurrency.py",
-    "scripts/load-test.py"
+    "scripts/load-test.py",
+    "tests/performance/test_slo_smoke_load.py"
   ],
   "commands": [
     {
@@ -14,8 +15,8 @@
     },
     {
       "name": "performance-harness-syntax-check",
-      "run": "python3.11 -m py_compile scripts/load-test.py apps/api/src/api/tests/test_concurrency.py",
-      "description": "Syntax-check load scripts that require a live server. Run scripts/load-test.py and test_concurrency.py manually against a running instance."
+      "run": "python3.11 -m py_compile scripts/load-test.py apps/api/src/api/tests/test_concurrency.py tests/performance/test_slo_smoke_load.py",
+      "description": "Syntax-check load scripts that require a live server. Run scripts/load-test.py, test_concurrency.py, and test_slo_smoke_load.py manually against a running instance."
     }
   ]
 }

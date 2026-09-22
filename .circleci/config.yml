@@ -127,6 +127,28 @@ jobs:
           name: Audit Python deps
           command: python -m pip_audit -r apps/api/requirements.txt
 
+  # ── Container image scan (Trivy) ───────────────────────────────────────────
+  container-scan:
+    executor: base
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Build image for scan
+          command: docker build -t goblin-assistant:scan -f Dockerfile .
+      - run:
+          name: Trivy vulnerability scan (fail on HIGH/CRITICAL)
+          command: |
+            docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              aquasec/trivy:0.58.0 image \
+              --severity HIGH,CRITICAL \
+              --exit-code 1 \
+              --no-progress \
+              goblin-assistant:scan
+      - trigger-autofix
+
   # ── Lint ─────────────────────────────────────────────────────────────────
   lint:
     executor: node-python
@@ -462,6 +484,26 @@ jobs:
             [ "$STATUS" = "200" ] && echo "Readiness check passed." && exit 0
             echo "Readiness check returned $STATUS." && exit 1
 
+  # ── SLO smoke-load (availability/latency budgets, no LLM quota) ────────────
+  slo-smoke-load:
+    executor: base
+    steps:
+      - checkout
+      - setup-tmpdir
+      - run:
+          name: Install harness deps
+          command: pip install --quiet aiohttp
+      - run:
+          name: SLO smoke-load (deployed backend)
+          command: |
+            BASE_URL="${GOBLIN_API_BASE_URL:-https://goblin-backend-dt30.onrender.com}"
+            python3 tests/performance/test_slo_smoke_load.py \
+              --base-url "$BASE_URL" \
+              --requests "${SLO_SMOKE_REQUESTS:-50}" \
+              --concurrency "${SLO_SMOKE_CONCURRENCY:-5}" \
+              --json | tee /tmp/slo-smoke.json
+            python3 -c "import json; d=json.load(open('/tmp/slo-smoke.json')); print('\n'.join(f\"{e['path']}: ok={e['ok']}/{e['total']} p95={e['p95_ms']}ms\" for e in d['endpoints']))"
+
 workflows:
   ci:
     jobs:
@@ -470,10 +512,12 @@ workflows:
           requires: [policy]
       - security-scan:
           requires: [policy]
+      - container-scan:
+          requires: [policy]
       - lint:
-          requires: [format-check, security-scan]
+          requires: [format-check, security-scan, container-scan]
       - typecheck:
-          requires: [format-check, security-scan]
+          requires: [format-check, security-scan, container-scan]
       - contract:
           requires: [lint, typecheck]
       - test-backend:
@@ -490,7 +534,7 @@ workflows:
             branches:
               only: [main, develop]
       - docker-build:
-          requires: [build]
+          requires: [build, container-scan]
           filters:
             branches:
               only: [main, develop]
@@ -524,6 +568,7 @@ workflows:
               only: main
     jobs:
       - security-scan
+      - container-scan
       - test-backend
       - test-frontend
       - build
@@ -532,3 +577,5 @@ workflows:
       - lighthouse-ci:
           requires: [build]
       - smoke-test
+      - slo-smoke-load:
+          requires: [smoke-test]

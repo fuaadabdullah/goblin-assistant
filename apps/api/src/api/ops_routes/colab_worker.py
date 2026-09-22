@@ -7,6 +7,7 @@ GET  /ops/colab-worker/status    — returns the current registered endpoint.
 
 from __future__ import annotations
 
+import hmac
 import os
 from typing import Any, Dict
 
@@ -85,7 +86,7 @@ def _check_bearer(request: Request) -> None:
             detail="Missing or malformed Authorization header",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    if auth[len("Bearer ") :] != expected:
+    if not hmac.compare_digest(auth[len("Bearer ") :], expected):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid COLAB_WORKER_API_KEY",
@@ -145,7 +146,7 @@ async def register_colab_worker(
     db_saved = await save_endpoint_to_db(endpoint)
 
     env_written = False
-    if os.getenv("ENVIRONMENT", "development").lower() == "development":
+    if os.getenv("ENVIRONMENT", "production").lower() == "development":
         env_written = _write_env_file("COLAB_WORKER_ENDPOINT", endpoint)
 
     probe_result: str = "skipped"

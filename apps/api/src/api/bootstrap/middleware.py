@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import os
-from typing import Callable
+from collections.abc import Awaitable, Callable
 
 import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 
 from ..core.route_lifecycle import LifecycleDecision, RouteLifecycle, classify_route_lifecycle
 from ..middleware import (
@@ -20,7 +21,40 @@ from .startup import is_true
 logger = structlog.get_logger()
 
 
-async def add_contract_lifecycle_headers(request: Request, call_next: Callable):
+def resolve_runtime_origins(*, environment: str, configured: list[str]) -> list[str]:
+    """Enforce the production CORS origin policy at startup (fail fast).
+
+    Production refuses to boot without an explicit ``ALLOWED_ORIGINS`` (or
+    ``FRONTEND_URL``/``BACKEND_URL``) setting — even though canonical fallbacks
+    from :mod:`api.security_config` exist — and rejects a ``"*"`` wildcard
+    combined with ``allow_credentials=True``. Non-production environments keep
+    the permissive behavior for local development.
+    """
+    if environment != "production":
+        return configured
+    if "*" in configured:
+        raise RuntimeError(
+            "Refusing to start: CORS wildcard origin ('*') is not allowed in production. "
+            "Set ALLOWED_ORIGINS to explicit origins."
+        )
+    if not configured:
+        raise RuntimeError(
+            "Refusing to start: no CORS origins resolved for production. "
+            "Set ALLOWED_ORIGINS (or FRONTEND_URL/BACKEND_URL) to explicit origins."
+        )
+    explicit = os.getenv("ALLOWED_ORIGINS") or os.getenv("FRONTEND_URL") or os.getenv("BACKEND_URL")
+    if not explicit:
+        raise RuntimeError(
+            "Refusing to start: no explicit ALLOWED_ORIGINS (or FRONTEND_URL/BACKEND_URL) "
+            "configured for production. Set explicit origins; canonical fallbacks are not "
+            "sufficient evidence of operator intent."
+        )
+    return configured
+
+
+async def add_contract_lifecycle_headers(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+):
     correlation_id = request.headers.get("x-correlation-id") or request.headers.get("x-request-id")
     response = await call_next(request)
     lifecycle_path = str(request.scope.get("goblin.original_path", request.url.path))
@@ -67,6 +101,7 @@ def install_runtime_middlewares(app: FastAPI, *, environment: str) -> None:
             rate_limiter = RateLimiter(
                 requests_per_minute=requests_per_minute,
                 requests_per_hour=requests_per_hour,
+                environment=environment,
             )
             app.middleware("http")(rate_limiter)
             logger.info(
@@ -76,14 +111,30 @@ def install_runtime_middlewares(app: FastAPI, *, environment: str) -> None:
                 environment=environment,
             )
         except ImportError:
+            if environment == "production":
+                raise RuntimeError(
+                    "Refusing to start: rate limiting is required in production but the "
+                    "redis package is not installed (pip install redis)."
+                )
             logger.warning(
                 "Rate limiting unavailable",
                 reason="redis package not installed",
                 suggestion="pip install redis",
             )
+        except RuntimeError:
+            raise
         except Exception as exc:
+            if environment == "production":
+                raise RuntimeError(
+                    f"Refusing to start: rate limiter failed to initialize: {exc}"
+                ) from exc
             logger.warning("Rate limiting disabled", error=str(exc))
     else:
+        if environment == "production":
+            raise RuntimeError(
+                "Refusing to start: RATE_LIMIT_ENABLED=false is not allowed in production. "
+                "Rate limiting must stay enabled."
+            )
         logger.warning(
             "Rate limiting middleware disabled by configuration",
             environment=environment,
@@ -124,20 +175,20 @@ def install_runtime_middlewares(app: FastAPI, *, environment: str) -> None:
             "/api/v1/auth/passkey/register",
             "/api/v1/auth/passkey/auth",
             "/api/v1/auth/passkey/authenticate",
-            "/api/v1/api/chat",
             "/api/v1/sandbox",
+            # NOTE: /api/v1/api/chat is intentionally NOT excluded here: it
+            # requires the machine API key via AuthenticationMiddleware.
+            # /api/v1/sandbox keeps the legacy bootstrap-level exclusion and
+            # enforces X-Api-Key per-route via require_api_key in sandbox_api.
+            # See api/middleware/http.py default exclusions.
         ],
     )
 
     allowed_origins = list(SecurityConfig.ALLOWED_ORIGINS)
-    if environment == "production" and not os.getenv("ALLOWED_ORIGINS"):
-        logger.warning(
-            "No ALLOWED_ORIGINS configured for production",
-            action="setting fallback origins",
-            severity="security_warning",
-        )
+    if environment == "production":
+        resolve_runtime_origins(environment=environment, configured=allowed_origins)
 
-    if "*" in allowed_origins:
+    if "*" in allowed_origins and environment != "production":
         logger.warning(
             "CORS configured to allow all origins",
             environment="*",

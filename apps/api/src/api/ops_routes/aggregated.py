@@ -102,7 +102,7 @@ async def get_system_recommendations(request: Request) -> Dict[str, Any]:
         aggregated = await aggregator.aggregate_system_metrics()
         recommendations = aggregated.get("summary", {}).get("recommendations", [])
 
-        env = os.getenv("ENVIRONMENT", "development").lower()
+        env = os.getenv("ENVIRONMENT", "production").lower()
         if env == "production":
             recommendations.extend(
                 [

@@ -11,6 +11,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
+from ..auth.router.admin import require_admin_user
 from ..integrations.secrets import (
     SecretAdapter,
     SecretBackendError,
@@ -23,7 +24,11 @@ from ..integrations.secrets import (
 logger = logging.getLogger(__name__)
 
 # Create router
-router = APIRouter(prefix="/secrets", tags=["secrets"])
+router = APIRouter(
+    prefix="/secrets",
+    tags=["secrets"],
+    dependencies=[Depends(require_admin_user)],
+)
 
 # Global adapter instance
 _secrets_adapter: Optional[SecretAdapter] = None

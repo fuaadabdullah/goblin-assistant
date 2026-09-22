@@ -20,16 +20,24 @@ class TestAuthDependencies:
         assert deps._is_user_active("off") is False
         assert deps._is_user_active(None) is False
 
+    def test_supabase_email_verified_variants(self):
+        assert deps._supabase_email_verified({"email_verified": True}) is True
+        assert deps._supabase_email_verified({"email_confirmed_at": "2026-01-01T00:00:00Z"})
+        assert deps._supabase_email_verified({"user_metadata": {"email_verified": True}})
+        assert deps._supabase_email_verified({"app_metadata": {"email_verified": True}})
+        assert deps._supabase_email_verified({"email": "user@example.com"}) is False
+
     @pytest.mark.asyncio
     async def test_get_authenticated_user_model_paths(self):
         active_user = _user_model()
-        active_session = SimpleNamespace(is_revoked=False)
-        revoked_session = SimpleNamespace(is_revoked=True)
+        active_session = SimpleNamespace(is_revoked=False, expires_at=None)
+        revoked_session = SimpleNamespace(is_revoked=True, expires_at=None)
 
         db = _FakeDb(
             [
                 _FakeExecuteResult(first=(active_user, active_session)),
                 _FakeExecuteResult(first=(active_user, revoked_session)),
+                _FakeExecuteResult(first=(active_user, None)),
                 _FakeExecuteResult(first=None),
                 _FakeExecuteResult(scalar=active_user),
             ]
@@ -50,6 +58,12 @@ class TestAuthDependencies:
         assert (
             await deps._get_authenticated_user_model(
                 db, user_id=active_user.id, session_id="session-3"
+            )
+            is None
+        )
+        assert (
+            await deps._get_authenticated_user_model(
+                db, user_id=active_user.id, session_id="session-4"
             )
             is None
         )
@@ -202,3 +216,26 @@ class TestAuthDependencies:
         assert write_db.add.called
         write_db.commit.assert_awaited_once()
         write_db.refresh.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_unverified_supabase_email_does_not_link_existing_user(self):
+        existing_user = _user_model(email="victim@example.com")
+        write_db = SimpleNamespace(
+            execute=AsyncMock(
+                side_effect=[
+                    _FakeExecuteResult(scalar=None),
+                    _FakeExecuteResult(scalar=existing_user),
+                ]
+            ),
+            add=MagicMock(),
+            commit=AsyncMock(),
+            refresh=AsyncMock(),
+        )
+
+        result = await deps._provision_supabase_user(
+            write_db,
+            {"sub": "attacker-supabase-id", "email": "victim@example.com"},
+        )
+
+        assert result is None
+        write_db.add.assert_not_called()

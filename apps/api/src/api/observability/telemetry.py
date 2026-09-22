@@ -102,6 +102,44 @@ ROUTER_COST_GUARD_EVENTS_TOTAL = Counter(
     ["logical_model", "action"],
 )
 
+# Chat completion SLO: end-to-end latency of the conversational pipeline.
+# Labels keep cardinality bounded: only the answering provider is recorded,
+# never user ids, conversation ids, or message content.
+CHAT_DURATION_SECONDS = Histogram(
+    "goblin_chat_duration_seconds",
+    "End-to-end chat completion latency in seconds",
+    ["provider"],
+    buckets=[0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0],
+)
+
+# LLM provider SLO series: one increment per provider invocation outcome,
+# written alongside the richer goblin_provider_dispatch_total series so the
+# 7-day aggregate in prometheus_rules.yml always has data.
+PROVIDER_REQUESTS_TOTAL = Counter(
+    "goblin_provider_requests_total",
+    "LLM provider requests by outcome",
+    ["provider_id", "result"],
+)
+
+# Auth SLO series: attempts vs successes, split by event kind.
+AUTH_ATTEMPTS_TOTAL = Counter(
+    "auth_attempts_total",
+    "Authentication attempts",
+    ["event", "method"],
+)
+AUTH_SUCCESS_TOTAL = Counter(
+    "auth_success_total",
+    "Successful authentications",
+    ["event", "method"],
+)
+
+# Rate-limiter backend health: 1 while serving from the in-process fallback
+# (Redis unreachable) so a single alert can fire on degraded enforcement.
+RATE_LIMITER_DEGRADED = Gauge(
+    "goblin_rate_limiter_degraded",
+    "1 when the rate limiter is serving from the in-process fallback",
+)
+
 
 def init_open_telemetry() -> None:
     """Initialize OTel if the runtime has the optional packages installed."""
@@ -120,7 +158,7 @@ def init_open_telemetry() -> None:
                 {
                     "service.name": service_name,
                     "service.version": service_version,
-                    "deployment.environment": os.getenv("ENVIRONMENT", "development"),
+                    "deployment.environment": os.getenv("ENVIRONMENT", "production"),
                 }
             )
         )
@@ -260,6 +298,9 @@ def record_request_end(method: str, route: str) -> None:
 
 def record_auth_event(*, event: str, method: str, success: bool) -> None:
     AUTH_EVENTS_TOTAL.labels(event=event, method=method, success=str(bool(success)).lower()).inc()
+    AUTH_ATTEMPTS_TOTAL.labels(event=event, method=method).inc()
+    if success:
+        AUTH_SUCCESS_TOTAL.labels(event=event, method=method).inc()
     logger.info(
         "auth_event",
         auth_event=event,
@@ -315,6 +356,24 @@ def record_llm_callback(
     if metadata:
         log_payload["metadata"] = redact_payload(metadata)
     logger.info("llm_callback_recorded", **{k: v for k, v in log_payload.items() if v is not None})
+
+
+def record_chat_completion(*, provider: str, latency_s: float) -> None:
+    """Observe one end-to-end chat completion for the latency SLO."""
+    CHAT_DURATION_SECONDS.labels(provider=provider or "unknown").observe(max(0.0, latency_s))
+
+
+def record_provider_request(*, provider_id: str, ok: bool) -> None:
+    """Increment the LLM provider SLO series (success/failure aggregate)."""
+    PROVIDER_REQUESTS_TOTAL.labels(
+        provider_id=provider_id or "unknown",
+        result="success" if ok else "failure",
+    ).inc()
+
+
+def set_rate_limiter_degraded(*, degraded: bool) -> None:
+    """Flip the rate-limiter backend health gauge (1 = in-process fallback)."""
+    RATE_LIMITER_DEGRADED.set(1.0 if degraded else 0.0)
 
 
 def record_router_cost_guard_event(

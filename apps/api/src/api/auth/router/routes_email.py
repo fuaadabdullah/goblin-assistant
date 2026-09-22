@@ -11,6 +11,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.contracts import SuccessEnvelope
+from ...core.rate_limiter_auth import get_auth_rate_limit_client_ip
 from ...observability.telemetry import record_auth_event
 from . import _runtime as _ar
 from .config import ACCESS_TOKEN_EXPIRE_MINUTES
@@ -18,6 +19,7 @@ from .cookies import _clear_auth_cookies, _set_auth_cookies
 from .dependencies import (
     _get_authenticated_user_model,
     _is_user_active,
+    _supabase_email_verified,
     get_current_user,
     security,
 )
@@ -32,7 +34,12 @@ from .schemas import (
     UserCreate,
     UserLogin,
 )
-from .sessions import _db_create_session, _db_revoke_session, create_session_id
+from .sessions import (
+    _db_create_session,
+    _db_revoke_session,
+    _db_rotate_session,
+    create_session_id,
+)
 from .tokens import create_access_token, create_refresh_token, verify_supabase_token, verify_token
 
 router = APIRouter()
@@ -47,6 +54,7 @@ async def _validate_token_payload(
 
     payload = verify_token(token)
     is_supabase_token = False
+    is_local_token = bool(payload)
     if not payload:
         payload = verify_supabase_token(token)
         is_supabase_token = bool(payload)
@@ -54,14 +62,44 @@ async def _validate_token_payload(
     if not payload:
         return SuccessEnvelope(data=TokenValidationResponse(valid=False))
 
+    if is_local_token and payload.get("type") != "access":
+        return SuccessEnvelope(data=TokenValidationResponse(valid=False))
+
     user_id = payload.get("sub")
     if not user_id:
         return SuccessEnvelope(data=TokenValidationResponse(valid=False))
 
+    if is_local_token:
+        session_id = payload.get("session_id")
+        if not isinstance(session_id, str) or not session_id:
+            return SuccessEnvelope(data=TokenValidationResponse(valid=False))
+
+        user_model = await _get_authenticated_user_model(db, user_id, session_id)
+        if not user_model or not _is_user_active(user_model.is_active):
+            return SuccessEnvelope(data=TokenValidationResponse(valid=False))
+
+        return SuccessEnvelope(
+            data=TokenValidationResponse(
+                valid=True,
+                user=User(
+                    id=user_model.id,
+                    email=user_model.email,
+                    name=user_model.name,
+                    google_id=user_model.google_id,
+                    passkey_credential_id=user_model.passkey_credential_id,
+                    passkey_public_key=user_model.passkey_public_key,
+                ),
+            )
+        )
+
     user_service = _ar.UserService(db)
     user_model = await user_service.get_user_by_id(user_id)
     if user_model is None and is_supabase_token and payload.get("email"):
-        user_model = await user_service.get_user_by_email(payload["email"])
+        email_user = await user_service.get_user_by_email(payload["email"])
+        if email_user is not None:
+            if not _supabase_email_verified(payload):
+                return SuccessEnvelope(data=TokenValidationResponse(valid=False))
+            user_model = email_user
 
     # A valid Supabase identity may not have a local row until its first
     # authenticated API request provisions one.
@@ -74,6 +112,9 @@ async def _validate_token_payload(
         return SuccessEnvelope(data=TokenValidationResponse(valid=True, user=user))
 
     if not user_model:
+        return SuccessEnvelope(data=TokenValidationResponse(valid=False))
+
+    if not _is_user_active(user_model.is_active):
         return SuccessEnvelope(data=TokenValidationResponse(valid=False))
 
     return SuccessEnvelope(
@@ -95,7 +136,7 @@ async def register(
     response: Response,
     db: Annotated[AsyncSession, Depends(_ar.get_db)],
 ):
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = get_auth_rate_limit_client_ip(request)
 
     if not await _ar.check_rate_limit(client_ip, endpoint="register"):
         raise HTTPException(
@@ -176,7 +217,7 @@ async def login(
     response: Response,
     db: Annotated[AsyncSession, Depends(_ar.get_db)],
 ):
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = get_auth_rate_limit_client_ip(request)
 
     if not await _ar.check_rate_limit(client_ip, endpoint="login"):
         raise HTTPException(
@@ -260,7 +301,7 @@ async def refresh_token_endpoint(
     request: RefreshTokenRequest,
     http_request: Request,
     response: Response,
-    db: Annotated[AsyncSession, Depends(_ar.get_readonly_db)],
+    db: Annotated[AsyncSession, Depends(_ar.get_db)],
 ):
     """Exchange refresh token for new access and refresh tokens."""
     raw_refresh = request.refresh_token or http_request.cookies.get("refresh_token")
@@ -312,15 +353,22 @@ async def refresh_token_endpoint(
         passkey_public_key=user_model.passkey_public_key,
     )
 
-    # New tokens, same session.
+    replacement_session_id = await _db_rotate_session(session_id, user_id, db)
+    if replacement_session_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token has already been used or the session expired",
+        )
+
+    # The old session is now revoked, so the refresh token cannot be replayed.
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user_id},
         expires_delta=access_token_expires,
         scopes=["user"],
-        session_id=session_id,
+        session_id=replacement_session_id,
     )
-    new_refresh_token = create_refresh_token(user_id, session_id)
+    new_refresh_token = create_refresh_token(user_id, replacement_session_id)
 
     _set_auth_cookies(response, access_token, new_refresh_token)
     record_auth_event(event="refresh", method="password", success=True)

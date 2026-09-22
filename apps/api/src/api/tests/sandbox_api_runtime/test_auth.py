@@ -38,4 +38,7 @@ def test_require_api_key_skips_auth_in_development_when_enabled() -> None:
         patch.object(sandbox_api, "SANDBOX_ENABLED", True),
         patch.dict(os.environ, {"ENVIRONMENT": "development"}, clear=False),
     ):
-        sandbox_api.require_api_key("anything")
+        with pytest.raises(HTTPException) as exc:
+            sandbox_api.require_api_key("anything")
+
+    assert exc.value.status_code == 500

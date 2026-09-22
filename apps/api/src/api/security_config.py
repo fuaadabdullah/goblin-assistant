@@ -113,7 +113,7 @@ def _is_cross_site_frontend_backend() -> bool:
     origins (e.g. Vercel frontend + Render backend), we consider
     the deployment cross-site.
     """
-    env = os.getenv("ENVIRONMENT", "development")
+    env = os.getenv("ENVIRONMENT", "production")
     if env != "production":
         return False
     # In production, frontend & backend are different origins
@@ -129,7 +129,7 @@ class SecurityConfig:
     """
 
     # Environment
-    ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+    ENVIRONMENT = os.getenv("ENVIRONMENT", "production")
 
     # CORS Configuration - resolved via helper
     ALLOWED_ORIGINS = _resolve_origins(ENVIRONMENT)
