@@ -13,6 +13,7 @@ from .bootstrap.middleware import (
 from .bootstrap.routes import register_routes
 from .bootstrap.startup import (
     init_ddtrace,
+    init_langtrace,
     init_otel,
     init_sentry,
     load_env_files,
@@ -51,6 +52,7 @@ from .sandbox_api import router as sandbox_router
 def create_app() -> FastAPI:
     load_env_files()
     init_sentry()
+    init_langtrace()
     init_otel()
     init_ddtrace()
     routing_analytics_available, routing_analytics_router = (
