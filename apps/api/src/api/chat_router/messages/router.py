@@ -16,7 +16,6 @@ from typing import Any, Dict, Optional
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
 
 from ...auth.router import User as AuthenticatedUser
 from ...auth.router import get_current_user
@@ -24,6 +23,7 @@ from ...config.system_prompt import system_prompt_manager
 from ...core.contracts import SuccessEnvelope
 from ...providers.base import ProviderErrorCategory
 from ...services.pdf_extraction_service import build_attachment_context
+from ...sse_transport import event_source_response
 from .. import _runtime as _cr
 from ..schemas import (
     EstimateTokensResponse,
@@ -251,7 +251,7 @@ async def send_message(
         if request.stream:
             from ..streaming import generate_chat_stream
 
-            return StreamingResponse(
+            return event_source_response(
                 generate_chat_stream(
                     message=request.message,
                     conversation_id=conversation_id,
@@ -259,8 +259,6 @@ async def send_message(
                     provider=request.provider,
                     model=request.model,
                 ),
-                media_type="text/event-stream",
-                headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
             )
 
         provider_response, resolved_provider = await dispatch_with_fallback(
