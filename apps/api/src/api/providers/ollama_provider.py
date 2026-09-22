@@ -1,18 +1,38 @@
-"""Ollama provider."""
+"""Ollama provider backed by the official ollama-python async client."""
 
 from __future__ import annotations
 
-import json
+import asyncio
 import os
 import time
+from collections.abc import Mapping
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
-import httpx
 import structlog
+from ollama import AsyncClient
 
 from .base import BaseProvider, ProviderHealth, ProviderResult
+from .retry import retry_provider_call
 
 logger = structlog.get_logger(__name__)
+
+_CHAT_KWARGS = ("format", "tools", "keep_alive", "think")
+
+
+def _response_dict(value: Any) -> Dict[str, Any]:
+    if isinstance(value, dict):
+        return value
+
+    model_dump = getattr(value, "model_dump", None)
+    if callable(model_dump):
+        dumped = model_dump(exclude_none=True)
+        if isinstance(dumped, dict):
+            return dumped
+
+    try:
+        return dict(value)
+    except (TypeError, ValueError):
+        return {}
 
 
 class OllamaProvider(BaseProvider):
@@ -28,9 +48,28 @@ class OllamaProvider(BaseProvider):
             raw_url = f"http://{raw_url}"
         self._base_url = raw_url
         self.endpoint = self._base_url
+        self._ollama_client = (
+            AsyncClient(host=self._base_url, timeout=180.0) if self._base_url else None
+        )
 
-    def _headers(self) -> Dict[str, str]:
-        return {"Content-Type": "application/json"}
+    @staticmethod
+    def _options(
+        max_tokens: int,
+        temperature: float,
+        kwargs: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        options: Dict[str, Any] = {
+            "num_predict": max_tokens,
+            "temperature": temperature,
+        }
+        extra_options = kwargs.get("options")
+        if isinstance(extra_options, Mapping):
+            options.update(extra_options)
+        return options
+
+    @staticmethod
+    def _chat_kwargs(kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        return {key: kwargs[key] for key in _CHAT_KWARGS if key in kwargs}
 
     async def invoke(
         self,
@@ -45,7 +84,7 @@ class OllamaProvider(BaseProvider):
     ) -> ProviderResult:
         normalized_messages = self.normalize_messages(messages, prompt=prompt, **kwargs)
         model_name = model or self.default_model or "qwen2.5:3b"
-        if not self._base_url:
+        if self._ollama_client is None:
             return ProviderResult(
                 ok=False,
                 provider=self.provider_id,
@@ -53,30 +92,32 @@ class OllamaProvider(BaseProvider):
                 error="Ollama endpoint not configured",
             )
 
-        body = {
-            "model": model_name,
-            "messages": normalized_messages,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "stream": False,
-            **kwargs,
-        }
+        options = self._options(max_tokens, temperature, kwargs)
+        chat_kwargs = self._chat_kwargs(kwargs)
         t0 = time.perf_counter()
         try:
-            async with httpx.AsyncClient(timeout=120) as client:
-                resp = await client.post(
-                    f"{self._base_url}/v1/chat/completions",
-                    headers=self._headers(),
-                    json=body,
+            response = await retry_provider_call(
+                lambda: self._ollama_client.chat(
+                    model=model_name,
+                    messages=normalized_messages,
+                    stream=False,
+                    options=options,
+                    **chat_kwargs,
                 )
+            )
             latency = (time.perf_counter() - t0) * 1000
-            resp.raise_for_status()
-            data = resp.json()
-
-            text = data["choices"][0]["message"]["content"]
+            data = _response_dict(response)
+            text = str(data.get("message", {}).get("content", "") or "")
             if not text:
                 raise ValueError("Empty response content — check Ollama model and endpoint config")
-            usage = data.get("usage", {})
+
+            prompt_tokens = int(data.get("prompt_eval_count") or 0)
+            completion_tokens = int(data.get("eval_count") or 0)
+            usage = {
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": prompt_tokens + completion_tokens,
+            }
             self.record_success()
             return ProviderResult(
                 ok=True,
@@ -117,48 +158,42 @@ class OllamaProvider(BaseProvider):
     ) -> AsyncGenerator[Dict[str, Any], None]:
         normalized_messages = self.normalize_messages(messages, prompt=prompt, **kwargs)
         model_name = model or self.default_model or "qwen2.5:3b"
-        body = {
-            "model": model_name,
-            "messages": normalized_messages,
-            "stream": True,
-            "options": {"num_predict": max_tokens, "temperature": temperature},
-        }
-        async with (
-            httpx.AsyncClient(timeout=180) as client,
-            client.stream(
-                "POST",
-                f"{self._base_url}/api/chat",
-                headers=self._headers(),
-                json=body,
-            ) as resp,
-        ):
-            resp.raise_for_status()
-            async for line in resp.aiter_lines():
-                if not line.strip():
-                    continue
-                try:
-                    chunk = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                text = chunk.get("message", {}).get("content", "")
-                if text:
-                    yield {"text": text}
-                if chunk.get("done"):
-                    break
+        if self._ollama_client is None:
+            raise RuntimeError("Ollama endpoint not configured")
+
+        options = self._options(max_tokens, temperature, kwargs)
+        chat_kwargs = self._chat_kwargs(kwargs)
+        response_stream = await retry_provider_call(
+            lambda: self._ollama_client.chat(
+                model=model_name,
+                messages=normalized_messages,
+                stream=True,
+                options=options,
+                **chat_kwargs,
+            )
+        )
+
+        async for response in response_stream:
+            data = _response_dict(response)
+            text = str(data.get("message", {}).get("content", "") or "")
+            if text:
+                yield {"text": text}
+            if data.get("done"):
+                break
 
     async def health_check(self) -> ProviderHealth:
-        if not self._base_url:
+        if self._ollama_client is None:
             return ProviderHealth(self.provider_id, False, error="No endpoint")
+
         t0 = time.perf_counter()
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
-                resp = await client.get(f"{self._base_url}/api/tags")
+            async with asyncio.timeout(10):
+                await retry_provider_call(self._ollama_client.list)
             latency = (time.perf_counter() - t0) * 1000
             return ProviderHealth(
                 self.provider_id,
-                resp.status_code == 200,
+                True,
                 latency_ms=latency,
-                error=(None if resp.status_code == 200 else f"HTTP {resp.status_code}"),
             )
         except Exception as exc:
             latency = (time.perf_counter() - t0) * 1000
