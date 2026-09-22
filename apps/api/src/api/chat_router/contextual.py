@@ -11,7 +11,6 @@ from typing import Any, Dict
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config.archetypes import (
@@ -37,6 +36,7 @@ from ..auth.router import get_current_user
 from ..core.contracts import SuccessEnvelope
 from ..storage import conversation_store
 from ..storage.database import get_readonly_db
+from ..sse_transport import event_source_response
 from . import _runtime as _cr
 from .archiving import schedule_conversation_archive
 from .schemas import ContextualChatRequest, ContextualChatResponse
@@ -205,7 +205,7 @@ async def contextual_chat(
                     user_id=user_id, title=request.message[:50]
                 )
                 stream_conv_id = new_conv.conversation_id
-            return StreamingResponse(
+            return event_source_response(
                 generate_chat_stream(
                     message=request.message,
                     conversation_id=stream_conv_id,
@@ -213,11 +213,6 @@ async def contextual_chat(
                     provider=_ctx_dept_provider,
                     model=_ctx_dept_model,
                 ),
-                media_type="text/event-stream",
-                headers={
-                    "Cache-Control": "no-cache",
-                    "Connection": "keep-alive",
-                },
             )
 
         provider_response = await _cr.invoke_provider(
