@@ -41,7 +41,7 @@ if [[ "$EVENT_NAME" == "pull_request" && ! "$HEAD_BRANCH" =~ $TRUNK_REGEX ]]; th
   if [[ "$(git rev-parse --is-shallow-repository 2>/dev/null || echo false)" == "true" ]]; then
     git fetch --unshallow origin
   fi
-  git fetch origin "$BASE_REF"
+  git fetch origin "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
   RANGE="origin/$BASE_REF..HEAD"
 else
   if git rev-parse HEAD~1 >/dev/null 2>&1; then
