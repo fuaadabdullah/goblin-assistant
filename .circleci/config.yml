@@ -102,7 +102,7 @@ jobs:
       - install-python
       - run:
           name: Ruff format check
-          command: cd apps/api && PYTHONPATH=src python -m ruff format --check src/api
+          command: find apps/api/src/api -type f -name '*.py' -print0 | xargs -0 python -m ruff format --check
       - run:
           name: Prettier check
           command: |
@@ -142,7 +142,7 @@ jobs:
           docker_layer_caching: true
       - run:
           name: Build image for scan
-          command: docker build -t goblin-assistant:scan -f Dockerfile .
+          command: docker build --pull -t goblin-assistant:scan -f Dockerfile .
       - run:
           name: Trivy vulnerability scan (fail on HIGH/CRITICAL)
           command: |
