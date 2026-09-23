@@ -278,6 +278,18 @@ class PrometheusIntegration(MonitoringIntegration):
 
         return "\n".join(lines)
 
+    async def send_alert(self, alert: Dict[str, Any]) -> bool:
+        """Prometheus is a metrics sink; alerting is AlertManager's job.
+
+        This has to exist even though there is nothing to do: send_alert is
+        abstract on the base, so without it the class cannot be instantiated
+        at all and MonitoringManager.initialize() raised TypeError for anyone
+        who configured a "prometheus" block.
+        """
+        del alert
+        logger.debug("Prometheus integration does not send alerts; use AlertManager")
+        return False
+
 
 class AlertManagerIntegration(MonitoringIntegration):
     def __init__(self):
@@ -293,6 +305,17 @@ class AlertManagerIntegration(MonitoringIntegration):
             return False
         logger.info("AlertManager integration initialized successfully")
         return True
+
+    async def send_metrics(self, metrics: Dict[str, Any]) -> bool:
+        """AlertManager receives alerts, not metric series.
+
+        Present for the same reason as PrometheusIntegration.send_alert: the
+        base declares it abstract, so omitting it made the class impossible to
+        construct and broke any config containing an "alertmanager" block.
+        """
+        del metrics
+        logger.debug("AlertManager integration does not accept metrics; use Prometheus")
+        return False
 
     async def send_alert(self, alert: Dict[str, Any]) -> bool:
         if not self.enabled:
