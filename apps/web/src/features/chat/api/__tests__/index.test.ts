@@ -140,5 +140,4 @@ describe('chatClient conversation API', () => {
       userMessage: 'Your account does not have access to any providers right now.',
     });
   });
-
 });

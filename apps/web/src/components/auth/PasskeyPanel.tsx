@@ -49,8 +49,7 @@ const PasskeyPanel: React.FC<PasskeyPanelProps> = ({ email, onSuccess, onError }
     setRegistering(true);
     setStatus(null);
     try {
-      if (!browserSupportsWebAuthn())
-        throw new Error('WebAuthn not supported in this browser');
+      if (!browserSupportsWebAuthn()) throw new Error('WebAuthn not supported in this browser');
 
       const options = (await apiClient.passkeyChallenge(email)) as PasskeyOptions;
       if (isAuthenticationOptions(options)) {
@@ -73,8 +72,7 @@ const PasskeyPanel: React.FC<PasskeyPanelProps> = ({ email, onSuccess, onError }
     setAuthenticating(true);
     setStatus(null);
     try {
-      if (!browserSupportsWebAuthn())
-        throw new Error('WebAuthn not supported in this browser');
+      if (!browserSupportsWebAuthn()) throw new Error('WebAuthn not supported in this browser');
 
       const options = (await apiClient.passkeyChallenge(email)) as PasskeyOptions;
       if (!isAuthenticationOptions(options)) {
@@ -95,10 +93,7 @@ const PasskeyPanel: React.FC<PasskeyPanelProps> = ({ email, onSuccess, onError }
         throw error ?? new Error('Unable to establish a session');
       }
 
-      queryClient.setQueryData(
-        queryKeys.authValidate,
-        snapshotFromSupabaseSession(data.session)
-      );
+      queryClient.setQueryData(queryKeys.authValidate, snapshotFromSupabaseSession(data.session));
       setStatus('Passkey authentication successful');
       onSuccess();
     } catch (e) {

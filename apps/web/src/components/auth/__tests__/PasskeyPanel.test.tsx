@@ -206,4 +206,3 @@ describe('PasskeyPanel', () => {
     expect(mockStartAuthentication).not.toHaveBeenCalled();
   });
 });
-

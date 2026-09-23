@@ -28,7 +28,8 @@ export function useTabListKeyboardNav<T extends string>(
       let nextIndex: number | null = null;
 
       if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabs.length;
-      else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+      else if (event.key === 'ArrowLeft')
+        nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
       else if (event.key === 'Home') nextIndex = 0;
       else if (event.key === 'End') nextIndex = tabs.length - 1;
 

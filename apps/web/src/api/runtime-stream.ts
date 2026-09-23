@@ -175,7 +175,12 @@ const readRuntimeStream = async (
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
-  const finalResponse = await consumeRuntimeStream(reader, decoder, { onChunk, onComplete }, signal);
+  const finalResponse = await consumeRuntimeStream(
+    reader,
+    decoder,
+    { onChunk, onComplete },
+    signal
+  );
   onComplete?.(finalResponse);
 };
 

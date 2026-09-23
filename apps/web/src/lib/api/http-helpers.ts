@@ -237,10 +237,7 @@ export const patchFrontend = async <T, B = unknown>(
   }
 };
 
-export const deleteFrontend = async <T>(
-  url: string,
-  config?: AxiosRequestConfig
-): Promise<T> => {
+export const deleteFrontend = async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
   try {
     assertNoVersionedClientPath(url);
     const response = await frontendHttp.delete<T>(url, await withResolvedAuth(url, config));

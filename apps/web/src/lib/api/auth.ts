@@ -1,7 +1,4 @@
-import type {
-  AuthenticationResponseJSON,
-  RegistrationResponseJSON,
-} from '@simplewebauthn/browser';
+import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/browser';
 
 import {
   AUTH_REQUEST_TIMEOUT_MS,
