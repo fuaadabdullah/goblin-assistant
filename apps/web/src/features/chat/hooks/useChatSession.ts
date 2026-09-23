@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { chatClient } from '../api';
@@ -35,7 +35,6 @@ export interface ChatSessionState {
   isThreadsLoading: boolean;
   activeThreadKey: string | null;
   inputRef: RefObject<HTMLTextAreaElement | null>;
-  bottomRef: RefObject<HTMLDivElement | null>;
   selectedProvider?: string | undefined;
   selectedModel?: string | undefined;
   selectedMode: Mode;
@@ -75,7 +74,6 @@ export const useChatSession = ({
   const searchParams = useSearchParams();
   const promptParam = searchParams.get('prompt');
   const hasHydratedRef = useRef(false);
-  const bottomRef = useRef<HTMLDivElement | null>(null);
 
   // Thread management
   const {
@@ -145,17 +143,6 @@ export const useChatSession = ({
     selectedProvider: quickActionsState.selectedProvider,
     selectedModel: quickActionsState.selectedModel,
   });
-
-  // Keep the latest message visible without forcing smooth motion for users
-  // who prefer reduced motion.
-  const prefersReducedMotion = useMemo(() => {
-    if (typeof window === 'undefined') return false;
-    return window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
-  }, []);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth' });
-  }, [messagesState.messages, prefersReducedMotion]);
 
   // Prefill input from URL query param
   useEffect(() => {
@@ -269,7 +256,6 @@ export const useChatSession = ({
     pendingAttachments: uiState.pendingAttachments,
     isUploading: uiState.isUploading,
     inputRef: uiState.inputRef,
-    bottomRef,
 
     // Thread state
     threads: threadSelection.threads,

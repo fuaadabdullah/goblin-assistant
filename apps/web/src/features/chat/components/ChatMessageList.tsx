@@ -1,8 +1,8 @@
 'use client';
 
-import type { RefObject } from 'react';
-import { useMemo, useState } from 'react';
+import { forwardRef, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
+import { Virtuoso } from 'react-virtuoso';
 import type { ChatMessage, Mode, QuickPrompt } from '../types';
 import StreamingMessage from './StreamingMessage';
 import MessageTimestamp from './MessageTimestamp';
@@ -17,6 +17,50 @@ const MessageMarkdown = dynamic(() => import('./MessageMarkdown'), {
 import type { VisualizationBlock } from '@/features/finance';
 import { Paperclip } from 'lucide-react';
 import { formatCost } from '@/utils/format-cost';
+
+// Virtuoso owns the scroll container, so the <ol>/<li> semantics + the
+// top/bottom padding the old plain-<ol> layout got from its parent section
+// now live here instead, applied to Virtuoso's own List/Item slots.
+const VirtuosoList = forwardRef<
+  HTMLOListElement,
+  { children?: ReactNode; style?: CSSProperties | undefined }
+>(
+  ({ children, style }, ref) => (
+    <ol
+      ref={ref}
+      style={style}
+      aria-live="polite"
+      aria-relevant="additions"
+      className="max-w-4xl mx-auto space-y-5 px-3 py-3 md:px-4 md:py-8"
+    >
+      {children}
+    </ol>
+  )
+);
+VirtuosoList.displayName = 'VirtuosoList';
+
+const VirtuosoItem = ({
+  children,
+  item,
+  style,
+  ...itemProps
+}: {
+  children?: ReactNode;
+  item: ChatMessage;
+  style?: CSSProperties | undefined;
+  'data-index': number;
+  'data-item-index': number;
+  'data-known-size': number;
+}) => (
+  <li
+    {...itemProps}
+    style={style}
+    className={`flex ${item.role === 'user' ? 'justify-end' : 'justify-start'} group`}
+  >
+    {children}
+  </li>
+);
+
 interface ChatMessageListProps {
   /** Conversation messages in display order. */
   messages: ChatMessage[];
@@ -28,8 +72,6 @@ interface ChatMessageListProps {
   selectedMode: Mode;
   /** Callback when the user changes mode. */
   onModeChange: (mode: Mode) => void;
-  /** Scroll anchor for auto-scrolling. */
-  bottomRef: RefObject<HTMLDivElement | null>;
   /** Whether the assistant is currently responding. */
   isSending: boolean;
   /** Whether the selected thread is loading from the backend. */
@@ -52,7 +94,6 @@ const ChatMessageList = ({
   onPromptClick,
   selectedMode,
   onModeChange,
-  bottomRef,
   isSending,
   isLoading = false,
   onDeleteMessage,
@@ -90,7 +131,6 @@ const ChatMessageList = ({
           <div className="h-4 w-5/6 rounded bg-surface-hover mb-3" />
           <div className="h-4 w-3/4 rounded bg-surface-hover" />
         </div>
-        <div ref={bottomRef} aria-hidden="true" />
       </section>
     );
   }
@@ -108,9 +148,15 @@ const ChatMessageList = ({
   }
 
   return (
-    <section className="max-w-4xl mx-auto space-y-6" aria-label="Chat transcript">
-      <ol aria-live="polite" aria-relevant="additions" className="space-y-5">
-        {messageList.map((msg) => {
+    <section className="h-full" aria-label="Chat transcript">
+      <Virtuoso
+        className="h-full"
+        data={messageList}
+        computeItemKey={(_index, msg) => msg.id}
+        followOutput={true}
+        increaseViewportBy={200}
+        components={{ List: VirtuosoList, Item: VirtuosoItem }}
+        itemContent={(_index, msg) => {
           const messageId = msg.id;
           const isUser = msg.role === 'user';
           const detailsId = `msg-details-${messageId}`;
@@ -134,10 +180,6 @@ const ChatMessageList = ({
           const approx = msg.meta?.cost_is_approx ? ' (approx)' : '';
 
           return (
-            <li
-              key={messageId}
-              className={`flex ${isUser ? 'justify-end' : 'justify-start'} group`}
-            >
               <div className={`max-w-[80%] ${isUser ? 'text-right' : 'text-left'}`}>
                 {/* Timestamp */}
                 <div className="text-xs text-muted mb-1 px-2">
@@ -270,11 +312,9 @@ const ChatMessageList = ({
                   </div>
                 ) : null}
               </div>
-            </li>
           );
-        })}
-      </ol>
-      <div ref={bottomRef} aria-hidden="true" />
+        }}
+      />
     </section>
   );
 };

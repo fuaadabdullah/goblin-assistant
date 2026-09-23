@@ -50,7 +50,6 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
     isThreadsLoading,
     activeThreadKey,
     inputRef,
-    bottomRef,
     authError,
     setInput,
     sendMessage,
@@ -316,14 +315,13 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
               </button>
             </div>
           )}
-          <section className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-3 md:px-4 md:py-8">
+          <section className="flex-1 min-h-0 overscroll-contain">
             <ChatMessageList
               messages={messages}
               quickPrompts={quickPrompts}
               onPromptClick={handlePromptClick}
               selectedMode={selectedMode}
               onModeChange={setSelectedMode}
-              bottomRef={bottomRef}
               isSending={isSending}
               isLoading={isMessagesLoading}
               onDeleteMessage={deleteMessage}
