@@ -32,6 +32,7 @@ FROM base AS runtime
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     apt-get update \
+    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
       libstdc++6 \
       libgomp1 \
