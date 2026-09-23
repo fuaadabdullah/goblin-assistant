@@ -13,6 +13,7 @@ API_SRC = REPO_ROOT / "apps" / "api" / "src"
 OUTPUT_PATH = REPO_ROOT / "packages" / "sdk" / "openapi" / "openapi.json"
 
 os.environ.setdefault("JWT_SECRET_KEY", "dev-openapi-export-secret")
+os.environ.setdefault("ALLOWED_ORIGINS", "http://localhost")
 sys.path.insert(0, str(API_SRC))
 
 # Import after PYTHONPATH setup.

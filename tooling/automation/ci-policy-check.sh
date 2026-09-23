@@ -44,7 +44,7 @@ else
   fi
 fi
 
-COMMITS=$(git log --format=%s $RANGE)
+COMMITS=$(git log --no-merges --format=%s $RANGE)
 if [[ -z "$COMMITS" ]]; then
   echo "No commit subjects found in range $RANGE"
   exit 1

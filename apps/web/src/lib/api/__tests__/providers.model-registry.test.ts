@@ -39,18 +39,20 @@ vi.mock('../shared', async () => {
   return {
     ...actual,
     getFrontend: vi.fn(),
-    postFrontend: vi.fn(),
-    deleteFrontend: vi.fn(),
+    getBackend: vi.fn(),
+    postBackend: vi.fn(),
+    deleteBackend: vi.fn(),
     putBackend: vi.fn(),
     patchBackend: vi.fn(),
   };
 });
 
-import { deleteFrontend, getFrontend, postFrontend } from '../shared';
+import { deleteBackend, getFrontend, getBackend, postBackend } from '../shared';
 
 const mockGetFrontend = getFrontend as vi.MockedFunction<typeof getFrontend>;
-const mockPostFrontend = postFrontend as vi.MockedFunction<typeof postFrontend>;
-const mockDeleteFrontend = deleteFrontend as vi.MockedFunction<typeof deleteFrontend>;
+const mockGetBackend = getBackend as vi.MockedFunction<typeof getBackend>;
+const mockPostBackend = postBackend as vi.MockedFunction<typeof postBackend>;
+const mockDeleteBackend = deleteBackend as vi.MockedFunction<typeof deleteBackend>;
 
 const registryWithProviders = {
   providers: [{ id: 'openai' }, { id: 'azure-openai' }],
@@ -188,30 +190,30 @@ describe('apiClient.getProviderModels', () => {
 
 describe('apiClient provider API key management', () => {
   it('stores provider keys via the admin-gated backend route', async () => {
-    mockPostFrontend.mockResolvedValue({ message: 'stored' });
+    mockPostBackend.mockResolvedValue({ message: 'stored' });
 
     await apiClient.setProviderApiKey('openai', 'sk-test');
 
-    expect(mockPostFrontend).toHaveBeenCalledWith('/api/api-keys/openai', { key: 'sk-test' });
+    expect(mockPostBackend).toHaveBeenCalledWith('/api/v1/api-keys/openai', { key: 'sk-test' });
   });
 
   it('reads provider key status from the backend route', async () => {
-    mockGetFrontend.mockResolvedValue({
+    mockGetBackend.mockResolvedValue({
       provider: 'anthropic',
       key: 'configured',
       configured: true,
     });
 
     await expect(apiClient.getApiKey('anthropic')).resolves.toBe('configured');
-    expect(mockGetFrontend).toHaveBeenCalledWith('/api/api-keys/anthropic');
+    expect(mockGetBackend).toHaveBeenCalledWith('/api/v1/api-keys/anthropic');
   });
 
   it('clears provider keys through the backend route', async () => {
-    mockDeleteFrontend.mockResolvedValue({ message: 'deleted' });
+    mockDeleteBackend.mockResolvedValue({ message: 'deleted' });
 
     await apiClient.clearApiKey('openai');
 
-    expect(mockDeleteFrontend).toHaveBeenCalledWith('/api/api-keys/openai');
+    expect(mockDeleteBackend).toHaveBeenCalledWith('/api/v1/api-keys/openai');
   });
 });
 

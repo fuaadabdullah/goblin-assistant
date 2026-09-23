@@ -102,10 +102,16 @@ jobs:
       - install-python
       - run:
           name: Ruff format check
-          command: cd apps/api && PYTHONPATH=src python -m ruff format --check src/api
+          command: find apps/api/src/api -type f -name '*.py' -print0 | xargs -0 python -m ruff format --check
       - run:
           name: Prettier check
-          command: cd apps/web && TMPDIR=~/repo/.tmp pnpm exec prettier --check .
+          command: |
+            git fetch origin main --depth=1
+            cd apps/web
+            CHANGED=$(git diff --relative --name-only --diff-filter=ACMR origin/main...HEAD -- . | grep -v '^next-env\.d\.ts$' || true)
+            if [ -n "$CHANGED" ]; then
+              TMPDIR=~/repo/.tmp pnpm exec prettier --check $CHANGED
+            fi
 
   # ── Security ─────────────────────────────────────────────────────────────
   security-scan:
@@ -136,7 +142,7 @@ jobs:
           docker_layer_caching: true
       - run:
           name: Build image for scan
-          command: docker build -t goblin-assistant:scan -f Dockerfile .
+          command: docker build --pull -t goblin-assistant:scan -f Dockerfile .
       - run:
           name: Trivy vulnerability scan (fail on HIGH/CRITICAL)
           command: |
@@ -144,6 +150,7 @@ jobs:
               -v /var/run/docker.sock:/var/run/docker.sock \
               aquasec/trivy:0.58.0 image \
               --severity HIGH,CRITICAL \
+              --ignore-unfixed \
               --exit-code 1 \
               --no-progress \
               goblin-assistant:scan

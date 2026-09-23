@@ -9,6 +9,8 @@ WORKDIR /app
 
 FROM base AS deps
 
+COPY apps/api/requirements.txt /app/apps/api/requirements.txt
+COPY apps/api/requirements-vector.txt /app/apps/api/requirements-vector.txt
 COPY apps/api/requirements.lock.txt /app/apps/api/requirements.lock.txt
 
 # Install build-time dependencies and Python packages with BuildKit caches for faster rebuilds.
@@ -21,7 +23,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       gcc \
       git \
     && python -m pip install --upgrade pip \
-    && python -m pip install -r /app/apps/api/requirements.lock.txt
+    && python -m pip install -r /app/apps/api/requirements.lock.txt \
+    && python -m pip install --upgrade 'wheel>=0.46.2'
 
 FROM base AS runtime
 
@@ -35,7 +38,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=deps /usr/local /usr/local
-COPY --from=docker.io/tailscale/tailscale:stable /usr/local/bin/tailscaled /usr/local/bin/tailscale /usr/local/bin/
+COPY --from=docker.io/tailscale/tailscale:unstable-v1.103.261 /usr/local/bin/tailscaled /usr/local/bin/tailscale /usr/local/bin/
 RUN groupadd --system --gid 1000 appuser \
     && useradd --system --uid 1000 --gid appuser --home-dir /app --shell /usr/sbin/nologin appuser \
     && mkdir -p /app/apps/api /app/config /app/packages /app/logs /app/chroma_db /app/state \
