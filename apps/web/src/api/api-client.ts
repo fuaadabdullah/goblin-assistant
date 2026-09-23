@@ -20,7 +20,6 @@ import { runtimeClient, runtimeClientDemo } from '@/lib/api/runtimeClient';
 // Re-export shared types consumed from '@/api'
 export type {
   ProviderUpdatePayload,
-  PasskeyCredential,
   SandboxRunPayload,
   AccountProfile,
   AccountPreferences,

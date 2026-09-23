@@ -105,7 +105,8 @@ post_cutover_tests() {
         print_warning "Frontend health check failed - check DNS propagation"
     fi
 
-    if curl -s -f "https://goblin-backend-dt30.onrender.com/health" > /dev/null; then
+    local backend_url="${BACKEND_URL:-https://goblin-backend-dt30.onrender.com}"
+    if curl -s -f "${backend_url}/health" > /dev/null; then
         print_status "API health OK"
     else
         print_warning "API health check failed - check DNS propagation"

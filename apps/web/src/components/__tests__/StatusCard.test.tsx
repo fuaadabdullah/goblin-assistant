@@ -19,8 +19,8 @@ vi.mock('../Card', () => ({
   },
 }));
 
-vi.mock('../ui/Badge', () => ({
-  default: function MockBadge({
+vi.mock('../ui', () => ({
+  Badge: function MockBadge({
     children,
     icon,
     variant,

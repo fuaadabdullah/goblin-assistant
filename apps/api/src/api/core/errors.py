@@ -7,7 +7,7 @@ from fastapi import HTTPException, status
 from fastapi.exceptions import RequestValidationError
 
 from .contracts import ApiErrorPayload
-from .error_types import ErrorType
+from .error_types import ErrorType, get_error_type_uri
 
 
 @dataclass
@@ -80,6 +80,7 @@ def map_http_exception(
         return ApiErrorPayload(
             code=code,
             type=error_type,
+            type_uri=get_error_type_uri(error_type),
             message=message,
             request_id=request_id,
             timestamp=timestamp,
@@ -89,6 +90,7 @@ def map_http_exception(
         return ApiErrorPayload(
             code="HTTP_ERROR",
             type=ErrorType.INTERNAL,
+            type_uri=get_error_type_uri(ErrorType.INTERNAL),
             message=detail,
             request_id=request_id,
             timestamp=timestamp,
@@ -96,6 +98,7 @@ def map_http_exception(
     return ApiErrorPayload(
         code="HTTP_ERROR",
         type=ErrorType.INTERNAL,
+        type_uri=get_error_type_uri(ErrorType.INTERNAL),
         message="Request failed",
         request_id=request_id,
         timestamp=timestamp,
@@ -121,6 +124,7 @@ def map_validation_exception(
     return ApiErrorPayload(
         code="VALIDATION_ERROR",
         type=ErrorType.VALIDATION,
+        type_uri=get_error_type_uri(ErrorType.VALIDATION),
         message="Request validation failed",
         request_id=request_id,
         timestamp=timestamp,
@@ -146,6 +150,7 @@ def map_domain_error(
     return ApiErrorPayload(
         code=exc.code,
         type=ErrorType.BUSINESS_LOGIC,
+        type_uri=get_error_type_uri(ErrorType.BUSINESS_LOGIC),
         message=exc.message,
         request_id=request_id,
         timestamp=timestamp,
@@ -172,6 +177,7 @@ def map_unhandled_exception(
         return ApiErrorPayload(
             code="SANDBOX_TIMEOUT",
             type=ErrorType.INTERNAL,
+            type_uri=get_error_type_uri(ErrorType.INTERNAL),
             message="Execution exceeded limit",
             request_id=request_id,
             timestamp=timestamp,
@@ -179,6 +185,7 @@ def map_unhandled_exception(
     return ApiErrorPayload(
         code="INTERNAL_ERROR",
         type=ErrorType.INTERNAL,
+        type_uri=get_error_type_uri(ErrorType.INTERNAL),
         message="An internal server error occurred",
         request_id=request_id,
         timestamp=timestamp,

@@ -6,6 +6,7 @@
 export const API_PROXY_ROUTES = [
   { frontendPrefix: '/api/account', backendPrefix: '/api/v1/account' },
   { frontendPrefix: '/api/agent', backendPrefix: '/api/v1/agent' },
+  { frontendPrefix: '/api/api-keys', backendPrefix: '/api/v1/api-keys' },
   { frontendPrefix: '/api/auth', backendPrefix: '/api/v1/auth' },
   { frontendPrefix: '/api/chat', backendPrefix: '/api/v1/chat' },
   { frontendPrefix: '/api/costs', backendPrefix: '/api/v1/routing/costs' },

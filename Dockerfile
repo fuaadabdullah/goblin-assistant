@@ -57,6 +57,9 @@ ENV PYTHONPATH=/app/apps/api/src \
 ENV PORT=8080
 EXPOSE 8080
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/v1/health', timeout=4)"
+
 # Keep compatibility with current runtime assumptions.
 RUN if [ -d /app/apps/api/src/api ] && [ ! -f /app/apps/api/src/api/__init__.py ]; then touch /app/apps/api/src/api/__init__.py; fi || true
 

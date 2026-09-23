@@ -90,8 +90,8 @@ Add these to your `.env` file or environment:
 ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 DEBUG=false
 RATE_LIMIT_ENABLED=true
-RATE_LIMIT_REQUESTS=100
-RATE_LIMIT_WINDOW=60
+RATE_LIMIT_PER_MINUTE=100
+RATE_LIMIT_PER_HOUR=1000
 
 # Database Security
 DATABASE_URL=postgresql+asyncpg://user:pass@localhost/db

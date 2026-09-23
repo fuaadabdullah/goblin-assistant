@@ -1,7 +1,6 @@
 import type { Preview } from '@storybook/nextjs';
 import type { ReactNode } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { ProviderProvider } from '../src/contexts/ProviderContext';
 import { ContrastModeProvider } from '../src/hooks/useContrastMode';
 import { createQueryClient } from '../src/lib/queryClient';
 import '../src/index.css';
@@ -12,9 +11,7 @@ const queryClient = createQueryClient();
 
 const Providers = ({ children }: { children: ReactNode }) => (
   <QueryClientProvider client={queryClient}>
-    <ProviderProvider>
-      <ContrastModeProvider>{children}</ContrastModeProvider>
-    </ProviderProvider>
+    <ContrastModeProvider>{children}</ContrastModeProvider>
   </QueryClientProvider>
 );
 

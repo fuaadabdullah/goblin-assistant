@@ -27,18 +27,6 @@ export interface ProviderUpdatePayload {
   models?: string[];
 }
 
-export interface PasskeyCredential {
-  id: string;
-  rawId: string;
-  type: string;
-  response: {
-    attestationObject?: string;
-    clientDataJSON: string;
-    authenticatorData?: string;
-    signature?: string;
-  };
-}
-
 export interface SandboxRunPayload {
   code?: string;
   source?: string;

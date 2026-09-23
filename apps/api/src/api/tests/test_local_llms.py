@@ -157,18 +157,6 @@ class LLMDeploymentTester:
                 "url": os.getenv("LLAMACPP_GCP_URL", "http://localhost:8000"),
                 "type": "llamacpp",
             },
-            {
-                "name": "Ollama Kamatera",
-                "provider_id": "ollama_kamatera",
-                "url": os.getenv("KAMATERA_SERVER2_URL", "http://192.175.23.150:8002"),
-                "type": "ollama",
-            },
-            {
-                "name": "LlamaCPP Kamatera",
-                "provider_id": "llamacpp_kamatera",
-                "url": os.getenv("KAMATERA_SERVER1_URL", "http://45.61.51.220:8000"),
-                "type": "llamacpp",
-            },
         ]
 
         for target in test_targets:

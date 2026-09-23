@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui';
 import Alert from './ui/Alert';
 import { useToast } from '../hooks/useToast';
 import { Button } from './ui';

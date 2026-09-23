@@ -23,6 +23,7 @@ import structlog
 
 from ..observability.telemetry import record_router_cost_guard_event
 from ..storage.usage_events import usage_event_store
+from .pricing import ModelPricing, resolve_circuit_breaker_thresholds, resolve_model_pricing
 from .provider_config_runtime import (
     ProviderToml,
     RouterBackend,
@@ -552,11 +553,18 @@ def _router_init_kwargs(
     group: RouterModelGroup,
     model_list: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
+    # Reuses the same [load_balancing] thresholds as BaseProvider's circuit
+    # breaker (providers/pricing.py) so the LiteLLM Router's own per-deployment
+    # cooldown doesn't drift out of sync with the classic adapter path's — it
+    # was previously left unconfigured, relying on LiteLLM's own defaults.
+    thresholds = resolve_circuit_breaker_thresholds()
     kwargs: Dict[str, Any] = {
         "model_list": model_list,
         "routing_strategy": group.routing_strategy or "cost-based-routing",
         "num_retries": group.num_retries,
         "enable_pre_call_checks": group.enable_pre_call_checks,
+        "allowed_fails": thresholds.failure_threshold,
+        "cooldown_time": thresholds.recovery_timeout_seconds,
         "fallbacks": _fallback_entries(logical_model, group.fallbacks),
         "context_window_fallbacks": _fallback_entries(
             logical_model, group.context_window_fallbacks
@@ -596,21 +604,36 @@ def summarize_router_models(provider_toml: Optional[ProviderToml] = None) -> Lis
                         "model": backend.model,
                         "order": backend.order,
                         "weight": backend.weight,
-                        "cost_input_per1k": backend.cost_input_per1k,
-                        "cost_output_per1k": backend.cost_output_per1k,
+                        "cost_input_per1k": pricing.input_per1k,
+                        "cost_output_per1k": pricing.output_per1k,
                         "enabled": backend.enabled,
                     }
-                    for backend in group.backends
+                    for backend, pricing in (
+                        (backend, _resolve_backend_pricing(backend)) for backend in group.backends
+                    )
                 ],
             }
         )
     return summaries
 
 
-def _backend_weight(backend: RouterBackend) -> float:
+def _resolve_backend_pricing(backend: RouterBackend) -> ModelPricing:
+    """Resolve a router backend's per-1k pricing, preferring LiteLLM's model
+    cost map over the TOML-configured fallback (see providers/pricing.py)."""
+    return resolve_model_pricing(
+        backend.litellm_provider,
+        backend.model,
+        config={
+            "cost_input_per1k": backend.cost_input_per1k,
+            "cost_output_per1k": backend.cost_output_per1k,
+        },
+    )
+
+
+def _backend_weight(backend: RouterBackend, pricing: ModelPricing) -> float:
     if backend.weight > 0:
         return backend.weight
-    total_cost = backend.cost_input_per1k + backend.cost_output_per1k
+    total_cost = pricing.input_per1k + pricing.output_per1k
     if total_cost <= 0:
         return 1.0
     return 1.0 / total_cost
@@ -623,10 +646,11 @@ def build_model_list(provider_toml: Optional[ProviderToml] = None) -> List[Dict[
             if not _backend_is_available(backend):
                 continue
 
+            pricing = _resolve_backend_pricing(backend)
             litellm_model = f"{backend.litellm_provider}/{backend.model}"
             litellm_params: Dict[str, Any] = {
                 "model": litellm_model,
-                "weight": _backend_weight(backend),
+                "weight": _backend_weight(backend, pricing),
             }
 
             api_key = _resolve_env_value(backend.api_key_env)
@@ -662,8 +686,8 @@ def build_model_list(provider_toml: Optional[ProviderToml] = None) -> List[Dict[
                         "provider_id": backend.provider_id,
                         "backend_model": backend.model,
                         "litellm_model": litellm_model,
-                        "cost_input_per1k": backend.cost_input_per1k,
-                        "cost_output_per1k": backend.cost_output_per1k,
+                        "cost_input_per1k": pricing.input_per1k,
+                        "cost_output_per1k": pricing.output_per1k,
                     },
                 }
             )

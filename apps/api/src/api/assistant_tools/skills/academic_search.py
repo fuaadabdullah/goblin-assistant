@@ -12,8 +12,7 @@ import xml.etree.ElementTree as ET
 from typing import Any, Dict, List, Optional
 from urllib.parse import quote_plus
 
-import httpx
-
+from ...services.http_client import get_json, get_text
 from ..registry import ToolDefinition, ToolParameter, register_tool
 
 _MAX_RESULTS_CAP = 10
@@ -40,10 +39,7 @@ async def _search_arxiv(query: str, max_results: int, category: Optional[str]) -
     }
 
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.get(_ARXIV_ENDPOINT, params=params)
-            resp.raise_for_status()
-            xml_text = resp.text
+        xml_text = await get_text(_ARXIV_ENDPOINT, params=params, ttl=30.0)
     except Exception as exc:  # noqa: BLE001
         return {"error": f"arXiv request failed: {exc}"}
 
@@ -104,10 +100,7 @@ async def _search_semantic_scholar(query: str, max_results: int) -> Dict[str, An
     }
 
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.get(_SEMANTIC_SCHOLAR_ENDPOINT, params=params)
-            resp.raise_for_status()
-            data = resp.json()
+        data = await get_json(_SEMANTIC_SCHOLAR_ENDPOINT, params=params, ttl=30.0)
     except Exception as exc:  # noqa: BLE001
         return {"error": f"Semantic Scholar request failed: {exc}"}
 

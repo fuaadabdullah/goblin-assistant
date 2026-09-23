@@ -93,6 +93,35 @@ class SupabaseAuth:
             except Exception as e:
                 return {"error": f"Failed to get user: {str(e)}"}
 
+    async def generate_magic_link(self, email: str) -> str:
+        """Mint a one-time Supabase sign-in link and return its token hash."""
+        if not self.api_url or not self.service_role_key:
+            raise RuntimeError("Supabase configuration missing")
+
+        headers = {
+            "Authorization": f"Bearer {self.service_role_key}",
+            "Content-Type": "application/json",
+            "apikey": self.service_role_key,
+        }
+
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(
+                    f"{self.api_url}/admin/generate_link",
+                    headers=headers,
+                    json={"type": "magiclink", "email": email},
+                )
+            except Exception as e:
+                raise RuntimeError(f"Failed to mint Supabase session: {str(e)}") from e
+
+            if response.status_code == 200:
+                body = response.json()
+                token_hash = body.get("hashed_token")
+                if not token_hash:
+                    raise RuntimeError("Supabase returned no token hash")
+                return str(token_hash)
+            raise RuntimeError(f"Supabase API error: {response.status_code}")
+
     async def verify_jwt_token(self, token: str) -> Dict[str, Any]:
         """Verify JWT token"""
         if not self.api_url or not self.anon_key:

@@ -45,7 +45,7 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
     if (onLogout) {
       await onLogout();
     }
-    router.push('/login');
+    router.replace('/login');
   };
 
   type NavItem = { path: string; label: string; Icon: React.ElementType };

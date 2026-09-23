@@ -6,9 +6,9 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 
-import redis.asyncio as redis
 import structlog
 
+from ...core.redis_client import get_redis_client
 from .backend import QuotaBackend
 from .models import (
     _RESERVATION_TTL_SECONDS,
@@ -57,16 +57,7 @@ class RedisQuotaBackend(QuotaBackend):
         if self._client is not None:
             return self._client
         try:
-            redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-            self._client = redis.from_url(
-                redis_url,
-                encoding="utf-8",
-                decode_responses=True,
-                retry_on_timeout=True,
-                socket_connect_timeout=1,
-                socket_timeout=1,
-            )
-            await self._client.ping()
+            self._client = await get_redis_client()
             return self._client
         except Exception as exc:  # noqa: BLE001
             self._failed = True

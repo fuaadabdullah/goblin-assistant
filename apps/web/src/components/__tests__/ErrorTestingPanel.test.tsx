@@ -1,15 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-vi.mock('../ui/card', () => ({
-  Card: ({ children, className }: { children: React.ReactNode; className?: string }) => (
-    <div className={className}>{children}</div>
-  ),
-  CardContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  CardDescription: ({ children }: { children: React.ReactNode }) => <p>{children}</p>,
-  CardHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  CardTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
-}));
 vi.mock('../ui/Alert', () => ({
   default: function MockAlert({ message }: { message: string }) {
     return <div data-testid="alert">{message}</div>;
@@ -29,6 +20,13 @@ vi.mock('../ui', () => ({
       {children}
     </button>
   ),
+  Card: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+    <div className={className}>{children}</div>
+  ),
+  CardContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  CardDescription: ({ children }: { children: React.ReactNode }) => <p>{children}</p>,
+  CardHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  CardTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
 }));
 vi.mock('../../hooks/useToast', () => ({
   useToast: () => ({ showSuccess: vi.fn() }),

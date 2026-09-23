@@ -9,12 +9,27 @@ from fastapi.testclient import TestClient
 from api.bootstrap.middleware import (
     install_runtime_middlewares,
     resolve_runtime_origins,
+    structured_request_logging,
 )
 from api.middleware.rate_limiter import RateLimiter
 
 
 def _app_without_routes() -> FastAPI:
     return FastAPI()
+
+
+def test_structured_request_logging_preserves_and_returns_request_id():
+    app = FastAPI()
+
+    @app.get("/observed")
+    async def observed():
+        return {"ok": True}
+
+    app.middleware("http")(structured_request_logging)
+    response = TestClient(app).get("/observed", headers={"X-Request-ID": "request-123"})
+
+    assert response.status_code == 200
+    assert response.headers["X-Request-ID"] == "request-123"
 
 
 def test_resolve_runtime_origins_rejects_wildcard_in_production():

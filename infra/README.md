@@ -209,21 +209,7 @@ sudo journalctl -u ollama -f  # view logs
 
 ## Migration from Kamatera
 
-The old Kamatera endpoints were:
-- Ollama: `http://192.175.23.150:8002`
-- LlamaCPP: `http://45.61.51.220:8000`
-
-These have been replaced with GCP endpoints. Update `dispatcher.py`:
-
-```python
-"ollama_gcp": {
-    "endpoint": os.getenv("OLLAMA_GCP_URL", "http://YOUR_IP:11434"),
-    "invoke_path": "/api/generate",
-    "api_key_env": "LOCAL_LLM_API_KEY",
-},
-"llamacpp_gcp": {
-    "endpoint": os.getenv("LLAMACPP_GCP_URL", "http://YOUR_IP:8000"),
-    "invoke_path": "/v1/chat/completions",
-    "api_key_env": "LOCAL_LLM_API_KEY",
-}
-```
+The legacy Kamatera Ollama/LlamaCPP endpoints have been retired and replaced
+with GCP-hosted inference. Configure them via the `OLLAMA_GCP_URL` and
+`LLAMACPP_GCP_URL` environment variables; see `config/providers.toml` for the
+current provider definitions.

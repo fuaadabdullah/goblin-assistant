@@ -86,7 +86,7 @@ describe('proxy route decisions', () => {
     });
   });
 
-  it('does not protect /sandbox', () => {
+  it('redirects unauthenticated users from /sandbox', () => {
     const decision = resolveRouteDecision({
       pathname: '/sandbox',
       isAuthenticated: false,
@@ -94,7 +94,21 @@ describe('proxy route decisions', () => {
     });
 
     expect(decision).toEqual({
-      allow: true,
+      allow: false,
+      redirectTarget: '/sandbox',
+    });
+  });
+
+  it('redirects unauthenticated users from /agent', () => {
+    const decision = resolveRouteDecision({
+      pathname: '/agent',
+      isAuthenticated: false,
+      isAdmin: false,
+    });
+
+    expect(decision).toEqual({
+      allow: false,
+      redirectTarget: '/agent',
     });
   });
 

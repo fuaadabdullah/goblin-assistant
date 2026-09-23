@@ -4,12 +4,12 @@ Implements TTL-based caching with Redis for different message types
 """
 
 import json
-import os
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-import redis.asyncio as redis
 import structlog
+
+from ..core.redis_client import get_redis_client
 
 logger = structlog.get_logger()
 
@@ -29,16 +29,7 @@ class CacheService:
             return
 
         try:
-            redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-            self.redis_client = redis.from_url(
-                redis_url,
-                encoding="utf-8",
-                decode_responses=True,
-                retry_on_timeout=True,
-                socket_connect_timeout=0.1 if os.getenv("PYTEST_CURRENT_TEST") else 5,
-                socket_timeout=0.1 if os.getenv("PYTEST_CURRENT_TEST") else 5,
-            )
-            await self.redis_client.ping()
+            self.redis_client = await get_redis_client()
             self._is_connected = True
             logger.info("Cache service connected to Redis")
         except Exception as e:
@@ -48,11 +39,7 @@ class CacheService:
 
     async def disconnect(self):
         """Release our reference; the singleton manages the actual connection lifecycle."""
-        if self.redis_client is not None:
-            try:
-                await self.redis_client.close()
-            except Exception:
-                pass
+        self.redis_client = None
         self._is_connected = False
         logger.info("Cache service disconnected from Redis")
 
@@ -342,15 +329,12 @@ class CacheService:
             return {"status": "disconnected", "cleaned_keys": 0}
 
         try:
-            # Redis automatically handles TTL expiration, but we can force cleanup
-            await self.redis_client.execute_command("MEMORY PURGE")
-
-            # Get stats before and after
-            await self.get_cache_stats()
+            stats = await self.get_cache_stats()
 
             return {
                 "status": "success",
                 "message": "Cache cleanup completed",
+                "stats": stats,
                 "timestamp": datetime.utcnow().isoformat(),
             }
 

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { CHAT_QUICK_PROMPTS } from '../../../content/brand';
-import { useProvider } from '../../../contexts/ProviderContext';
+import { useProviderStore } from '@/store/providerStore';
 import type { Mode, QuickPrompt } from '../types';
 
 export interface QuickActionsState {
@@ -15,7 +15,8 @@ export interface QuickActionsState {
  * Manages quick prompts, provider/model selection, and chat mode
  */
 export const useQuickActions = (): QuickActionsState => {
-  const { selectedProvider, selectedModel } = useProvider();
+  const selectedProvider = useProviderStore((state) => state.selectedProvider);
+  const selectedModel = useProviderStore((state) => state.selectedModel);
   const [selectedMode, setSelectedMode] = useState<Mode>('all');
 
   const quickPrompts = useMemo<QuickPrompt[]>(

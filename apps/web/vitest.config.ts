@@ -2,6 +2,18 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
+// Node 22+ enables webstorage by default, and its no-op `localStorage`/`sessionStorage`
+// shadow jsdom's real Storage, producing phantom failures like
+// "localStorage.clear is not a function" when tests are run without
+// NODE_OPTIONS=--no-experimental-webstorage. Inject the flag here so forked test
+// workers behave identically to the npm `test` scripts for ad-hoc `npx vitest` runs.
+const WEBSTORAGE_FLAG = '--no-experimental-webstorage';
+if (!(process.env['NODE_OPTIONS'] ?? '').includes(WEBSTORAGE_FLAG)) {
+  process.env['NODE_OPTIONS'] = [process.env['NODE_OPTIONS'], WEBSTORAGE_FLAG]
+    .filter(Boolean)
+    .join(' ');
+}
+
 const webCoverageThreshold = Number(process.env['WEB_COVERAGE_THRESHOLD'] ?? 80);
 const functionCoverageThreshold = Number(process.env['WEB_FUNCTIONS_THRESHOLD'] ?? 80);
 const criticalCoverageInclude = process.env['VITEST_COVERAGE_INCLUDE']

@@ -33,12 +33,14 @@ services:
         value: https://goblin-assistant.vercel.app,https://goblin-backend-dt30.onrender.com
 
       # Rate Limiting
+      # NOTE: the enforcement code (bootstrap/middleware.py) reads
+      # RATE_LIMIT_PER_MINUTE / RATE_LIMIT_PER_HOUR, not RATE_LIMIT_REQUESTS /
+      # RATE_LIMIT_WINDOW — those were dead vars that never reached the
+      # limiter and silently left it on its 100/min, 1000/hour code defaults.
       - key: RATE_LIMIT_ENABLED
         value: "true"
-      - key: RATE_LIMIT_REQUESTS
+      - key: RATE_LIMIT_PER_MINUTE
         value: "100"
-      - key: RATE_LIMIT_WINDOW
-        value: "60"
 
       # Tailnet access to the self-hosted llama.cpp node (Oracle A1, never public).
       # TAILSCALE_AUTHKEY: reusable + ephemeral + pre-tagged tag:goblin-render.
@@ -90,11 +92,12 @@ services:
     # Custom domain
     # customDomains:
     # No custom domain configured
-    
-    # Build settings
-    buildCommand: |
-      pip install --upgrade pip
-      pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
+
+    # No buildCommand: this service runs `runtime: docker`, so Render builds
+    # straight from ./Dockerfile and ignores buildCommand/startCommand-style
+    # native-runtime build steps. The Dockerfile's own `deps` stage installs
+    # from apps/api/requirements.lock.txt (the pinned, uv-compiled lock file),
+    # not the loose requirements.txt a buildCommand here used to reference.
 
   - type: keyvalue
     name: goblin-redis

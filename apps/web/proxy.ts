@@ -12,7 +12,7 @@ import { isAdminUser } from './src/utils/access';
  * cookies are forwarded to the browser via the returned response object.
  */
 
-const AUTH_ROUTE_PREFIXES = ['/chat', '/account', '/settings', '/search'] as const;
+const AUTH_ROUTE_PREFIXES = ['/chat', '/account', '/settings', '/search', '/agent', '/sandbox'] as const;
 const ADMIN_ROUTE_PREFIXES = ['/admin', '/debug/connectivity'] as const;
 
 const matchesPrefix = (pathname: string, prefixes: readonly string[]): boolean =>
@@ -92,6 +92,8 @@ export const config = {
     '/account/:path*',
     '/settings/:path*',
     '/search/:path*',
+    '/agent/:path*',
+    '/sandbox/:path*',
     '/admin/:path*',
     '/debug/connectivity/:path*',
   ],

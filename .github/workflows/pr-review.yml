@@ -13,6 +13,8 @@ jobs:
   ai-review:
     name: AI Code Review
     runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,16 +31,18 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
+        if: ${{ env.ANTHROPIC_API_KEY != '' }}
         run: pip install anthropic
 
       - name: Run AI review
+        if: ${{ env.ANTHROPIC_API_KEY != '' }}
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_PR_TITLE: ${{ github.event.pull_request.title }}
           GITHUB_PR_BODY: ${{ github.event.pull_request.body }}
         run: python tooling/automation/ai_review.py /tmp/pr.diff > /tmp/review.md
 
       - name: Post review comment
+        if: ${{ env.ANTHROPIC_API_KEY != '' }}
         uses: actions/github-script@v7
         with:
           script: |

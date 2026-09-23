@@ -30,6 +30,14 @@ first.
 - `provider_registry.py`
   - Maps canonical provider ids to adapter classes and converts TOML config
     into runtime config objects.
+- `router_service.py`
+  - Runs an in-process LiteLLM `Router` for logical model groups
+    (`router-cheap`/`router-code`/`router-reason`, configured under
+    `[router_models.*]` in `config/providers.toml`). `dispatcher_pkg/execution.py`
+    delegates to this before falling through to the classic adapter chain when
+    the requested model resolves to a logical group. Fallbacks, retries, and
+    per-deployment cooldown live here for logical-model traffic; the classic
+    `BaseProvider` circuit breaker below covers everything else.
 
 ## Lifecycle expectations
 

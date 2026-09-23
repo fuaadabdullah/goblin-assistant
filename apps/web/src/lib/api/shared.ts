@@ -15,7 +15,6 @@
 // Re-export all types (backward-compatible for type-only imports)
 export type {
   ProviderUpdatePayload,
-  PasskeyCredential,
   SandboxRunPayload,
   AgentTaskSubmitPayload,
   AgentTaskRecord,
@@ -67,6 +66,7 @@ export {
   postFrontend,
   putFrontend,
   patchFrontend,
+  deleteFrontend,
   devWarn,
 } from './http-helpers';
 

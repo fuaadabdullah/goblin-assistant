@@ -99,7 +99,8 @@ const runtimeClientImpl: RuntimeClient = {
     onComplete?: (response: TaskResponse) => void,
     code?: string,
     provider?: string,
-    model?: string
+    model?: string,
+    signal?: AbortSignal
   ): Promise<void> {
     const conversationId = await ensureRuntimeConversation();
     const prompt = buildRuntimePrompt(goblin, task, code);
@@ -114,7 +115,8 @@ const runtimeClientImpl: RuntimeClient = {
       {
         onChunk,
         onComplete,
-      }
+      },
+      signal
     );
   },
 

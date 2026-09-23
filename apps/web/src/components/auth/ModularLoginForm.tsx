@@ -63,8 +63,6 @@ export default function ModularLoginForm({
         return;
       }
 
-      // Sets the goblin_auth/goblin_admin cookies the middleware needs —
-      // without them the redirect to /chat bounces straight back to /login.
       queryClient.setQueryData(queryKeys.authValidate, snapshotFromSupabaseSession(session));
       onSuccess();
     } catch (error) {

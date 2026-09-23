@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import Card from './Card';
-import Badge from './ui/Badge';
+import { Badge } from './ui';
 import Tooltip from './ui/Tooltip';
 
 type StatusKind = 'healthy' | 'degraded' | 'down' | 'unknown';

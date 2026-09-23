@@ -1,18 +1,34 @@
-"""Ollama provider."""
+"""Ollama provider backed by the official ollama-python AsyncClient."""
 
 from __future__ import annotations
 
-import json
 import os
 import time
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
-import httpx
+import ollama
 import structlog
 
 from .base import BaseProvider, ProviderHealth, ProviderResult
 
 logger = structlog.get_logger(__name__)
+
+# OpenAI-style kwargs that map onto Ollama's native `options` object.
+_OPTION_ALIASES = {
+    "top_p": "top_p",
+    "top_k": "top_k",
+    "seed": "seed",
+    "stop": "stop",
+    "num_predict": "num_predict",
+    "num_ctx": "num_ctx",
+}
+
+
+def _value(response: Any, key: str, default: Any = None) -> Any:
+    """Read a field from either a typed ollama response or a plain dict."""
+    if isinstance(response, dict):
+        return response.get(key, default)
+    return getattr(response, key, default)
 
 
 class OllamaProvider(BaseProvider):
@@ -28,9 +44,19 @@ class OllamaProvider(BaseProvider):
             raw_url = f"http://{raw_url}"
         self._base_url = raw_url
         self.endpoint = self._base_url
+        self._client = ollama.AsyncClient(host=self._base_url or None)
 
-    def _headers(self) -> Dict[str, str]:
-        return {"Content-Type": "application/json"}
+    def _options(
+        self, max_tokens: int, temperature: float, kwargs: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        options: Dict[str, Any] = {
+            "num_predict": max_tokens,
+            "temperature": temperature,
+        }
+        for key, value in kwargs.items():
+            if key in _OPTION_ALIASES and value is not None:
+                options[_OPTION_ALIASES[key]] = value
+        return options
 
     async def invoke(
         self,
@@ -53,35 +79,31 @@ class OllamaProvider(BaseProvider):
                 error="Ollama endpoint not configured",
             )
 
-        body = {
-            "model": model_name,
-            "messages": normalized_messages,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "stream": False,
-            **kwargs,
-        }
         t0 = time.perf_counter()
         try:
-            async with httpx.AsyncClient(timeout=120) as client:
-                resp = await client.post(
-                    f"{self._base_url}/v1/chat/completions",
-                    headers=self._headers(),
-                    json=body,
-                )
+            response = await self._client.chat(
+                model=model_name,
+                messages=normalized_messages,
+                stream=False,
+                options=self._options(max_tokens, temperature, kwargs),
+            )
             latency = (time.perf_counter() - t0) * 1000
-            resp.raise_for_status()
-            data = resp.json()
-
-            text = data["choices"][0]["message"]["content"]
+            text = str(_value(_value(response, "message"), "content") or "").strip()
             if not text:
                 raise ValueError("Empty response content — check Ollama model and endpoint config")
-            usage = data.get("usage", {})
+            usage = {
+                "prompt_tokens": _value(response, "prompt_eval_count", 0) or 0,
+                "completion_tokens": _value(response, "eval_count", 0) or 0,
+            }
+            raw = {
+                "choices": [{"message": {"role": "assistant", "content": text}}],
+                "usage": usage,
+            }
             self.record_success()
             return ProviderResult(
                 ok=True,
                 text=text,
-                raw=data,
+                raw=raw,
                 provider=self.provider_id,
                 model=model_name,
                 usage=usage,
@@ -117,48 +139,30 @@ class OllamaProvider(BaseProvider):
     ) -> AsyncGenerator[Dict[str, Any], None]:
         normalized_messages = self.normalize_messages(messages, prompt=prompt, **kwargs)
         model_name = model or self.default_model or "qwen2.5:3b"
-        body = {
-            "model": model_name,
-            "messages": normalized_messages,
-            "stream": True,
-            "options": {"num_predict": max_tokens, "temperature": temperature},
-        }
-        async with (
-            httpx.AsyncClient(timeout=180) as client,
-            client.stream(
-                "POST",
-                f"{self._base_url}/api/chat",
-                headers=self._headers(),
-                json=body,
-            ) as resp,
+        async for chunk in await self._client.chat(
+            model=model_name,
+            messages=normalized_messages,
+            stream=True,
+            options=self._options(max_tokens, temperature, kwargs),
         ):
-            resp.raise_for_status()
-            async for line in resp.aiter_lines():
-                if not line.strip():
-                    continue
-                try:
-                    chunk = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                text = chunk.get("message", {}).get("content", "")
-                if text:
-                    yield {"text": text}
-                if chunk.get("done"):
-                    break
+            text = str(_value(_value(chunk, "message"), "content") or "")
+            if text:
+                yield {"text": text}
+            if _value(chunk, "done", False):
+                break
 
     async def health_check(self) -> ProviderHealth:
         if not self._base_url:
             return ProviderHealth(self.provider_id, False, error="No endpoint")
         t0 = time.perf_counter()
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
-                resp = await client.get(f"{self._base_url}/api/tags")
+            await self._client.list()
             latency = (time.perf_counter() - t0) * 1000
             return ProviderHealth(
                 self.provider_id,
-                resp.status_code == 200,
+                True,
                 latency_ms=latency,
-                error=(None if resp.status_code == 200 else f"HTTP {resp.status_code}"),
+                error=None,
             )
         except Exception as exc:
             latency = (time.perf_counter() - t0) * 1000

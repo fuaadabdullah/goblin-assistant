@@ -28,7 +28,7 @@ describe('/api/[...path] route', () => {
     );
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/api/v1/auth/login'),
+      expect.stringContaining('/auth/login'),
       expect.objectContaining({ method: 'POST' })
     );
     expect(response.status).toBe(200);
@@ -46,7 +46,7 @@ describe('/api/[...path] route', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/api/v1/routing/costs/summary'),
+      expect.stringContaining('/routing/costs/summary'),
       expect.objectContaining({ method: 'GET' })
     );
     expect(response.status).toBe(200);

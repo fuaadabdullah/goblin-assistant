@@ -610,26 +610,18 @@ The system integrates with multiple AI providers for intelligent routing and red
 
 ### Configuration
 
-```python
-# Provider configuration
-PROVIDERS = {
-    "openai": {
-        "api_key": os.getenv("OPENAI_API_KEY"),
-        "base_url": "https://api.openai.com/v1",
-        "models": ["gpt-4", "gpt-3.5-turbo"],
-        "cost_per_token": 0.000002,  # $0.002 per 1K tokens
-        "rate_limit": 10000,  # requests per minute
-    },
-    "anthropic": {
-        "api_key": os.getenv("ANTHROPIC_API_KEY"),
-        "base_url": "https://api.anthropic.com",
-        "models": ["claude-3-haiku", "claude-3-sonnet", "claude-3-opus"],
-        "cost_per_token": 0.000003,
-        "rate_limit": 5000,
-    },
-    # ... other providers
-}
-```
+Provider connection details (API keys, base URLs, models, rate limits) live in
+`config/providers.toml`, validated against the schema in
+`packages/shared/src/provider_config.py`.
+
+Per-model **pricing** is not hardcoded here or in that TOML file as a source
+of truth — it's resolved at runtime by `api.providers.pricing.resolve_model_pricing()`,
+which prefers [LiteLLM's upstream-maintained model cost map](https://github.com/BerriAI/litellm)
+so prices can't silently drift out of date, falling back to the `[providers.<id>.costs]`
+table in `providers.toml` only for self-hosted/custom backends LiteLLM has no
+pricing data for (e.g. Ollama, a private llama.cpp node). Don't hardcode a
+provider pricing table anywhere else — call `resolve_model_pricing`/`estimate_cost`
+instead.
 
 ### Intelligent Routing
 

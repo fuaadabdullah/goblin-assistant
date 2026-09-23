@@ -32,7 +32,7 @@ from .domain import (
     capabilities_from_matrix,
     from_provider_result,
 )
-from .pricing import resolve_model_pricing
+from .pricing import resolve_circuit_breaker_thresholds, resolve_model_pricing
 
 
 class ProviderCircuitState(str, Enum):
@@ -419,7 +419,8 @@ class BaseProvider(ABC):
             return True
         if time.time() < self._circuit_open_until:
             return False
-        return self._healthy or self._failure_count < 3
+        thresholds = resolve_circuit_breaker_thresholds()
+        return self._healthy or self._failure_count < thresholds.failure_threshold
 
     def should_attempt(self, *, canary: bool = False, critical: bool = True) -> bool:
         """Return whether routing may attempt this provider now."""
@@ -467,9 +468,12 @@ class BaseProvider(ABC):
     def record_failure(
         self,
         error: str,
-        backoff_seconds: float = 30.0,
+        backoff_seconds: Optional[float] = None,
         category: Optional[Union[ProviderErrorCategory, str]] = None,
     ) -> None:
+        thresholds = resolve_circuit_breaker_thresholds()
+        if backoff_seconds is None:
+            backoff_seconds = thresholds.recovery_timeout_seconds
         category_value = self._normalize_error_category(error, category)
         self._failure_count += 1
         self._last_error = error
@@ -507,7 +511,10 @@ class BaseProvider(ABC):
         else:
             self._transient_failure_count = 0
 
-        if self._transient_failure_count >= 2 or self._failure_count >= 3:
+        if (
+            self._transient_failure_count >= thresholds.soft_threshold
+            or self._failure_count >= thresholds.failure_threshold
+        ):
             self._circuit_state = ProviderCircuitState.SOFT_OPEN
             self._healthy = False
             self._circuit_open_until = time.time() + backoff_seconds

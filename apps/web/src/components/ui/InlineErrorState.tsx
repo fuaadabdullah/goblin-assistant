@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import Alert from './Alert';
-import Button from './Button';
+import { Button } from '@goblin/ui';
 
 export interface InlineErrorStateProps {
   title?: string | undefined;
