@@ -186,7 +186,11 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # The web test scripts pass NODE_OPTIONS=--no-experimental-webstorage
+          # so jsdom's localStorage is not shadowed by Node's own Web Storage.
+          # That flag only exists from Node 22; Node 20 rejects it outright and
+          # vitest exits 9 before running a single test.
+          node-version: "22"
           cache: "pnpm"
 
       - name: Install frontend dependencies
