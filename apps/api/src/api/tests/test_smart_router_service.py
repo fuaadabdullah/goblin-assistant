@@ -207,7 +207,7 @@ async def test_route_returns_failure_when_no_provider_available(monkeypatch):
         "api.services.smart_router.top_providers_for",
         return_value=[],
     ):
-        result = await router.route(
+        result = await router.invoke_with_fallback(
             invoke_fn,
             [{"role": "user", "content": "hello"}],
         )

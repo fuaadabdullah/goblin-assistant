@@ -45,7 +45,9 @@ class TestAPIKeyStoreABC:
 class TestFileAPIKeyStore:
     def test_initializes_with_custom_path(self):
         store = FileAPIKeyStore(path="/tmp/test_keys.json")
-        assert str(store.path) == "/tmp/test_keys.json"
+        # Compare as paths, not strings: Path renders the separator per OS, so
+        # a string compare only ever holds on POSIX.
+        assert store.path == Path("/tmp/test_keys.json")
 
     def test_warns_in_production(self):
         with patch.dict(os.environ, {"ENVIRONMENT": "production"}, clear=True):
@@ -214,7 +216,11 @@ class TestCreateAPIKeyStore:
             store = create_api_key_store()
             assert isinstance(store, DatabaseAPIKeyStore)
 
-    def test_creates_database_store_by_default(self):
+    def test_defaults_to_production_secret_manager_when_environment_unset(self):
+        # An unset ENVIRONMENT means production, so the factory reaches for the
+        # secret manager rather than quietly falling back to the database store.
+        # Without vault credentials that is a hard failure, which is the point:
+        # the default fails closed instead of downgrading where secrets live.
         with patch.dict(os.environ, {}, clear=True):
-            store = create_api_key_store()
-            assert isinstance(store, DatabaseAPIKeyStore)
+            with pytest.raises(ValueError, match="VAULT_URL and VAULT_TOKEN"):
+                create_api_key_store()
