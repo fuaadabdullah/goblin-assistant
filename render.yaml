@@ -5,6 +5,7 @@ services:
     region: virginia
     plan: free
     startCommand: /app/start.sh
+    preDeployCommand: cd apps/api && alembic upgrade head
     healthCheckPath: /api/v1/health
     
     # Environment Variables
