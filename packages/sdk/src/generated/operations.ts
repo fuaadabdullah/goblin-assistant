@@ -1228,7 +1228,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SuccessEnvelope_TokenWithRefresh_"];
+                    "application/json": components["schemas"]["SuccessEnvelope_PasskeyAuthResponse_"];
                 };
             };
             /** @description Validation Error */
@@ -1249,7 +1249,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyChallengeRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -1258,6 +1262,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4901,9 +4914,7 @@ export interface operations {
     };
     submit_job_api_v1_sandbox_submit_post: {
         parameters: {
-            query?: {
-                request?: unknown;
-            };
+            query?: never;
             header?: {
                 "x-api-key"?: string;
             };

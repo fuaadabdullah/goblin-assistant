@@ -773,7 +773,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Authenticate Passkey */
+        /**
+         * Authenticate Passkey
+         * @description Verify an assertion and mint a Supabase session token hash.
+         */
         post: operations["authenticate_passkey_api_v1_auth_passkey_auth_post"];
         delete?: never;
         options?: never;
@@ -792,7 +795,7 @@ export interface paths {
         put?: never;
         /**
          * Get Passkey Challenge
-         * @description Get a challenge for passkey registration/authentication.
+         * @description Return registration or authentication options for a user's email.
          */
         post: operations["get_passkey_challenge_api_v1_auth_passkey_challenge_post"];
         delete?: never;
@@ -810,7 +813,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Register Passkey */
+        /**
+         * Register Passkey
+         * @description Verify a registration response and store the credential.
+         */
         post: operations["register_passkey_api_v1_auth_passkey_register_post"];
         delete?: never;
         options?: never;
