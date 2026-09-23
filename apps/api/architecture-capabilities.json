@@ -100,7 +100,8 @@
         "api.storage",
         "api.config",
         "api.observability",
-        "api.integrations"
+        "api.integrations",
+        "api.supabase_integration"
       ]
     },
     {
