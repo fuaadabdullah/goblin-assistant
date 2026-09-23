@@ -1,8 +1,48 @@
 """Route mounting helpers for api.main."""
 
+from collections.abc import Iterable, Iterator
+from typing import Any
+
 from fastapi import FastAPI
+from fastapi.routing import APIRoute
 
 from ..shared_api_routes_runtime import API_V1_PREFIX
+
+
+def iter_effective_routes(app: FastAPI) -> Iterator[Any]:
+    """Yield the app's API routes carrying their final, prefixed paths.
+
+    FastAPI includes sub-routers lazily: ``app.routes`` holds internal
+    wrapper objects rather than the flattened ``APIRoute`` instances, so
+    walking it directly sees only the handful of routes declared on the app
+    itself -- ``/``, ``/test`` and the docs endpoints -- and none of the
+    mounted routers. The wrappers can materialise their routes with the
+    prefixes applied, and they nest, because routers include routers, so
+    this has to recurse.
+
+    Routes are yielded as objects exposing ``path``, ``methods`` and the
+    other attributes ``APIRoute`` provides. Older FastAPI versions flatten
+    into ``app.routes`` and are handled by the ``APIRoute`` branch.
+    """
+    yield from _expand(getattr(app, "routes", ()))
+
+
+def _expand(routes: Iterable[Any]) -> Iterator[Any]:
+    for route in routes:
+        materialize = getattr(route, "effective_candidates", None)
+        if callable(materialize):
+            yield from _expand(materialize())
+            continue
+
+        # APIRoute on older FastAPI; on newer ones the materialised context,
+        # which carries the same fields plus its final prefixed path.
+        if isinstance(route, APIRoute) or hasattr(route, "from_api_route"):
+            yield route
+
+
+def effective_route_paths(app: FastAPI) -> set[str]:
+    """Convenience wrapper: the set of paths the app actually serves."""
+    return {path for path in (getattr(r, "path", "") for r in iter_effective_routes(app)) if path}
 
 
 def mount_versioned_primary_routes(
