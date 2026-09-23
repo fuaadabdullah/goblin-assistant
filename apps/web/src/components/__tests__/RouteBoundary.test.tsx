@@ -16,6 +16,8 @@ vi.mock('../../hooks/api/useAuthSession', () => ({
   useAuthSession: () => ({
     isAuthenticated: true,
     isHydrated: true,
+    // AdminLayout gates on the server-derived admin claim, not a token role.
+    isAdmin: true,
     hasRole: (role: string) => role === 'admin',
   }),
 }));

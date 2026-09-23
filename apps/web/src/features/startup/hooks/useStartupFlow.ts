@@ -5,7 +5,7 @@ import { storeStartupDiagnostics } from '../../../utils/startup-diagnostics';
 import { getEnabledModules } from '../../../config/features';
 import { preloadRecentChat } from '../../../lib/chat-history';
 import { trackPerformance } from '../../../utils/error-tracking';
-import { bootstrapAuthSession, hasRole } from '../../../lib/auth-state';
+import { bootstrapAuthSession } from '../../../lib/auth-state';
 import type { StartupDiagnostics, StartupState, StartupStatus } from '../types';
 
 const STATUS_MESSAGES: Record<StartupStatus, string> = {
@@ -142,7 +142,7 @@ export const useStartupFlow = (): StartupState => {
 
         const destinationRoute = resolveStartupDestinationRoute({
           isAuthenticated: authSnapshot.isAuthenticated,
-          isAdmin: hasRole(authSnapshot.user, 'admin'),
+          isAdmin: authSnapshot.isAdmin,
           isAdminModuleEnabled: modules.admin,
         });
 

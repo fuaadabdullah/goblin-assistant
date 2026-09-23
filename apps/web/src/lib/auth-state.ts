@@ -8,6 +8,8 @@ export interface AuthSessionSnapshot {
   user: User | null;
   isAuthenticated: boolean;
   isHydrated: boolean;
+  /** Server-derived admin claim (ADMIN_EMAILS/ADMIN_DOMAINS). */
+  isAdmin: boolean;
 }
 
 export const clearValidationCache = (): void => {
@@ -19,6 +21,7 @@ const unauthenticatedSnapshot = (): AuthSessionSnapshot => ({
   user: null,
   isAuthenticated: false,
   isHydrated: true,
+  isAdmin: false,
 });
 
 const readE2eAuthSnapshot = (): AuthSessionSnapshot | null => {
@@ -36,6 +39,7 @@ const readE2eAuthSnapshot = (): AuthSessionSnapshot | null => {
       user,
       isAuthenticated: Boolean(user),
       isHydrated: true,
+      isAdmin: false,
     };
   } catch {
     return null;
@@ -53,8 +57,29 @@ export const hasAnyRole = (user: User | null | undefined, roles: string[]): bool
 };
 
 /**
- * Bootstrap the auth session from the Supabase client's local session storage.
- * This is synchronous in practice — Supabase reads from localStorage, no network call.
+ * Resolve the admin claim server-side via the token-validation endpoint.
+ *
+ * The client bundle cannot see ADMIN_EMAILS/ADMIN_DOMAINS, so a Supabase user's
+ * `authenticated` role is indistinguishable from an admin allowlisted only by
+ * email/domain. The backend owns that check and returns it as `is_admin`.
+ * Best-effort with a short timeout: the claim degrades to non-admin rather than
+ * blocking session bootstrap or breaking the startup watchdog.
+ */
+const resolveAdminStatus = async (token: string): Promise<boolean> => {
+  try {
+    const result = await Promise.race([
+      authMethods.validateToken(token),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
+    ]);
+    return result?.is_admin === true;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Bootstrap the auth session from the Supabase client's local session storage,
+ * then attach the server-derived admin claim for client-side gating.
  */
 export const bootstrapAuthSession = async (): Promise<AuthSessionSnapshot> => {
   if (typeof window === 'undefined') return unauthenticatedSnapshot();
@@ -70,12 +95,14 @@ export const bootstrapAuthSession = async (): Promise<AuthSessionSnapshot> => {
   }
 
   const user = supabaseUserToAppUser(session.user);
+  const isAdmin = await resolveAdminStatus(session.access_token);
 
   return {
     token: session.access_token,
     user,
     isAuthenticated: true,
     isHydrated: true,
+    isAdmin,
   };
 };
 
@@ -90,6 +117,10 @@ export const snapshotFromSupabaseSession = (session: {
     user,
     isAuthenticated: true,
     isHydrated: true,
+    // The login flows seed this snapshot synchronously before the server can
+    // resolve the admin claim; the auth query refetches bootstrapAuthSession
+    // and corrects it on the next cycle.
+    isAdmin: false,
   };
 };
 

@@ -94,6 +94,9 @@ const PasskeyPanel: React.FC<PasskeyPanelProps> = ({ email, onSuccess, onError }
       }
 
       queryClient.setQueryData(queryKeys.authValidate, snapshotFromSupabaseSession(data.session));
+      // Refetch so the server-derived admin claim replaces the seeded interim
+      // value before any admin route renders (see ModularLoginForm).
+      void queryClient.invalidateQueries({ queryKey: queryKeys.authValidate });
       setStatus('Passkey authentication successful');
       onSuccess();
     } catch (e) {

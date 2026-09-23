@@ -4829,6 +4829,10 @@
       "TokenValidationResponse": {
         "description": "Response for token validation endpoint.",
         "properties": {
+          "is_admin": {
+            "title": "Is Admin",
+            "type": "boolean"
+          },
           "user": {
             "anyOf": [
               {

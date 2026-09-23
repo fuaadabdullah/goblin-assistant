@@ -64,6 +64,10 @@ export default function ModularLoginForm({
       }
 
       queryClient.setQueryData(queryKeys.authValidate, snapshotFromSupabaseSession(session));
+      // The seeded snapshot cannot know the admin claim, and staleTime would
+      // otherwise keep that interim value cached past the redirect. Refetch so
+      // the server-derived claim lands before any admin route renders.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.authValidate });
       onSuccess();
     } catch (error) {
       onError(formatLoginError(error, 'Authentication failed'));

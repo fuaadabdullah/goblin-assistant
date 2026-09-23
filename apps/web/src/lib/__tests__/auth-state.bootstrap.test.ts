@@ -36,6 +36,7 @@ vi.mock('../../utils/auth-session', () => ({
 vi.mock('../api/auth', () => ({
   authMethods: {
     logout: vi.fn(),
+    validateToken: vi.fn(),
   },
 }));
 
@@ -48,6 +49,7 @@ const mockGetSession = authGetSession as vi.MockedFunction<typeof authGetSession
 const mockSignOut = authSignOut as vi.MockedFunction<typeof authSignOut>;
 const mockClearAuthSession = clearAuthSession as vi.MockedFunction<typeof clearAuthSession>;
 const mockAuthMethodsLogout = authMethods.logout as vi.MockedFunction<typeof authMethods.logout>;
+const mockValidateToken = authMethods.validateToken as vi.MockedFunction<typeof authMethods.validateToken>;
 
 const testUser = {
   id: 'u1',
@@ -67,6 +69,7 @@ beforeEach(() => {
   clearValidationCache();
   mockSignOut.mockResolvedValue({ error: null });
   mockAuthMethodsLogout.mockResolvedValue(undefined);
+  mockValidateToken.mockResolvedValue({ valid: true, is_admin: false });
 });
 
 describe('bootstrapAuthSession — SSR guard', () => {
@@ -92,7 +95,9 @@ describe('bootstrapAuthSession — Supabase session present', () => {
     expect(snapshot.isHydrated).toBe(true);
     expect(snapshot.token).toBe(testSession.access_token);
     expect(snapshot.user).toMatchObject({ id: 'u1', email: 'test@example.com' });
+    expect(snapshot.isAdmin).toBe(false);
     expect(mockGetSession).toHaveBeenCalledTimes(1);
+    expect(mockValidateToken).toHaveBeenCalledWith(testSession.access_token);
   });
 
   it('maps user name from user_metadata', async () => {
@@ -101,6 +106,24 @@ describe('bootstrapAuthSession — Supabase session present', () => {
     const snapshot = await bootstrapAuthSession();
 
     expect(snapshot.user?.name).toBe('Test User');
+  });
+
+  it('surfaces the server-derived admin claim when validation returns is_admin', async () => {
+    mockGetSession.mockResolvedValue({ session: testSession as any, error: null });
+    mockValidateToken.mockResolvedValue({ valid: true, is_admin: true });
+
+    const snapshot = await bootstrapAuthSession();
+
+    expect(snapshot.isAdmin).toBe(true);
+  });
+
+  it('degrades to non-admin when the admin claim cannot be resolved', async () => {
+    mockGetSession.mockResolvedValue({ session: testSession as any, error: null });
+    mockValidateToken.mockRejectedValue(new Error('Backend unavailable'));
+
+    const snapshot = await bootstrapAuthSession();
+
+    expect(snapshot.isAdmin).toBe(false);
   });
 });
 
@@ -139,6 +162,7 @@ describe('snapshotFromSupabaseSession', () => {
       token: 'token-123',
       isAuthenticated: true,
       isHydrated: true,
+      isAdmin: false,
       user: {
         id: 'u1',
         email: 'test@example.com',

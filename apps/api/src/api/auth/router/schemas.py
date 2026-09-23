@@ -96,6 +96,7 @@ class TokenValidationResponse(BaseModel):
 
     valid: bool
     user: Optional[User] = None
+    is_admin: bool = False
 
 
 class CsrfTokenResponse(BaseModel):

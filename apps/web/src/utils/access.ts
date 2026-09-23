@@ -10,11 +10,11 @@ const parseList = (value?: string): string[] =>
     .map((item) => item.trim().toLowerCase())
     .filter(Boolean);
 
-// Deliberately NOT NEXT_PUBLIC_-prefixed: this module is imported by client
-// components (e.g. ChatScreen), and a public env var here would inline the
-// full admin allowlist into the browser bundle. Keeping these server-only
+// Deliberately NOT NEXT_PUBLIC_-prefixed: a public env var here would inline
+// the full admin allowlist into the browser bundle. Keeping these server-only
 // means the email/domain checks below only ever match when this code runs
 // server-side (e.g. proxy.ts); the backend's admin.py uses the same names.
+// Client-side admin gating uses the server-derived isAdmin claim instead.
 const ADMIN_EMAILS = parseList(process.env['ADMIN_EMAILS']);
 const ADMIN_DOMAINS = parseList(process.env['ADMIN_DOMAINS']);
 

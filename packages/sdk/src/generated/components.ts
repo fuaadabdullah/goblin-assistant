@@ -1804,6 +1804,8 @@ export interface components {
          * @description Response for token validation endpoint.
          */
         TokenValidationResponse: {
+            /** Is Admin */
+            is_admin?: boolean;
             user?: components["schemas"]["User"] | null;
             /** Valid */
             valid: boolean;

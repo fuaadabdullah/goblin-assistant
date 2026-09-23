@@ -14,6 +14,7 @@ const emptySession: AuthSessionSnapshot = {
   user: null,
   isAuthenticated: false,
   isHydrated: true,
+  isAdmin: false,
 };
 
 export const useAuthSession = () => {

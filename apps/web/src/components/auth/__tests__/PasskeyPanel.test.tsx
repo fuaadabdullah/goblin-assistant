@@ -3,6 +3,7 @@ import PasskeyPanel from '../PasskeyPanel';
 
 const {
   mockSetQueryData,
+  mockInvalidateQueries,
   mockPasskeyChallenge,
   mockPasskeyRegister,
   mockPasskeyAuth,
@@ -13,6 +14,7 @@ const {
   mockSnapshotFromSupabaseSession,
 } = vi.hoisted(() => ({
   mockSetQueryData: vi.fn(),
+  mockInvalidateQueries: vi.fn(),
   mockPasskeyChallenge: vi.fn(),
   mockPasskeyRegister: vi.fn(),
   mockPasskeyAuth: vi.fn(),
@@ -24,7 +26,10 @@ const {
 }));
 
 vi.mock('@tanstack/react-query', () => ({
-  useQueryClient: () => ({ setQueryData: mockSetQueryData }),
+  useQueryClient: () => ({
+    setQueryData: mockSetQueryData,
+    invalidateQueries: mockInvalidateQueries,
+  }),
 }));
 
 vi.mock('@simplewebauthn/browser', () => ({

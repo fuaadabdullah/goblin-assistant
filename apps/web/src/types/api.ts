@@ -120,6 +120,7 @@ export interface EmergencyLogoutResponse {
 export interface ValidateTokenResponse {
   valid: boolean;
   user?: User | undefined;
+  is_admin?: boolean | undefined;
   expires_in?: number | undefined;
 }
 

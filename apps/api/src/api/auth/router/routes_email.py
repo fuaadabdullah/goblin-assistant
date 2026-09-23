@@ -14,6 +14,7 @@ from ...core.contracts import SuccessEnvelope
 from ...core.rate_limiter_auth import get_auth_rate_limit_client_ip
 from ...observability.telemetry import record_auth_event
 from . import _runtime as _ar
+from .admin import is_admin_email
 from .config import ACCESS_TOKEN_EXPIRE_MINUTES
 from .cookies import _clear_auth_cookies, _set_auth_cookies
 from .dependencies import (
@@ -89,6 +90,7 @@ async def _validate_token_payload(
                     passkey_credential_id=user_model.passkey_credential_id,
                     passkey_public_key=user_model.passkey_public_key,
                 ),
+                is_admin=is_admin_email(user_model.email),
             )
         )
 
@@ -109,7 +111,13 @@ async def _validate_token_payload(
             email=payload.get("email") or "",
             name=payload.get("user_metadata", {}).get("name"),
         )
-        return SuccessEnvelope(data=TokenValidationResponse(valid=True, user=user))
+        return SuccessEnvelope(
+            data=TokenValidationResponse(
+                valid=True,
+                user=user,
+                is_admin=is_admin_email(user.email),
+            )
+        )
 
     if not user_model:
         return SuccessEnvelope(data=TokenValidationResponse(valid=False))
@@ -125,6 +133,7 @@ async def _validate_token_payload(
                 email=user_model.email,
                 name=user_model.name,
             ),
+            is_admin=is_admin_email(user_model.email),
         )
     )
 
