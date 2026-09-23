@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
-import Button from './Button';
-import { Card, CardContent, CardHeader, CardTitle } from './card';
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@goblin/ui';
 
 export interface EmptyStateProps {
   title: string;

@@ -1,19 +1,25 @@
 """
-Bitwarden adapter for secrets management using Bitwarden CLI.
+Bitwarden Secrets Manager adapter using the official bitwarden-sdk.
 
-Provides async interface to Bitwarden using the bw CLI tool.
-Supports authentication via session tokens and login.
+Provides an async interface to Bitwarden Secrets Manager (organization → projects
+→ secrets) via the official `bitwarden_sdk` bindings, replacing the previous
+subprocess-based `bw` CLI integration.
 """
 
+from __future__ import annotations
+
+import asyncio
 import json
 import logging
 import os
-import re
-import tempfile
+import secrets
+import string
+import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from .auth import TokenCredentials, get_auth_manager
+from bitwarden_sdk import BitwardenClient, ClientSettings
+
 from .base import (
     Secret,
     SecretAdapter,
@@ -23,382 +29,139 @@ from .base import (
     SecretUnauthorizedError,
     SecretValidationError,
 )
-from .bitwarden_cli import run_bw_command
 from .cache import SecretCache
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_API_URL = "https://api.bitwarden.com"
+_DEFAULT_IDENTITY_URL = "https://identity.bitwarden.com"
 
-def _parse_bw_time(time_str: Optional[str]) -> Optional[datetime]:
-    """Parse Bitwarden timestamp string to datetime object."""
-    if not time_str:
+
+def _coerce_dt(value: Any) -> Optional[datetime]:
+    if value is None:
         return None
+    if isinstance(value, datetime):
+        return value
     try:
-        # Bitwarden uses ISO 8601 format
-        return datetime.fromisoformat(time_str.replace("Z", "+00:00"))
-    except Exception:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
         return None
+
+
+def _data_to_value_note(data: Dict[str, str]) -> tuple[str, Optional[str]]:
+    """Map a Secret.data dict onto a Secrets Manager value + note."""
+    if not data:
+        return "", None
+    if "value" in data:
+        value = str(data["value"])
+        extra = {key: val for key, val in data.items() if key != "value"}
+        return value, json.dumps(extra) if extra else None
+    # No canonical "value" key: serialize the whole dict as the secret value.
+    return json.dumps(data), None
+
+
+def _value_note_to_data(value: str, note: Optional[str]) -> Dict[str, str]:
+    data: Dict[str, str] = {"value": value or ""}
+    if not note:
+        return data
+    try:
+        extra = json.loads(note)
+    except (ValueError, TypeError):
+        extra = None
+    if isinstance(extra, dict):
+        for key, val in extra.items():
+            data[str(key)] = str(val)
+    else:
+        data["notes"] = note
+    return data
 
 
 class BitwardenAdapter(SecretAdapter):
-    """
-    Bitwarden adapter for secrets operations using CLI.
-
-    Maps Bitwarden items to secret paths, with folder/collection support.
-    Uses subprocess to call bw CLI commands.
-    """
+    """Bitwarden Secrets Manager adapter backed by the official SDK."""
 
     def __init__(
         self,
-        session_token: Optional[str] = None,
-        server_url: Optional[str] = None,
+        access_token: Optional[str] = None,
+        organization_id: Optional[str] = None,
+        project_id: Optional[str] = None,
+        api_url: Optional[str] = None,
+        identity_url: Optional[str] = None,
         cache_ttl: int = 300,
         cache_size: int = 1000,
-        timeout: int = 30,
-    ):
-        """
-        Initialize Bitwarden adapter.
-
-        Args:
-            session_token: Optional pre-existing session token
-            server_url: Optional custom Bitwarden server URL
-            cache_ttl: Cache time-to-live in seconds
-            cache_size: Maximum cache entries
-            timeout: Command timeout in seconds
-        """
-        self.session_token = session_token
-        self.server_url = server_url or "https://vault.bitwarden.com"
-        self.timeout = timeout
-        self._authenticated = False
-
-        # Initialize cache
-        self.cache = SecretCache(max_size=cache_size, default_ttl=cache_ttl)
-
-        # Auth manager
-        self.auth_manager = get_auth_manager()
-
-    async def _run_bw_command(
-        self,
-        command: List[str],
-        input_data: Optional[str] = None,
-        capture_output: bool = True,
-    ) -> str:
-        """
-        Run a Bitwarden CLI command.
-
-        Args:
-            command: Command arguments for bw CLI
-            input_data: Optional stdin data
-            capture_output: Whether to capture stdout
-
-        Returns:
-            Command output
-
-        Raises:
-            SecretBackendError: If command fails
-        """
-        try:
-            return await run_bw_command(
-                command,
-                session_token=self.session_token,
-                server_url=self.server_url,
-                input_data=input_data,
-                capture_output=capture_output,
-                timeout=self.timeout,
-            )
-        except SecretUnauthorizedError:
-            raise
-        except SecretNotFoundError:
-            raise
-        except SecretBackendError:
-            raise
-        except Exception as exc:
-            raise SecretBackendError(f"Bitwarden CLI error: {exc}")
-
-    async def _ensure_authenticated(self) -> None:
-        """Ensure Bitwarden CLI is authenticated."""
-        if not self._authenticated:
-            try:
-                # Test authentication with status command
-                await self._run_bw_command(["status"])
-                self._authenticated = True
-                logger.info("Bitwarden CLI authentication verified")
-            except SecretUnauthorizedError:
-                raise SecretUnauthorizedError(
-                    "Bitwarden CLI is not authenticated. Please login first."
-                )
-
-    async def authenticate_with_session_token(self, token: str) -> None:
-        """
-        Authenticate using a session token.
-
-        Args:
-            token: Bitwarden session token
-        """
-        self.session_token = token
-        self._authenticated = False  # Reset to verify
-
-        # Test the token
-        await self._ensure_authenticated()
-
-        # Store credentials for management
-        credentials = TokenCredentials(token)
-        self.auth_manager.store_credentials(f"bitwarden-{self.server_url}", credentials)
-
-        # Start cache if not already started
-        await self.cache.start()
-
-        logger.info("Successfully authenticated with Bitwarden session token")
-
-    async def authenticate_with_login(
-        self,
-        email: str,
-        password: Optional[str] = None,
-        code: Optional[str] = None,
     ) -> None:
-        """
-        Authenticate using email/password with optional 2FA.
+        self.access_token = access_token or os.getenv("BITWARDEN_ACCESS_TOKEN", "")
+        self.organization_id = organization_id or os.getenv("BITWARDEN_ORGANIZATION_ID", "")
+        self.project_id = project_id or os.getenv("BITWARDEN_PROJECT_ID", "")
+        self.api_url = api_url or os.getenv("BITWARDEN_API_URL", _DEFAULT_API_URL)
+        self.identity_url = identity_url or os.getenv("BITWARDEN_IDENTITY_URL", _DEFAULT_IDENTITY_URL)
+        self.cache = SecretCache(max_size=cache_size, default_ttl=cache_ttl)
+        self._client: Optional[BitwardenClient] = None
 
-        Args:
-            email: Bitwarden account email
-            password: Account password (prompted if not provided)
-            code: Optional 2FA code
-        """
-        try:
-            # Build login command
-            login_cmd = ["login", email]
+    def _build_client(self) -> BitwardenClient:
+        if not self.access_token:
+            raise SecretUnauthorizedError("BITWARDEN_ACCESS_TOKEN is required")
+        if not self.organization_id:
+            raise SecretUnauthorizedError("BITWARDEN_ORGANIZATION_ID is required")
 
-            if password:
-                # Use non-interactive login
-                login_cmd.extend(["--password", password])
-                if code:
-                    login_cmd.extend(["--code", code])
-            else:
-                # Interactive login - this won't work in async context
-                raise SecretBackendError(
-                    "Interactive login not supported. Please provide password and optional 2FA code."
-                )
-
-            # Execute login
-            output = await self._run_bw_command(login_cmd, capture_output=False)
-
-            # Extract session token from output if available
-            # Note: bw login outputs the session token to stdout in some versions
-            if output and not output.startswith("You are logged in"):
-                # Try to extract session token
-                token_match = re.search(r'export BW_SESSION="([^"]+)"', output)
-                if token_match:
-                    self.session_token = token_match.group(1)
-
-            # Unlock vault (may be needed after login)
-            try:
-                await self.unlock_vault(password)
-            except Exception:
-                logger.warning("Could not unlock vault after login")
-
-            self._authenticated = True
-            logger.info("Successfully logged in to Bitwarden")
-
-        except Exception as e:
-            raise SecretBackendError(f"Bitwarden login failed: {e}")
-
-    async def unlock_vault(self, password: str) -> None:
-        """
-        Unlock the vault with master password.
-
-        Args:
-            password: Master password
-        """
-        try:
-            output = await self._run_bw_command(["unlock", password])
-
-            # Extract session token
-            token_match = re.search(r'export BW_SESSION="([^"]+)"', output)
-            if token_match:
-                self.session_token = token_match.group(1)
-                self._authenticated = True
-                logger.info("Bitwarden vault unlocked")
-            else:
-                raise SecretBackendError("Could not extract session token from unlock")
-
-        except Exception as e:
-            raise SecretBackendError(f"Vault unlock failed: {e}")
-
-    def _path_to_item_id(self, path: str) -> tuple[str, Optional[str]]:
-        """
-        Convert secret path to Bitwarden item ID and field name.
-
-        Path format: "folder/item" or "folder/item.field"
-        Returns: (item_id_or_name, field_name)
-        """
-        parts = path.split(".")
-        item_path = parts[0]
-        field_name = parts[1] if len(parts) > 1 else None
-
-        return item_path, field_name
-
-    def _item_to_secret(self, item: Dict[str, Any], field_name: Optional[str] = None) -> Secret:
-        from .bitwarden_mapping import item_to_secret as _item_to_secret
-
-        return _item_to_secret(item, field_name)
-
-    async def _get_cached_secret(self, path: str, version: Optional[int]) -> Optional[Secret]:
-        """Get a secret from cache if present."""
-        cached_secret = await self.cache.get_secret(path, version)
-        if cached_secret is None:
-            return None
-        logger.debug("Cache hit for secret: %s", path)
-        return Secret(
-            path,
-            cached_secret["data"],
-            SecretMetadata(**cached_secret["metadata"]),
+        client = BitwardenClient(
+            settings=ClientSettings(api_url=self.api_url, identity_url=self.identity_url)
         )
+        login = client.auth.login_access_token(self.access_token)
+        if not login.success:
+            raise SecretUnauthorizedError(
+                f"Bitwarden access token login failed: {login.error_message}"
+            )
+        return client
 
-    async def _cache_secret(self, path: str, secret: Secret, version: Optional[int]) -> None:
-        """Store secret payload in cache."""
-        await self.cache.set_secret(
-            path,
-            {
-                "data": secret.data,
-                "metadata": {
-                    "created_at": secret.metadata.created_at,
-                    "updated_at": secret.metadata.updated_at,
-                    "version": secret.metadata.version,
-                    "custom_metadata": secret.metadata.custom_metadata,
-                    "backend_specific": secret.metadata.backend_specific,
-                },
-            },
-            version,
-        )
+    async def _get_client(self) -> BitwardenClient:
+        if self._client is None:
+            self._client = await asyncio.to_thread(self._build_client)
+        return self._client
 
-    async def _fetch_item_for_path(self, item_path: str, full_path: str) -> Dict[str, Any]:
-        """Fetch an item by exact match first, then by search fallback."""
-        try:
-            output = await self._run_bw_command(["get", "item", item_path])
-            return json.loads(output)
-        except SecretNotFoundError:
-            try:
-                list_output = await self._run_bw_command(["list", "items", "--search", item_path])
-                items = json.loads(list_output)
-                if items:
-                    return items[0]
-            except Exception:
-                pass
-        raise SecretNotFoundError(f"Item not found: {full_path}")
-
-    async def _resolve_folder_id(self, folder_name: Optional[str]) -> Optional[str]:
-        """Resolve folder name to Bitwarden folder ID."""
-        if not folder_name:
-            return None
-        try:
-            folders_output = await self._run_bw_command(["list", "folders"])
-            folders = json.loads(folders_output)
-            for folder in folders:
-                if folder.get("name") == folder_name:
-                    return folder["id"]
-        except Exception:
-            logger.warning("Could not find folder: %s", folder_name)
+    def _find_secret_id(self, client: BitwardenClient, key: str) -> Optional[str]:
+        listing = client.secrets().list(self.organization_id)
+        if not listing.success:
+            raise SecretBackendError(listing.error_message or "failed to list secrets")
+        for identifier in listing.data.data:
+            if identifier.key == key:
+                return identifier.id
         return None
 
-    def _build_item_data(
-        self, item_name: str, folder_id: Optional[str], data: Dict[str, str]
-    ) -> Dict[str, Any]:
-        """Build Bitwarden item payload from secret data."""
-        item_data = {
-            "type": 1,
-            "name": item_name,
-            "notes": data.get("notes", ""),
-            "folderId": folder_id,
-            "login": {
-                "username": data.get("username"),
-                "password": data.get("password"),
-                "totp": data.get("totp"),
+    def _secret_response_to_secret(self, path: str, resp: Any) -> Secret:
+        metadata = SecretMetadata(
+            created_at=_coerce_dt(getattr(resp, "creation_date", None)),
+            updated_at=_coerce_dt(getattr(resp, "revision_date", None)),
+            custom_metadata={
+                "organization_id": getattr(resp, "organization_id", None),
+                "project_id": getattr(resp, "project_id", None),
             },
-            "fields": [],
-        }
-        if data.get("uri"):
-            item_data["login"]["uris"] = [{"uri": data["uri"]}]
-        for key, value in data.items():
-            if key not in ["name", "username", "password", "uri", "notes", "totp"]:
-                item_data["fields"].append({"name": key, "value": value, "type": 0})
-        return item_data
-
-    async def _create_item(self, item_data: Dict[str, Any], path: str) -> None:
-        """Create Bitwarden item using temporary JSON file."""
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            json.dump(item_data, f)
-            temp_file = f.name
-        try:
-            await self._run_bw_command(["create", "item", temp_file])
-            logger.info("Created new Bitwarden item: %s", path)
-        finally:
-            os.unlink(temp_file)
-
-    async def _update_existing_item(
-        self, item_name: str, item_data: Dict[str, Any], path: str
-    ) -> None:
-        """Update an existing Bitwarden item."""
-        get_output = await self._run_bw_command(["get", "item", item_name])
-        existing_item = json.loads(get_output)
-        existing_item.update(item_data)
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            json.dump(existing_item, f)
-            temp_file = f.name
-        try:
-            await self._run_bw_command(["edit", "item", existing_item["id"], temp_file])
-            logger.info("Updated Bitwarden item: %s", path)
-        finally:
-            os.unlink(temp_file)
-
-    async def _create_or_update_item(
-        self, item_name: str, item_data: Dict[str, Any], path: str
-    ) -> None:
-        """Create item, or update existing item if duplicate is reported."""
-        try:
-            await self._create_item(item_data, path)
-        except SecretBackendError as e:
-            if "already exists" not in str(e).lower():
-                raise
-            try:
-                await self._update_existing_item(item_name, item_data, path)
-            except Exception as update_error:
-                raise SecretBackendError(f"Failed to update existing item: {update_error}")
+            backend_specific={
+                "bitwarden_secret_id": getattr(resp, "id", None),
+                "bitwarden_project_id": getattr(resp, "project_id", None),
+            },
+        )
+        return Secret(
+            path=path,
+            data=_value_note_to_data(
+                getattr(resp, "value", "") or "",
+                getattr(resp, "note", None),
+            ),
+            metadata=metadata,
+        )
 
     async def get_secret(self, path: str, version: Optional[int] = None) -> Secret:
-        """
-        Retrieve secret from Bitwarden.
+        client = await self._get_client()
 
-        Args:
-            path: Secret path (format: "folder/item" or "folder/item.field")
-            version: Not supported by Bitwarden (ignored)
+        def _op() -> Secret:
+            secret_id = self._find_secret_id(client, path)
+            if secret_id is None:
+                raise SecretNotFoundError(path)
+            resp = client.secrets().get(secret_id)
+            if not resp.success:
+                raise SecretBackendError(resp.error_message or "failed to get secret")
+            return self._secret_response_to_secret(path, resp.data)
 
-        Returns:
-            Secret object
-
-        Raises:
-            SecretNotFoundError: If item doesn't exist
-            SecretUnauthorizedError: If authentication fails
-            SecretBackendError: If CLI fails
-        """
-        try:
-            await self._ensure_authenticated()
-            cached_secret = await self._get_cached_secret(path, version)
-            if cached_secret is not None:
-                return cached_secret
-
-            item_path, field_name = self._path_to_item_id(path)
-            item = await self._fetch_item_for_path(item_path, path)
-            secret = self._item_to_secret(item, field_name)
-            await self._cache_secret(path, secret, version)
-            logger.info("Retrieved secret from Bitwarden: %s", path)
-            return secret
-
-        except json.JSONDecodeError as e:
-            raise SecretBackendError(f"Invalid JSON response from Bitwarden CLI: {e}")
-        except Exception as e:
-            if isinstance(e, (SecretNotFoundError, SecretUnauthorizedError, SecretBackendError)):
-                raise
-            raise SecretBackendError(f"Failed to retrieve secret: {e}")
+        return await asyncio.to_thread(_op)
 
     async def put_secret(
         self,
@@ -407,206 +170,95 @@ class BitwardenAdapter(SecretAdapter):
         metadata: Optional[Dict[str, Any]] = None,
         version: Optional[int] = None,
     ) -> Secret:
-        """
-        Create or update a secret in Bitwarden.
+        if not data:
+            raise SecretValidationError("Secret data cannot be empty")
 
-        Args:
-            path: Secret path (format: "folder/item")
-            data: Secret data
-            metadata: Optional metadata (not supported by CLI)
-            version: Not supported (ignored)
+        client = await self._get_client()
+        value, note = _data_to_value_note(data)
+        project_ids = [uuid.UUID(self.project_id)] if self.project_id else None
 
-        Returns:
-            Secret object representing the stored secret
+        def _op() -> Secret:
+            secret_id = self._find_secret_id(client, path)
+            if secret_id is None:
+                resp = client.secrets().create(
+                    uuid.UUID(self.organization_id), path, value, note, project_ids
+                )
+            else:
+                resp = client.secrets().update(
+                    self.organization_id, secret_id, path, value, note, project_ids
+                )
+            if not resp.success:
+                raise SecretBackendError(resp.error_message or "failed to store secret")
+            return self._secret_response_to_secret(path, resp.data)
 
-        Raises:
-            SecretValidationError: If data validation fails
-            SecretUnauthorizedError: If write permissions are denied
-            SecretBackendError: If CLI fails
-        """
-        try:
-            await self._ensure_authenticated()
-
-            if not data:
-                raise SecretValidationError("Secret data cannot be empty")
-
-            item_path, field_name = self._path_to_item_id(path)
-
-            if field_name:
-                # Updating a specific field - not supported by CLI
-                raise SecretBackendError("Updating specific fields not supported via Bitwarden CLI")
-
-            path_parts = item_path.split("/")
-            folder_name = path_parts[0] if len(path_parts) > 1 else None
-            item_name = path_parts[-1]
-            folder_id = await self._resolve_folder_id(folder_name)
-            item_data = self._build_item_data(item_name, folder_id, data)
-            await self._create_or_update_item(item_name, item_data, path)
-
-            # Invalidate cache
-            await self.cache.invalidate_path(path)
-
-            # Return created/updated secret
-            return await self.get_secret(path)
-
-        except Exception as e:
-            if isinstance(e, (SecretValidationError, SecretUnauthorizedError, SecretBackendError)):
-                raise
-            raise SecretBackendError(f"Failed to store secret: {e}")
+        secret = await asyncio.to_thread(_op)
+        await self.cache.invalidate_path(path)
+        return secret
 
     async def list_secrets(self, prefix: str = "", limit: int = 100) -> List[str]:
-        """
-        List secrets under a given prefix.
+        client = await self._get_client()
 
-        Args:
-            prefix: Path prefix (folder name)
-            limit: Maximum number of secrets to return
-
-        Returns:
-            List of secret paths
-        """
-        try:
-            await self._ensure_authenticated()
-
-            # Get items from Bitwarden
-            list_cmd = ["list", "items"]
+        def _op() -> List[str]:
+            listing = client.secrets().list(self.organization_id)
+            if not listing.success:
+                raise SecretBackendError(listing.error_message or "failed to list secrets")
+            keys = [identifier.key for identifier in listing.data.data]
             if prefix:
-                list_cmd.extend(["--folderid", prefix])  # Assume prefix is folder ID
+                keys = [key for key in keys if key.startswith(prefix)]
+            return keys[:limit]
 
-            output = await self._run_bw_command(list_cmd)
-            items = json.loads(output)
-
-            # Convert to paths
-            paths = []
-            for item in items[:limit]:
-                folder_name = "root"  # Default
-                # Try to get folder name
-                if item.get("folderId"):
-                    try:
-                        folder_output = await self._run_bw_command(
-                            ["get", "folder", item["folderId"]]
-                        )
-                        folder_data = json.loads(folder_output)
-                        folder_name = folder_data.get("name", "root")
-                    except Exception:
-                        pass
-
-                path = f"{folder_name}/{item.get('name', item['id'])}"
-                paths.append(path)
-
-            logger.debug("Listed %s secrets under prefix: %s", len(paths), prefix)
-            return paths
-
-        except Exception as e:
-            if isinstance(e, (SecretUnauthorizedError, SecretBackendError)):
-                raise
-            raise SecretBackendError(f"Failed to list secrets: {e}")
+        return await asyncio.to_thread(_op)
 
     async def delete_secret(self, path: str, version: Optional[int] = None) -> None:
-        """
-        Delete a secret from Bitwarden.
+        client = await self._get_client()
 
-        Args:
-            path: Secret path
-            version: Not supported (ignored)
-        """
-        try:
-            await self._ensure_authenticated()
+        def _op() -> None:
+            secret_id = self._find_secret_id(client, path)
+            if secret_id is None:
+                raise SecretNotFoundError(path)
+            resp = client.secrets().delete([secret_id])
+            if not resp.success:
+                raise SecretBackendError(resp.error_message or "failed to delete secret")
 
-            item_path, field_name = self._path_to_item_id(path)
-
-            if field_name:
-                raise SecretBackendError("Deleting specific fields not supported via Bitwarden CLI")
-
-            # Delete item
-            await self._run_bw_command(["delete", "item", item_path])
-
-            # Invalidate cache
-            await self.cache.invalidate_path(path)
-
-            logger.info("Deleted secret from Bitwarden: %s", path)
-
-        except Exception as e:
-            if isinstance(e, (SecretNotFoundError, SecretUnauthorizedError, SecretBackendError)):
-                raise
-            raise SecretBackendError(f"Failed to delete secret: {e}")
+        await asyncio.to_thread(_op)
+        await self.cache.invalidate_path(path)
 
     async def rotate_secret(self, path: str) -> str:
-        """
-        Rotate a secret value by generating a new random password.
-
-        Args:
-            path: Secret path
-
-        Returns:
-            New password value
-        """
-        import secrets
-        import string
-
-        # Generate a new random password
         alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
-        new_password = "".join(secrets.choice(alphabet) for _ in range(16))
-
-        try:
-            # Get existing secret
-            existing_secret = await self.get_secret(path)
-
-            # Update password
-            new_data = existing_secret.data.copy()
-            new_data["password"] = new_password
-
-            # Update the item
-            await self.put_secret(path, new_data)
-
-            logger.info("Rotated password for secret: %s", path)
-            return new_password
-
-        except Exception as e:
-            raise SecretBackendError(f"Failed to rotate secret: {e}")
+        new_value = "".join(secrets.choice(alphabet) for _ in range(16))
+        existing = await self.get_secret(path)
+        new_data = dict(existing.data)
+        new_data["value"] = new_value
+        await self.put_secret(path, new_data)
+        logger.info("Rotated secret: %s", path)
+        return new_value
 
     async def health(self) -> Dict[str, Any]:
-        """
-        Check Bitwarden adapter health.
-
-        Returns:
-            Dictionary with health status and metadata
-        """
         try:
-            await self._ensure_authenticated()
+            client = await self._get_client()
 
-            # Get status
-            status_output = await self._run_bw_command(["status"])
-            status_data = json.loads(status_output)
+            def _op() -> bool:
+                listing = client.projects().list(self.organization_id)
+                return bool(listing.success)
 
-            # Determine health
-            user_email = status_data.get("userEmail")
-            server_url = status_data.get("serverUrl")
-            last_sync = status_data.get("lastSync")
-
-            status = "healthy"
-            if not user_email:
-                status = "unhealthy"
-            elif not last_sync:
-                status = "degraded"
-
+            ok = await asyncio.to_thread(_op)
             return {
-                "status": status,
-                "authenticated": bool(user_email),
-                "user_email": user_email,
-                "server_url": server_url,
-                "last_sync": last_sync,
+                "status": "healthy" if ok else "unhealthy",
+                "authenticated": True,
+                "organization_id": self.organization_id,
+                "project_id": self.project_id or None,
                 "timestamp": datetime.utcnow().isoformat(),
             }
-
-        except Exception as e:
-            logger.error("Health check failed: %s", e)
+        except Exception as exc:
+            logger.error("Health check failed: %s", exc)
             return {
                 "status": "unhealthy",
-                "error": str(e),
+                "error": str(exc),
                 "timestamp": datetime.utcnow().isoformat(),
             }
 
     async def close(self) -> None:
-        """Close resources."""
+        self._client = None
         await self.cache.stop()
+
+

@@ -1,8 +1,8 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-vi.mock('../../ui/Button', () => ({
-  default: function MockButton({
+vi.mock('../../ui', () => ({
+  Button: function MockButton({
     children,
     onClick,
     disabled,

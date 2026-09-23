@@ -10,15 +10,14 @@ const clearCookie = (name: string): void => {
 };
 
 interface PersistAuthInput {
-  token?: string | null | undefined;
-  refreshToken?: string | null | undefined;
   user?: AccessUser | null | undefined;
-  expiresIn?: number | null | undefined;
 }
 
 /**
  * Persist non-sensitive user data to localStorage for UI hydration.
  * Session cookies are managed by @supabase/ssr — nothing to write here.
+ * Legacy token/refresh-token parameters were removed because callers passed
+ * them expecting a session to be persisted, which silently no-oped.
  */
 export const persistAuthSession = ({ user }: PersistAuthInput): void => {
   if (typeof window === 'undefined') return;

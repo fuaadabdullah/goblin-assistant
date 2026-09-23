@@ -1,10 +1,8 @@
 import {
   ProviderUpdatePayload,
-  deleteBackend,
-  getBackend,
+  deleteFrontend,
   getFrontend,
   patchFrontend,
-  postBackend,
   postFrontend,
   putFrontend,
 } from './shared';
@@ -167,7 +165,7 @@ export const providersMethods = {
   },
 
   async setProviderApiKey(provider: string, key: string): Promise<void> {
-    await postBackend(`/api/v1/api-keys/${encodeURIComponent(provider)}`, { key });
+    await postFrontend(`/api/api-keys/${encodeURIComponent(provider)}`, { key });
   },
 
   async storeApiKey(provider: string, key: string): Promise<void> {
@@ -175,14 +173,14 @@ export const providersMethods = {
   },
 
   async getApiKey(provider: string): Promise<string | null> {
-    const response = await getBackend<ProviderApiKeyResponse>(
-      `/api/v1/api-keys/${encodeURIComponent(provider)}`
+    const response = await getFrontend<ProviderApiKeyResponse>(
+      `/api/api-keys/${encodeURIComponent(provider)}`
     );
     return response.configured || response.key ? (response.key ?? 'configured') : null;
   },
 
   async clearApiKey(provider: string): Promise<void> {
-    await deleteBackend(`/api/v1/api-keys/${encodeURIComponent(provider)}`);
+    await deleteFrontend(`/api/api-keys/${encodeURIComponent(provider)}`);
   },
 
   async getProviders(): Promise<string[]> {

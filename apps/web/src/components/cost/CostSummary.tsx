@@ -1,5 +1,5 @@
 import type { CostEstimate } from '../../hooks/useCostEstimation';
-import Button from '../ui/Button';
+import { Button } from '../ui';
 import { formatCost } from '@/utils/format-cost';
 
 interface Props {

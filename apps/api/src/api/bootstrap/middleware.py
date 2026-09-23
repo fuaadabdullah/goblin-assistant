@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-import os
+import time
+import uuid
 from collections.abc import Awaitable, Callable
 
 import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from structlog.contextvars import bind_contextvars, clear_contextvars
 
+from ..config.settings import get_settings
 from ..core.route_lifecycle import LifecycleDecision, RouteLifecycle, classify_route_lifecycle
 from ..middleware import (
     AuthenticationMiddleware,
@@ -16,9 +19,29 @@ from ..middleware import (
 )
 from ..observability.migration_metrics import migration_metrics
 from ..security_config import SecurityConfig
-from .startup import is_true
 
 logger = structlog.get_logger()
+
+
+async def structured_request_logging(request: Request, call_next):
+    """Bind request context for every log emitted during an HTTP request."""
+    request_id = request.headers.get("x-request-id") or request.headers.get("x-correlation-id")
+    if not request_id:
+        request_id = str(uuid.uuid4())
+    clear_contextvars()
+    bind_contextvars(request_id=request_id, method=request.method, path=request.url.path)
+    started = time.perf_counter()
+    try:
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        logger.info("http_request", status_code=response.status_code,
+                    duration_ms=round((time.perf_counter() - started) * 1000, 2))
+        return response
+    except Exception:
+        logger.exception("http_request_failed")
+        raise
+    finally:
+        clear_contextvars()
 
 
 def resolve_runtime_origins(*, environment: str, configured: list[str]) -> list[str]:
@@ -42,7 +65,14 @@ def resolve_runtime_origins(*, environment: str, configured: list[str]) -> list[
             "Refusing to start: no CORS origins resolved for production. "
             "Set ALLOWED_ORIGINS (or FRONTEND_URL/BACKEND_URL) to explicit origins."
         )
-    explicit = os.getenv("ALLOWED_ORIGINS") or os.getenv("FRONTEND_URL") or os.getenv("BACKEND_URL")
+    settings = get_settings()
+    explicit = settings.allowed_origins or (
+        settings.frontend_url
+        if settings.frontend_url != "http://localhost:3000"
+        else settings.backend_url
+        if settings.backend_url != "http://localhost:8004"
+        else ""
+    )
     if not explicit:
         raise RuntimeError(
             "Refusing to start: no explicit ALLOWED_ORIGINS (or FRONTEND_URL/BACKEND_URL) "
@@ -83,21 +113,22 @@ async def add_contract_lifecycle_headers(
 
 
 def install_runtime_middlewares(app: FastAPI, *, environment: str) -> None:
+    app.middleware("http")(structured_request_logging)
     app.add_middleware(ErrorHandlingMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
 
-    rate_limit_enabled_raw = os.getenv("RATE_LIMIT_ENABLED")
-    if rate_limit_enabled_raw is None:
+    settings = get_settings()
+    if settings.rate_limit_enabled is None:
         rate_limit_enabled = True
     else:
-        rate_limit_enabled = is_true(rate_limit_enabled_raw)
+        rate_limit_enabled = settings.rate_limit_enabled
 
     if rate_limit_enabled:
         try:
             from ..middleware.rate_limiter import RateLimiter
 
-            requests_per_minute = int(os.getenv("RATE_LIMIT_PER_MINUTE", "100"))
-            requests_per_hour = int(os.getenv("RATE_LIMIT_PER_HOUR", "1000"))
+            requests_per_minute = settings.rate_limit_per_minute
+            requests_per_hour = settings.rate_limit_per_hour
             rate_limiter = RateLimiter(
                 requests_per_minute=requests_per_minute,
                 requests_per_hour=requests_per_hour,

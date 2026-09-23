@@ -2,9 +2,9 @@
 
 ## Executive Summary
 
-**Total Tasks Analyzed**: 8 Celery tasks
-**Tasks Migrated to APScheduler**: 3 (37.5%)
-**Tasks Remaining in Celery**: 5 (62.5%)
+**Total Tasks Analyzed**: 6 Celery tasks
+**Tasks Migrated to APScheduler**: 3 (50%)
+**Tasks Remaining in Celery**: 3 (50%)
 **Migration Status**: Partial - Light tasks replaced, heavy tasks retained
 
 ## Task Inventory
@@ -81,25 +81,7 @@
 
 ---
 
-### 5. Data Processing Worker (`tasks.data_processing_worker.*`)
-
-**Status**: ❌ KEEP in Celery
-**Classification**: KEEP (Heavy)
-**Current Implementation**: Not fully implemented (referenced in config)
-
-**Performance Metrics** (Estimated):
-
-- **Avg Duration**: 5-60 minutes (data transformation pipelines)
-- **Peak Concurrency**: 2-5 concurrent workers
-- **Memory Usage**: 200MB-1GB (data processing)
-- **I/O Pattern**: Heavy file I/O, DB operations
-- **Frequency**: On-demand/batch
-
-**Retention Rationale**: ETL operations, complex workflows, variable resource usage.
-
----
-
-### 6. Model Training Worker (`tasks.model_training_worker.*`)
+### 5. Model Training Worker (`tasks.model_training_worker.*`)
 
 **Status**: ❌ KEEP in Celery
 **Classification**: KEEP (Heavy)
@@ -117,29 +99,11 @@
 
 ---
 
-### 7. Notification Worker (`tasks.notification_worker.*`)
+### 6. Generic Task Processor (`celery_task_queue.process_task_celery`)
 
 **Status**: ❌ KEEP in Celery
 **Classification**: KEEP (Heavy)
-**Current Implementation**: Not implemented (referenced in config)
-
-**Performance Metrics** (Estimated):
-
-- **Avg Duration**: 1-10 minutes (email/SMS/external API calls)
-- **Peak Concurrency**: 5-20 concurrent notifications
-- **Memory Usage**: 50-200MB (template processing)
-- **I/O Pattern**: External API calls, DB reads
-- **Frequency**: Event-driven
-
-**Retention Rationale**: External service dependencies, retry logic needed, variable latency.
-
----
-
-### 8. Generic Task Processor (`celery_task_queue.process_task_celery`)
-
-**Status**: ❌ KEEP in Celery
-**Classification**: KEEP (Heavy)
-**Current Implementation**: RQ replacement in `celery_task_queue.py`
+**Current Implementation**: None - module not implemented (active job runtime is the RQ sandbox worker)
 
 **Performance Metrics** (Estimated):
 
@@ -230,3 +194,7 @@
 - Job execution logging and alerting
 - Gradual rollout (one replica at a time)
 - Comprehensive testing before production deployment
+
+## Accuracy Note
+
+This inventory is aspirational and no longer matches the codebase. The two worker modules previously listed here (	asks.data_processing_worker, 	asks.notification_worker) were never implemented and have been removed. The jobs/*.py, ackend/scheduler.py, and celery_task_queue.py paths referenced elsewhere in this document are also not present; pps/api/src/api/celery_app.py registers no tasks and no beat schedule. The live job runtimes are the RQ sandbox worker (scripts/ops/start_worker.py, pps/api/src/api/sandbox_api.py) and in-process services (pi/services/provider_health.py, pi/services/background_tasks.py).

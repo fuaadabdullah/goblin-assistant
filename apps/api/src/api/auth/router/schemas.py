@@ -1,6 +1,6 @@
 """Pydantic request/response models for the auth router."""
 
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, EmailStr
 
@@ -62,18 +62,23 @@ class GoogleAuthCallback(BaseModel):
     state: Optional[str] = None
 
 
+class PasskeyChallengeRequest(BaseModel):
+    email: EmailStr
+
+
 class PasskeyRegistrationRequest(BaseModel):
     email: EmailStr
-    credential_id: str
-    public_key: str
+    credential: Dict[str, Any]
 
 
 class PasskeyAuthRequest(BaseModel):
     email: EmailStr
-    credential_id: str
-    authenticator_data: str
-    client_data_json: str
-    signature: str
+    assertion: Dict[str, Any]
+
+
+class PasskeyAuthResponse(BaseModel):
+    token_hash: str
+    user: User
 
 
 class TokenValidationRequest(BaseModel):

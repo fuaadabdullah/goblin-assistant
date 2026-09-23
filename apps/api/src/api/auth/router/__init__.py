@@ -60,6 +60,8 @@ from .schemas import (  # noqa: F401
     GoogleAuthCallback,
     GoogleAuthRequest,
     PasskeyAuthRequest,
+    PasskeyAuthResponse,
+    PasskeyChallengeRequest,
     PasskeyRegistrationRequest,
     RefreshTokenRequest,
     Token,

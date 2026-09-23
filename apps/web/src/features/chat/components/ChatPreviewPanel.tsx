@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Input } from '../../../components/ui/input';
+import { Input } from '../../../components/ui';
 
 const ChatPreviewPanel = () => {
   // String hrefs (not `{ pathname, query }` objects): deterministic SSR

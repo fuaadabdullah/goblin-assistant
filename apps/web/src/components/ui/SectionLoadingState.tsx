@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Card, CardContent } from './card';
+import { Card, CardContent } from '@goblin/ui';
 
 export interface SectionLoadingStateProps {
   label?: string;

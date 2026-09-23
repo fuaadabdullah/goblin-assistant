@@ -25,7 +25,7 @@ describe('/api/auth/validate route', () => {
     );
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/api/v1/auth/validate'),
+      expect.stringContaining('/auth/validate'),
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ token: 'session-token' }),

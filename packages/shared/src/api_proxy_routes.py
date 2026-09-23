@@ -14,6 +14,7 @@ class ProxyRouteSpec:
 PROXY_ROUTES: tuple[ProxyRouteSpec, ...] = (
     ProxyRouteSpec("/api/account", "/api/v1/account"),
     ProxyRouteSpec("/api/agent", "/api/v1/agent"),
+    ProxyRouteSpec("/api/api-keys", "/api/v1/api-keys"),
     ProxyRouteSpec("/api/auth", "/api/v1/auth"),
     ProxyRouteSpec("/api/chat", "/api/v1/chat"),
     ProxyRouteSpec("/api/costs", "/api/v1/routing/costs"),

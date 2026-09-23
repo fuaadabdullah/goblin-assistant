@@ -23,21 +23,20 @@ class TestCacheServiceConnect:
     @pytest.mark.asyncio
     async def test_connect_success(self, cache_service):
         """Test successful Redis connection"""
-        with patch("redis.asyncio.from_url") as mock_redis:
+        with patch("api.services.cache_service.get_redis_client") as mock_get_redis_client:
             mock_client = AsyncMock()
-            mock_client.ping = AsyncMock()
-            mock_redis.return_value = mock_client
+            mock_get_redis_client.return_value = mock_client
 
             await cache_service.connect()
 
             assert cache_service._is_connected is True
-            mock_client.ping.assert_called_once()
+            assert cache_service.redis_client is mock_client
 
     @pytest.mark.asyncio
     async def test_connect_failure_sets_disconnected(self, cache_service):
         """Test failed connection sets disconnected state"""
-        with patch("redis.asyncio.from_url") as mock_redis:
-            mock_redis.side_effect = Exception("Connection refused")
+        with patch("api.services.cache_service.get_redis_client") as mock_get_redis_client:
+            mock_get_redis_client.side_effect = Exception("Connection refused")
 
             await cache_service.connect()
 
@@ -46,27 +45,27 @@ class TestCacheServiceConnect:
     @pytest.mark.asyncio
     async def test_connect_idempotent(self, cache_service):
         """Test connect doesn't reconnect if already connected"""
-        with patch("redis.asyncio.from_url") as mock_redis:
+        with patch("api.services.cache_service.get_redis_client") as mock_get_redis_client:
             mock_client = AsyncMock()
-            mock_client.ping = AsyncMock()
-            mock_redis.return_value = mock_client
+            mock_get_redis_client.return_value = mock_client
 
             await cache_service.connect()
             await cache_service.connect()
 
-            # Should only call from_url once
-            mock_redis.assert_called_once()
+            # Should only fetch the shared singleton once
+            mock_get_redis_client.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_disconnect_success(self, cache_service):
-        """Test successful disconnection"""
+        """Test disconnect clears the local reference without closing the
+        shared singleton (core.redis_client owns its lifecycle)."""
         cache_service.redis_client = AsyncMock()
         cache_service._is_connected = True
 
         await cache_service.disconnect()
 
         assert cache_service._is_connected is False
-        cache_service.redis_client.close.assert_called_once()
+        assert cache_service.redis_client is None
 
 
 class TestCacheServiceSet:
@@ -100,16 +99,15 @@ class TestCacheServiceSet:
     @pytest.mark.asyncio
     async def test_set_auto_connects(self, cache_service):
         """Test set auto-connects if disconnected"""
-        with patch("redis.asyncio.from_url") as mock_redis:
+        with patch("api.services.cache_service.get_redis_client") as mock_get_redis_client:
             mock_client = AsyncMock()
-            mock_client.ping = AsyncMock()
             mock_client.setex = AsyncMock()
-            mock_redis.return_value = mock_client
+            mock_get_redis_client.return_value = mock_client
 
             result = await cache_service.set("key", "value", ttl=100)
 
             assert result is True
-            mock_client.ping.assert_called_once()
+            mock_client.setex.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_set_serializes_to_json(self, cache_service):
@@ -167,15 +165,14 @@ class TestCacheServiceGet:
     @pytest.mark.asyncio
     async def test_get_auto_connects(self, cache_service):
         """Test get auto-connects if disconnected"""
-        with patch("redis.asyncio.from_url") as mock_redis:
+        with patch("api.services.cache_service.get_redis_client") as mock_get_redis_client:
             mock_client = AsyncMock()
-            mock_client.ping = AsyncMock()
             mock_client.get = AsyncMock(return_value=None)
-            mock_redis.return_value = mock_client
+            mock_get_redis_client.return_value = mock_client
 
             await cache_service.get("key")
 
-            mock_client.ping.assert_called_once()
+            mock_client.get.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_get_returns_none_on_error(self, cache_service):

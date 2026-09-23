@@ -80,8 +80,8 @@ class LoadBalancingHealthChecks(BaseModel):
 
 
 class LoadBalancingServerPriorities(BaseModel):
-    primary_ollama: str = "192.175.23.150:8002"
-    backup_router: str = "45.61.51.220:8000"
+    primary_ollama: str = ""
+    backup_router: str = ""
 
 
 class LoadBalancing(BaseModel):

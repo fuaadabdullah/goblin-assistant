@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { ToastItem } from './ToastItem';
 import { ToastContainer } from './ToastContainer';
 import { useToast } from '../hooks/useToast';
-import Button from './ui/Button';
+import { Button } from './ui';
 
 const meta = {
   title: 'Components/Toast',

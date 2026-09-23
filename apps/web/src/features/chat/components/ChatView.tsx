@@ -10,12 +10,14 @@ import { useAuthSession } from '../../../hooks/api/useAuthSession';
 import ChatPreviewPanel from './ChatPreviewPanel';
 import Link from 'next/link';
 import { X } from 'lucide-react';
-import { Input } from '../../../components/ui/input';
+import { Input } from '../../../components/ui';
 import { useUIStore } from '../../../store/uiStore';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
 import { useVisualViewportHeight } from '../../../hooks/useVisualViewportHeight';
+import { useTabListKeyboardNav } from '../../../hooks/useTabListKeyboardNav';
 
-type MobileChatPanelTab = 'conversations' | 'preview';
+const MOBILE_CHAT_PANEL_TABS = ['conversations', 'preview'] as const;
+type MobileChatPanelTab = (typeof MOBILE_CHAT_PANEL_TABS)[number];
 
 interface ChatViewProps {
   /** Chat session state + handlers. */
@@ -35,6 +37,8 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
   // Keeps the pinned composer above the on-screen keyboard on iOS Safari.
   useVisualViewportHeight();
   const [mobilePanelTab, setMobilePanelTab] = useState<MobileChatPanelTab>('conversations');
+  const { onKeyDown: onMobilePanelTabKeyDown, registerTab: registerMobilePanelTab } =
+    useTabListKeyboardNav(MOBILE_CHAT_PANEL_TABS, mobilePanelTab, setMobilePanelTab);
   const {
     messages,
     input,
@@ -203,13 +207,18 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
                 className="grid grid-cols-2 gap-2 rounded-lg bg-bg p-1"
                 role="tablist"
                 aria-label="Chat panel sections"
+                onKeyDown={onMobilePanelTabKeyDown}
               >
-                {(['conversations', 'preview'] as const).map((tab) => (
+                {MOBILE_CHAT_PANEL_TABS.map((tab) => (
                   <button
                     key={tab}
                     type="button"
+                    id={`mobile-chat-tab-${tab}`}
                     role="tab"
                     aria-selected={mobilePanelTab === tab}
+                    aria-controls={`mobile-chat-tabpanel-${tab}`}
+                    tabIndex={mobilePanelTab === tab ? 0 : -1}
+                    ref={registerMobilePanelTab(tab)}
                     onClick={() => setMobilePanelTab(tab)}
                     className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                       mobilePanelTab === tab
@@ -223,19 +232,31 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
               </div>
             </div>
             {mobilePanelTab === 'conversations' ? (
-              <ChatSidebar
-                threads={threads}
-                isThreadsLoading={isThreadsLoading}
-                activeThreadKey={activeThreadKey}
-                onSelectThread={handleThreadSelect}
-                onNewConversation={handleNewConversation}
-                isAdmin={isAdmin}
-                totalTokens={totalTokens}
-                messageCount={messages.length}
-                className="h-full w-full border-0 shadow-none"
-              />
+              <div
+                className="contents"
+                role="tabpanel"
+                id="mobile-chat-tabpanel-conversations"
+                aria-labelledby="mobile-chat-tab-conversations"
+              >
+                <ChatSidebar
+                  threads={threads}
+                  isThreadsLoading={isThreadsLoading}
+                  activeThreadKey={activeThreadKey}
+                  onSelectThread={handleThreadSelect}
+                  onNewConversation={handleNewConversation}
+                  isAdmin={isAdmin}
+                  totalTokens={totalTokens}
+                  messageCount={messages.length}
+                  className="h-full w-full border-0 shadow-none"
+                />
+              </div>
             ) : (
-              <div className="h-full overflow-y-auto p-4">
+              <div
+                className="h-full overflow-y-auto p-4"
+                role="tabpanel"
+                id="mobile-chat-tabpanel-preview"
+                aria-labelledby="mobile-chat-tab-preview"
+              >
                 <ChatPreviewPanel />
               </div>
             )}

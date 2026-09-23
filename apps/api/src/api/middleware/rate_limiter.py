@@ -8,6 +8,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import jwt
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
@@ -39,6 +40,34 @@ def _is_trusted_proxy(host: str | None) -> bool:
     except ValueError:
         return False
     return any(ip in network for network in _trusted_proxy_networks())
+
+
+def _bucket_user_id(request: Request) -> str | None:
+    """Best-effort user id for rate-limit bucketing, read directly from the
+    request's bearer token instead of request.state.
+
+    This deliberately does NOT verify the token's signature: this middleware
+    runs before route dependencies (including the real auth check) resolve,
+    so request.state.auth_user_id isn't set yet at this point — keying on it
+    here was previously dead code. Real authorization still happens later in
+    the request via the route's own auth dependency; an unparseable, expired,
+    or forged token here only means the request buckets by IP below instead
+    of by user, the same fallback that already applies to anonymous traffic.
+    Full verification (signature + possible JWKS/auth-API network calls) is
+    deliberately skipped so this stays a cheap, local check on every request.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return None
+    token = auth_header[7:].strip()
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, options={"verify_signature": False})
+    except Exception:
+        return None
+    subject = payload.get("sub")
+    return str(subject) if subject else None
 
 
 def _client_ip_from_request(request: Request) -> str:
@@ -78,8 +107,9 @@ class RateLimiter:
 
     def _get_client_identifier(self, request: Request) -> str:
         """Get unique client identifier from request."""
-        # Try to get authenticated user ID first
-        user_id = getattr(request.state, "user_id", None)
+        # Prefer bucketing by the (unverified) bearer token's subject, so a
+        # logged-in user's limit follows them across IPs/proxies.
+        user_id = _bucket_user_id(request)
         if user_id:
             return f"user:{user_id}"
 

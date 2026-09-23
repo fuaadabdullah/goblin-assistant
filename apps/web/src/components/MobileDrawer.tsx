@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback } from 'react';
 import { X } from 'lucide-react';
 import { useUIStore } from '../store/uiStore';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import Logo from './Logo';
 
 const MobileDrawer: React.FC<{
@@ -10,28 +11,8 @@ const MobileDrawer: React.FC<{
 }> = ({ title = 'Menu', ariaLabel = 'Mobile navigation', children }) => {
   const isOpen = useUIStore((s) => s.mobileNavOpen);
   const close = useUIStore((s) => s.setMobileNavOpen);
-  const panelRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        close(false);
-      }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [isOpen, close]);
-
-  useEffect(() => {
-    if (isOpen) {
-      // focus the panel for keyboard users
-      setTimeout(() => panelRef.current?.focus(), 50);
-      // prevent body scroll
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-  }, [isOpen]);
+  const closeDrawer = useCallback(() => close(false), [close]);
+  const panelRef = useFocusTrap(isOpen, closeDrawer);
 
   return (
     <>
@@ -48,6 +29,7 @@ const MobileDrawer: React.FC<{
           <div
             className="fixed top-0 left-0 bottom-0 w-72 z-50 bg-surface border-r border-border shadow-lg overflow-auto pt-[max(0px,env(safe-area-inset-top))] pb-[max(0px,env(safe-area-inset-bottom))]"
             role="dialog"
+            aria-modal="true"
             aria-label={ariaLabel}
           >
             <div ref={panelRef} tabIndex={-1} className="h-full flex flex-col">

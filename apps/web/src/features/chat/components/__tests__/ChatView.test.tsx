@@ -59,7 +59,7 @@ vi.mock('next/link', () => ({
     );
   },
 }));
-vi.mock('../../../../components/ui/input', () => ({
+vi.mock('../../../../components/ui', () => ({
   Input: function MockInput(props: Record<string, unknown>) {
     return <input {...(props as object)} />;
   },

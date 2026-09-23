@@ -1,5 +1,6 @@
 """Authentication and rate-limiting middleware for the attestation webhook."""
 
+import asyncio
 import importlib
 import logging
 import os
@@ -55,10 +56,17 @@ def rate_limit(
                 now = int(time.time())
                 window = now // 60
                 key = f"attestation:ratelimit:{key_id}:{window}"
-                try:
-                    count = redis_client.incr(key)
-                    if count == 1:
+
+                def _incr_and_maybe_expire() -> int:
+                    # redis_client is a plain, blocking redis.Redis (not
+                    # redis.asyncio) — run it off the event loop.
+                    incr_count = redis_client.incr(key)
+                    if incr_count == 1:
                         redis_client.expire(key, 60)
+                    return incr_count
+
+                try:
+                    count = await asyncio.to_thread(_incr_and_maybe_expire)
                     if count > limit:
                         extra = {"key": key_id, "count": count}
                         audit_logger.warning("rate_limit_exceeded", extra=extra)

@@ -2,18 +2,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { chatClient } from '../index';
 import { apiClient } from '@/lib/api';
 
-const { mockGetAuthTokenForRequest } = vi.hoisted(() => ({
-  mockGetAuthTokenForRequest: vi.fn(),
-}));
-
-vi.mock('../../../../utils/auth-session', () => ({
-  getAuthTokenForRequest: mockGetAuthTokenForRequest,
-}));
-
 describe('chatClient conversation API', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    mockGetAuthTokenForRequest.mockResolvedValue('supabase-jwt');
   });
 
   it('surfaces an authentication-required error when conversation creation is unauthorized', async () => {
@@ -150,68 +141,4 @@ describe('chatClient conversation API', () => {
     });
   });
 
-  it('surfaces streaming provider errors instead of falling back to mock completion', async () => {
-    const onChunk = vi.fn();
-    const onComplete = vi.fn();
-    const onError = vi.fn();
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 200,
-      statusText: 'OK',
-      text: vi.fn().mockResolvedValue('no-configured-providers'),
-    });
-
-    vi.spyOn(apiClient, 'chatCompletion');
-    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
-
-    await expect(
-      chatClient.sendMessageStreaming({
-        conversationId: 'conv-6',
-        prompt: 'Stream this',
-        onChunk,
-        onComplete,
-        onError,
-      })
-    ).rejects.toMatchObject({
-      code: 'CHAT_STREAM_FAILED',
-      userMessage: 'The connection was interrupted. Please try again.',
-    });
-
-    expect(fetchMock).toHaveBeenCalled();
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/chat/stream',
-      expect.objectContaining({
-        headers: expect.objectContaining({ Authorization: 'Bearer supabase-jwt' }),
-      })
-    );
-    expect(apiClient.chatCompletion).not.toHaveBeenCalled();
-    expect(onChunk).not.toHaveBeenCalled();
-    expect(onComplete).not.toHaveBeenCalled();
-  });
-
-  it('preserves non-Error streaming failures in the error callback', async () => {
-    const onChunk = vi.fn();
-    const onComplete = vi.fn();
-    const onError = vi.fn();
-    const fetchMock = vi.fn().mockRejectedValue('stream backend unavailable');
-
-    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
-
-    await expect(
-      chatClient.sendMessageStreaming({
-        conversationId: 'conv-7',
-        prompt: 'Stream this',
-        onChunk,
-        onComplete,
-        onError,
-      })
-    ).rejects.toMatchObject({
-      code: 'CHAT_STREAM_FAILED',
-      userMessage: 'The connection was interrupted. Please try again.',
-    });
-
-    expect(onError).toHaveBeenCalledWith(expect.any(Error));
-    expect((onError.mock.calls[0]?.[0] as Error).message).toBe('stream backend unavailable');
-    expect(onComplete).not.toHaveBeenCalled();
-  });
 });

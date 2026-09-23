@@ -167,30 +167,36 @@ def create_vault_adapter(
 
 
 def create_bitwarden_adapter(
-    session_token: Optional[str] = None,
-    server_url: Optional[str] = None,
+    access_token: Optional[str] = None,
+    organization_id: Optional[str] = None,
+    project_id: Optional[str] = None,
+    api_url: Optional[str] = None,
+    identity_url: Optional[str] = None,
     cache_ttl: int = 300,
     cache_size: int = 1000,
-    timeout: int = 30,
 ) -> BitwardenAdapter:
     """
-    Create a Bitwarden adapter with common configuration.
+    Create a Bitwarden Secrets Manager adapter.
 
     Args:
-        session_token: Optional pre-existing session token
-        server_url: Optional custom Bitwarden server URL
+        access_token: Bitwarden Secrets Manager access token
+        organization_id: Bitwarden organization ID
+        project_id: Optional project ID to scope secrets to
+        api_url: Optional Bitwarden API URL
+        identity_url: Optional Bitwarden identity URL
         cache_ttl: Cache time-to-live in seconds
         cache_size: Maximum cache entries
-        timeout: Command timeout in seconds
 
     Returns:
         Configured BitwardenAdapter instance
     """
     return create_adapter(
         "bitwarden",
-        session_token=session_token,
-        server_url=server_url,
+        access_token=access_token,
+        organization_id=organization_id,
+        project_id=project_id,
+        api_url=api_url,
+        identity_url=identity_url,
         cache_ttl=cache_ttl,
         cache_size=cache_size,
-        timeout=timeout,
     )

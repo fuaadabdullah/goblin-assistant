@@ -5,7 +5,7 @@ import ThemePreview from '../../components/ThemePreview';
 import KeyboardShortcutsHelp from '../../components/KeyboardShortcutsHelp';
 import ContrastModeToggle from '../../components/ContrastModeToggle';
 import Seo from '../../components/Seo';
-import { useProvider } from '../../contexts/ProviderContext';
+import { useProviderStore } from '@/store/providerStore';
 import { useToast } from '../../hooks/useToast';
 import { apiClient } from '@/lib/api';
 import { getUserMessage } from '@/lib/error/toast';
@@ -28,7 +28,10 @@ const SettingsPageContent: React.FC = () => {
     error: providersError,
     refetch,
   } = useProviderSettings();
-  const providerCtx = useProvider();
+  const storedProvider = useProviderStore((state) => state.selectedProvider);
+  const storedModel = useProviderStore((state) => state.selectedModel);
+  const setSelectedProvider = useProviderStore((state) => state.setSelectedProvider);
+  const setSelectedModel = useProviderStore((state) => state.setSelectedModel);
   const { showSuccess, showError } = useToast();
   const [isSaving, setIsSaving] = React.useState(false);
   const [providerSearch, setProviderSearch] = React.useState('');
@@ -109,8 +112,8 @@ const SettingsPageContent: React.FC = () => {
     [filteredProviders]
   );
 
-  const selectedProvider = providerCtx.selectedProvider || (providers[0]?.name ?? '');
-  const selectedModel = providerCtx.selectedModel || '';
+  const selectedProvider = storedProvider || (providers[0]?.name ?? '');
+  const selectedModel = storedModel || '';
   const selectedProviderModels = React.useMemo(() => {
     const models = providers.find((p) => p.name === selectedProvider)?.models;
     if (!Array.isArray(models)) return [] as string[];
@@ -242,8 +245,8 @@ const SettingsPageContent: React.FC = () => {
           selectedModel={selectedModel}
           selectedProviderModels={selectedProviderModels}
           isSaving={isSaving}
-          onProviderChange={providerCtx.setSelectedProvider}
-          onModelChange={providerCtx.setSelectedModel}
+          onProviderChange={setSelectedProvider}
+          onModelChange={setSelectedModel}
           onSave={handleSavePreferences}
         />
       </div>

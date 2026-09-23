@@ -95,9 +95,14 @@ class RedisCache:
         if not self._redis:
             return
         try:
-            keys = await self._redis.keys(pattern)
-            if keys:
-                await self._redis.delete(*keys)
+            batch: list = []
+            async for key in self._redis.scan_iter(match=pattern, count=500):
+                batch.append(key)
+                if len(batch) >= 500:
+                    await self._redis.delete(*batch)
+                    batch = []
+            if batch:
+                await self._redis.delete(*batch)
         except Exception as e:
             logger.error("Redis delete pattern error for %s: %s", pattern, e)
 

@@ -22,12 +22,11 @@ Your Goblin Assistant application now has comprehensive monitoring set up with:
 - **Datadog RUM**: Environment variables configured (needs your credentials)
 - **Status**: Ready for Datadog setup
 
-### Backend (Vercel)
+### Backend (Render)
 
-- **URL**: <https://goblinos-assistant-backend-v2-gsjbxtrro-fuaadabdullahs-projects.vercel.app>
-- **Health Endpoint**: `/health` (protected by Vercel authentication)
-- **Analytics**: Ready for activation
-- **Status**: Deployed and functional
+- **URL**: Set `BACKEND_URL` to the deployed API origin
+- **Health Endpoint**: `/api/v1/health`
+- **Status**: Verify with the deployment health script
 
 ## 🚀 Quick Setup Instructions
 
@@ -54,18 +53,13 @@ This script will:
 4. Click **Enable Analytics**
 5. Choose your plan (free tier available)
 
-### 3. Set Up Backend Health Monitoring
+### 3. Verify Backend Health
 
 ```bash
-
-cd /Volumes/GOBLINOS 1/goblin-assistant
-./setup-backend-monitoring.sh
+BACKEND_URL=https://your-backend.example.com bash scripts/verify-deployment.sh
 ```
 
-This creates:
-
-- `uptime-monitor.sh` - Automated health check script
-- `backend-uptime.log` - Health check logs
+This checks the configured backend endpoints without creating local monitoring artifacts.
 
 ## 📈 What You'll Monitor
 
@@ -76,7 +70,7 @@ This creates:
 - **Error Tracking**: JavaScript errors and failed API calls
 - **User Journeys**: Click paths and user flows
 
-### Backend Metrics (Vercel Analytics)
+### Backend Metrics
 
 - **Request Volume**: API call frequency and patterns
 - **Response Times**: Function execution performance
@@ -109,11 +103,8 @@ After setup, access your monitoring data at:
 
 ### Vercel Deployment Protection
 
-Your backend is protected by Vercel authentication. For testing:
-
-1. **Temporary Disable**: Go to Vercel Dashboard → Settings → Deployment Protection → Disable
-2. **Test Health Endpoint**: `curl <https://your-backend-url/health`>
-3. **Re-enable Protection**: Turn protection back on after testing
+Use the deployment health script with an explicitly configured `BACKEND_URL`; do not embed
+deployment URLs or credentials in monitoring scripts.
 
 ### Datadog Credentials
 
@@ -135,9 +126,9 @@ Keep your Datadog Application ID and Client Token secure:
 
 ### Test Backend Monitoring
 
-1. Temporarily disable Vercel protection
-2. Run: `./uptime-monitor.sh`
-3. Check Vercel Analytics for request metrics
+1. Set `BACKEND_URL` to the deployed API origin
+2. Run: `bash scripts/verify-deployment.sh`
+3. Review the API observability dashboards
 4. Re-enable protection
 
 ## 📋 Maintenance Tasks

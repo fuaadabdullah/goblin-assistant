@@ -1,12 +1,16 @@
+import type {
+  AuthenticationResponseJSON,
+  RegistrationResponseJSON,
+} from '@simplewebauthn/browser';
+
 import {
   AUTH_REQUEST_TIMEOUT_MS,
-  PasskeyCredential,
   getCsrfToken,
+  getFrontend,
   postFrontend,
   withAuth,
-  getFrontend,
 } from './shared';
-import type { ValidateTokenResponse } from '../../types/api';
+import type { PasskeyAuthResponse, ValidateTokenResponse } from '../../types/api';
 import { getAuthTokenForRequest } from '../../utils/auth-session';
 
 export const authMethods = {
@@ -14,12 +18,15 @@ export const authMethods = {
     return postFrontend('/api/auth/passkey/challenge', { email });
   },
 
-  async passkeyRegister(email: string, credential: PasskeyCredential) {
+  async passkeyRegister(email: string, credential: RegistrationResponseJSON) {
     return postFrontend('/api/auth/passkey/register', { email, credential });
   },
 
-  async passkeyAuth(email: string, assertion: PasskeyCredential) {
-    return postFrontend('/api/auth/passkey/auth', { email, assertion });
+  async passkeyAuth(email: string, assertion: AuthenticationResponseJSON) {
+    return postFrontend<PasskeyAuthResponse>('/api/auth/passkey/auth', {
+      email,
+      assertion,
+    });
   },
 
   async register(email: string, password: string, turnstileToken?: string | null) {

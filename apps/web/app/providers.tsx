@@ -7,7 +7,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Analytics } from '@vercel/analytics/react';
 import { datadogRum } from '@datadog/browser-rum';
 import { datadogLogs } from '@datadog/browser-logs';
-import { ProviderProvider } from '@/contexts/ProviderContext';
+import { migrateLegacyProviderSelection, useProviderStore } from '@/store/providerStore';
 import { ContrastModeProvider } from '@/hooks/useContrastMode';
 import AuthBootstrapper from '@/auth/AuthBootstrapper';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -27,13 +27,6 @@ function sanitizeDatadogTagValue(value: string | undefined, fallback?: string): 
     .replace(/^[-_]+|[-_]+$/g, '');
   if (normalized) return normalized;
   return fallback;
-}
-
-function shouldLoadProviderRegistry(pathname: string | null): boolean {
-  if (!pathname) return true;
-  return !['/login', '/register'].some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`)
-  );
 }
 
 function shouldRenderAnalytics(): boolean {
@@ -81,7 +74,6 @@ function initDatadog() {
 export default function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => createQueryClient());
   const pathname = usePathname();
-  const enableProviderRegistry = shouldLoadProviderRegistry(pathname);
   const enableAnalytics = shouldRenderAnalytics();
 
   useEffect(() => {
@@ -89,6 +81,10 @@ export default function Providers({ children }: { children: ReactNode }) {
     initGA();
     setupGlobalErrorTracking();
     monitorNetworkStatus();
+  }, []);
+
+  useEffect(() => {
+    void Promise.resolve(useProviderStore.persist.rehydrate()).then(migrateLegacyProviderSelection);
   }, []);
 
   return (
@@ -110,17 +106,15 @@ export default function Providers({ children }: { children: ReactNode }) {
     >
       <QueryClientProvider client={queryClient}>
         <AuthBootstrapper />
-        <ProviderProvider enableRegistry={enableProviderRegistry}>
-          <ContrastModeProvider>
-            <a href="#main-content" className="skip-link">
-              Skip to main content
-            </a>
-            <PageTransition routeKey={pathname ?? '/'}>{children}</PageTransition>
-            <ChatFAB />
-            <StatusBar />
-            {enableAnalytics ? <Analytics /> : null}
-          </ContrastModeProvider>
-        </ProviderProvider>
+        <ContrastModeProvider>
+          <a href="#main-content" className="skip-link">
+            Skip to main content
+          </a>
+          <PageTransition routeKey={pathname ?? '/'}>{children}</PageTransition>
+          <ChatFAB />
+          <StatusBar />
+          {enableAnalytics ? <Analytics /> : null}
+        </ContrastModeProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

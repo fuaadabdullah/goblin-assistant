@@ -1,5 +1,3 @@
-import os
-
 from fastapi import FastAPI
 
 from ._version import get_version
@@ -20,6 +18,7 @@ from .bootstrap.startup import (
     resolve_optional_routing_analytics_router,
 )
 from .chat_router import router as chat_router
+from .config.settings import get_settings
 from .exception_handlers import register_exception_handlers
 from .health import router as health_router
 from .lifespan import lifespan
@@ -59,7 +58,8 @@ def create_app() -> FastAPI:
         resolve_optional_routing_analytics_router()
     )
 
-    environment = os.getenv("ENVIRONMENT", "production").lower()
+    settings = get_settings()
+    environment = settings.environment.lower()
     docs_enabled = environment != "production"
 
     app = FastAPI(

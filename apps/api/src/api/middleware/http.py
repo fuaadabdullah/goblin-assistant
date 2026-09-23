@@ -23,13 +23,16 @@ from api.observability.telemetry import (
     record_request_start,
 )
 
-# Configure structlog
+# Configure structlog once at import time so every middleware and service shares
+# contextvars (including the request ID) and emits machine-readable JSON.
 structlog.configure(
     processors=[
+        structlog.contextvars.merge_contextvars,
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.JSONRenderer(),
     ],
     logger_factory=structlog.PrintLoggerFactory(),
+    cache_logger_on_first_use=True,
 )
 
 logger = structlog.get_logger()
@@ -208,16 +211,18 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         start_time = time.time()
-        request_id = str(uuid.uuid4())
+        context = structlog.contextvars.get_contextvars()
+        request_id = context.get("request_id") or str(uuid.uuid4())
         route = request.url.path
 
-        # Add request context
-        structlog.contextvars.clear_contextvars()
-        structlog.contextvars.bind_contextvars(
-            request_id=request_id,
-            path=request.url.path,
-            method=request.method,
-        )
+        # The request logging middleware owns request context. Keep this
+        # compatibility layer from replacing its ID or clearing OTel context.
+        if not context.get("request_id"):
+            structlog.contextvars.bind_contextvars(
+                request_id=request_id,
+                path=request.url.path,
+                method=request.method,
+            )
         record_request_start(request.method, route)
 
         try:
@@ -225,6 +230,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
 
             # Log successful requests
             process_time = time.time() - start_time
+            request_id = response.headers.get("X-Request-ID", request_id)
             response.headers["X-Process-Time"] = str(process_time)
             response.headers["X-Request-ID"] = request_id
 
@@ -236,12 +242,6 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                 latency_s=process_time,
                 request_id=request_id,
                 user_id=getattr(request.state, "auth_user_id", None),
-            )
-
-            logger.info(
-                "request_completed",
-                status_code=response.status_code,
-                duration=process_time,
             )
 
             return response

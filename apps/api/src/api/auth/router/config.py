@@ -56,3 +56,12 @@ COOKIE_SECURE = _parse_bool_env("AUTH_COOKIE_SECURE", default=ENVIRONMENT == "pr
 REFRESH_MAX_AGE = REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
 
 SESSION_CACHE_PREFIX = "auth:session"
+
+# WebAuthn / passkey configuration
+WEBAUTHN_RP_ID = os.getenv("WEBAUTHN_RP_ID", "localhost")
+WEBAUTHN_RP_NAME = os.getenv("WEBAUTHN_RP_NAME", "Goblin Assistant")
+WEBAUTHN_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("WEBAUTHN_ORIGINS", "http://localhost:3000").split(",")
+    if origin.strip()
+]

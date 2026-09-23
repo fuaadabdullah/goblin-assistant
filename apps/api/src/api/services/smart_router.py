@@ -76,10 +76,23 @@ class SmartRouter:
         )
 
     def _build_emergency_selection(self) -> ProviderSelection:
+        from api.providers.dispatcher_pkg.execution import (  # noqa: PLC0415
+            mock_fallback_enabled,
+        )
+
+        if mock_fallback_enabled():
+            return ProviderSelection(
+                provider_id="mock",
+                model="mock-gpt",
+                reason="No providers available - using mock",
+                fallback_chain=[],
+                estimated_cost=0.0,
+                expected_latency_ms=0.0,
+            )
         return ProviderSelection(
-            provider_id="mock",
-            model="mock-gpt",
-            reason="No providers available - using mock",
+            provider_id="",
+            model="",
+            reason="No providers available - no fallback permitted",
             fallback_chain=[],
             estimated_cost=0.0,
             expected_latency_ms=0.0,
@@ -277,6 +290,17 @@ class SmartRouter:
             request_id=req_id,
             user_id=user_id,
         )
+
+        if not selection.provider_id:
+            return {
+                "ok": False,
+                "error": "no providers available",
+                "routing": {
+                    "provider": "none",
+                    "tried_providers": [],
+                    "request_id": req_id,
+                },
+            }
 
         tried: List[str] = []
         for provider_id in [selection.provider_id, *selection.fallback_chain]:

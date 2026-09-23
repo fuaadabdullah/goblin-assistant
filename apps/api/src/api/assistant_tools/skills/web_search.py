@@ -12,8 +12,7 @@ import asyncio
 import os
 from typing import Any, Dict, List
 
-import httpx
-
+from ...services.http_client import get_json
 from ..registry import ToolDefinition, ToolParameter, register_tool
 
 _BRAVE_ENDPOINT = "https://api.search.brave.com/res/v1/web/search"
@@ -35,10 +34,7 @@ async def _brave_search(query: str, max_results: int) -> Dict[str, Any]:
     params = {"q": query, "count": min(max_results, _MAX_RESULTS_CAP)}
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(_BRAVE_ENDPOINT, headers=headers, params=params)
-            resp.raise_for_status()
-            data = resp.json()
+        data = await get_json(_BRAVE_ENDPOINT, params=params, headers=headers, ttl=20.0)
     except Exception as exc:  # noqa: BLE001
         return {"error": f"Brave Search request failed: {exc}"}
 

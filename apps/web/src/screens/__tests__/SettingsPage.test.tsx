@@ -32,14 +32,16 @@ vi.mock('@/hooks/api/useSettings', () => ({
   useProviderSettings: () => mockProviderSettings(),
 }));
 
-const mockUseProvider = vi.fn().mockReturnValue({
-  selectedProvider: 'openai',
-  selectedModel: 'gpt-4',
-  setSelectedProvider: vi.fn(),
-  setSelectedModel: vi.fn(),
-});
-vi.mock('@/contexts/ProviderContext', () => ({
-  useProvider: () => mockUseProvider(),
+const mockSetSelectedProvider = vi.fn();
+const mockSetSelectedModel = vi.fn();
+vi.mock('@/store/providerStore', () => ({
+  useProviderStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      selectedProvider: 'openai',
+      selectedModel: 'gpt-4',
+      setSelectedProvider: mockSetSelectedProvider,
+      setSelectedModel: mockSetSelectedModel,
+    }),
 }));
 
 const mockShowSuccess = vi.fn();

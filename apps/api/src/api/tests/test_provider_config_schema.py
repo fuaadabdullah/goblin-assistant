@@ -233,6 +233,10 @@ cost_output_per1k = 0.0004
 
 
 def test_dispatcher_reload_config_refreshes_provider_pricing(monkeypatch):
+    # Force the providers.toml fallback path: this test verifies TOML-sourced
+    # pricing refreshes on reload, not LiteLLM's real (and much larger)
+    # gpt-4o-mini price.
+    monkeypatch.setattr("api.providers.pricing._litellm_cost_lookup", lambda model: None)
     original_state = {
         "_provider_toml": dispatcher_module._provider_toml,
         "_PROVIDER_CONFIGS": dispatcher_module._PROVIDER_CONFIGS,
@@ -308,7 +312,11 @@ def test_dispatcher_reload_config_refreshes_provider_pricing(monkeypatch):
             setattr(dispatcher_module, name, value)
 
 
-def test_provider_adapters_resolve_costs_from_nested_config() -> None:
+def test_provider_adapters_resolve_costs_from_nested_config(monkeypatch) -> None:
+    # Force the providers.toml fallback path: this test verifies the nested
+    # [providers.<id>.costs] table resolves correctly, not LiteLLM's real prices
+    # for these (recognizable) model names.
+    monkeypatch.setattr("api.providers.pricing._litellm_cost_lookup", lambda model: None)
     openai = OpenAIProvider(
         "openai",
         {

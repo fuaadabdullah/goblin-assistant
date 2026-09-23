@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { chatClient } from '../api';
 import type { ChatMessage, ChatThread, Mode, QuickPrompt } from '../types';
 import { useChatThreads } from './useChatThreads';
-import { readChatMessages, buildThreadKey } from '../../../lib/chat-history';
+import { readChatMessages, buildThreadKey, writeChatMessages } from '../../../lib/chat-history';
 import { queryKeys } from '../../../lib/query-keys';
 import { useMessages, type MessagesState } from './useMessages';
 import { useUIState, type UIState } from './useUIState';
@@ -146,7 +146,8 @@ export const useChatSession = ({
     selectedModel: quickActionsState.selectedModel,
   });
 
-  // Scroll to bottom on new messages
+  // Keep the latest message visible without forcing smooth motion for users
+  // who prefer reduced motion.
   const prefersReducedMotion = useMemo(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
@@ -213,6 +214,18 @@ export const useChatSession = ({
     isThreadsLoading,
     threads,
   ]);
+
+  // Persist legacy-local thread messages so edits survive a reload.
+  useEffect(() => {
+    const activeThread = threadSelection.activeThread;
+    if (!activeThread || activeThread.source !== 'legacy-local') {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      writeChatMessages(activeThread.id, messagesState.messages);
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [threadSelection.activeThread, messagesState.messages]);
 
   // Wrap sendMessage to clear attachments after sending
   const sendMessageWithCleanup = useCallback(

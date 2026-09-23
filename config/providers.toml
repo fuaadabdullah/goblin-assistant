@@ -7,6 +7,16 @@
 #   - Python budget: apps/api/src/api/services/context_assembly_service/budget_manager.py
 #   - TS frontend: apps/web/src/services/provider-router.ts  (via generated providers.json)
 #   - RAPTOR router: apps/api/src/api/raptor_router.py
+#
+# NOTE on [providers.<id>.costs] / cost_input_per1k / cost_output_per1k:
+# these are a FALLBACK, not the primary price source. At runtime,
+# api.providers.pricing.resolve_model_pricing() prefers LiteLLM's
+# upstream-maintained model cost map (https://github.com/BerriAI/litellm) and
+# only falls back to the values below when LiteLLM doesn't recognize the
+# model — which is what keeps self-hosted/custom backends (Ollama, a private
+# llama.cpp node, etc.) priced correctly. Keep these updated for such
+# backends; don't rely on them staying accurate for models LiteLLM already
+# tracks.
 # =============================================================================
 
 # ---------------------------------------------------------------------------
@@ -87,10 +97,6 @@ circuit_breaker_recovery_timeout = 30
 ollama_health = "/api/tags"
 router_health = "/health"
 timeout_seconds = 10
-
-[load_balancing.server_priorities]
-primary_ollama = "192.175.23.150:8002"
-backup_router = "45.61.51.220:8000"
 
 # ---------------------------------------------------------------------------
 # Provider aliases  —  any of these strings resolve to the canonical ID below

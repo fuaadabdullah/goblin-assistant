@@ -1,5 +1,6 @@
 """Route handlers for the attestation webhook."""
 
+import asyncio
 import logging
 import os
 from datetime import date as _date
@@ -150,7 +151,10 @@ async def handle_health(request: Request):
         from ..attestation_service import get_attestation_service
 
         service = get_attestation_service()
-        attested_count = len(service.list_attested_nodes())
+        # AttestationService is sync (its redis_client is a plain, blocking
+        # redis.Redis, not redis.asyncio) — offload so it can't stall the
+        # event loop for other requests.
+        attested_count = len(await asyncio.to_thread(service.list_attested_nodes))
 
         return {
             "status": "healthy",
@@ -202,7 +206,7 @@ async def handle_attestation_status(request: Request):
 
     try:
         service = get_attestation_service()
-        attested_nodes = service.list_attested_nodes()
+        attested_nodes = await asyncio.to_thread(service.list_attested_nodes)
         return JSONResponse(
             content={
                 "attested_nodes": attested_nodes,
@@ -255,7 +259,9 @@ async def handle_attest_node(request: Request):
         )
 
         service = get_attestation_service()
-        result = service.attest_node(node_id, provider, attestation_data)
+        result = await asyncio.to_thread(
+            service.attest_node, node_id, provider, attestation_data
+        )
 
         if result.get("verified"):
             audit_logger.info(
