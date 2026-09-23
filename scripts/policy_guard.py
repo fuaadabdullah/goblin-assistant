@@ -25,6 +25,9 @@ PURE_ZONE_EXCLUDES = (
     "apps/api/src/api/services/*integration*.py",
     "apps/api/src/api/services/*storage*.py",
     "apps/api/src/api/services/**/*adapter*.py",
+    # The shared HTTP client is an explicit outbound-integration boundary;
+    # its singleton lifecycle and cache are intentional side effects.
+    "apps/api/src/api/services/http_client.py",
     "apps/api/src/api/core/redis_client.py",
     "apps/api/src/api/core/rate_limiter_auth.py",
     "apps/web/src/lib/api/**/*",
