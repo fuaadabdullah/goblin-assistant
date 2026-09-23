@@ -34,16 +34,46 @@ PURE_ZONE_EXCLUDES = (
 )
 
 SIDE_EFFECT_RULES = (
-    ("global-mutation", re.compile(r"^\s*global\s+\w+", re.MULTILINE), "Global mutation in pure zone."),
-    ("file-write", re.compile(r"\bopen\s*\([^)]*,\s*[\"'](?:w|a|x|wb|ab|xb)[\"']"), "File write in pure zone."),
-    ("http-call", re.compile(r"\b(httpx|requests)\.(get|post|put|patch|delete)\s*\(|\bfetch\s*\("), "External API call in pure zone."),
-    ("env-mutation", re.compile(r"\bos\.environ\s*\[|process\.env\.[A-Za-z_]\w*\s*="), "Environment mutation in pure zone."),
+    (
+        "global-mutation",
+        re.compile(r"^\s*global\s+\w+", re.MULTILINE),
+        "Global mutation in pure zone.",
+    ),
+    (
+        "file-write",
+        re.compile(r"\bopen\s*\([^)]*,\s*[\"'](?:w|a|x|wb|ab|xb)[\"']"),
+        "File write in pure zone.",
+    ),
+    (
+        "http-call",
+        re.compile(
+            r"\b(httpx|requests)\.(get|post|put|patch|delete)\s*\(|\bfetch\s*\("
+        ),
+        "External API call in pure zone.",
+    ),
+    (
+        "env-mutation",
+        re.compile(r"\bos\.environ\s*\[|process\.env\.[A-Za-z_]\w*\s*="),
+        "Environment mutation in pure zone.",
+    ),
 )
 
 NAME_RULES = (
-    ("ambiguous-variable", re.compile(r"\b(?:const|let|var)\s+(temp|helper)\b"), "Ambiguous variable name; use intent-focused names."),
-    ("ambiguous-python-name", re.compile(r"^\s*(temp|helper)\s*=", re.MULTILINE), "Ambiguous variable name; use intent-focused names."),
-    ("generic-process-fn", re.compile(r"\bfunction\s+process\s*\(|\bdef\s+process\s*\("), "Generic process() name; use a specific verb."),
+    (
+        "ambiguous-variable",
+        re.compile(r"\b(?:const|let|var)\s+(temp|helper)\b"),
+        "Ambiguous variable name; use intent-focused names.",
+    ),
+    (
+        "ambiguous-python-name",
+        re.compile(r"^\s*(temp|helper)\s*=", re.MULTILINE),
+        "Ambiguous variable name; use intent-focused names.",
+    ),
+    (
+        "generic-process-fn",
+        re.compile(r"\bfunction\s+process\s*\(|\bdef\s+process\s*\("),
+        "Generic process() name; use a specific verb.",
+    ),
 )
 
 
@@ -131,16 +161,28 @@ def run(changed_only: bool, base_ref: str) -> tuple[list[Violation], int]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Guard pure-by-default and naming policy.")
-    parser.add_argument("--changed-only", action="store_true", help="Check only files changed from base ref.")
-    parser.add_argument("--base-ref", default="origin/main", help="Git base ref for --changed-only.")
-    parser.add_argument("--strict", action="store_true", help="Fail when violations are found.")
+    parser = argparse.ArgumentParser(
+        description="Guard pure-by-default and naming policy."
+    )
+    parser.add_argument(
+        "--changed-only",
+        action="store_true",
+        help="Check only files changed from base ref.",
+    )
+    parser.add_argument(
+        "--base-ref", default="origin/main", help="Git base ref for --changed-only."
+    )
+    parser.add_argument(
+        "--strict", action="store_true", help="Fail when violations are found."
+    )
     args = parser.parse_args()
 
     violations, scanned = run(changed_only=args.changed_only, base_ref=args.base_ref)
     mode = "strict" if args.strict else "warn"
     scope = "changed-files" if args.changed_only else "full-repo"
-    print(f"[policy-guard] mode={mode} scope={scope} scanned_files={scanned} violations={len(violations)}")
+    print(
+        f"[policy-guard] mode={mode} scope={scope} scanned_files={scanned} violations={len(violations)}"
+    )
     for v in violations:
         print(f"{v.path}:{v.line}: {v.rule}: {v.message} sample='{v.sample}'")
 
