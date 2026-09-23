@@ -259,9 +259,7 @@ async def handle_attest_node(request: Request):
         )
 
         service = get_attestation_service()
-        result = await asyncio.to_thread(
-            service.attest_node, node_id, provider, attestation_data
-        )
+        result = await asyncio.to_thread(service.attest_node, node_id, provider, attestation_data)
 
         if result.get("verified"):
             audit_logger.info(

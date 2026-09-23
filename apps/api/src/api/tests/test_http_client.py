@@ -48,9 +48,7 @@ async def test_get_json_reuses_cached_result(monkeypatch):
 @pytest.mark.asyncio
 async def test_get_json_retries_transient_upstream_failure(monkeypatch):
     client = type("Client", (), {})()
-    client.get = AsyncMock(
-        side_effect=[_RetryableResponse({}), _Response({"ok": True})]
-    )
+    client.get = AsyncMock(side_effect=[_RetryableResponse({}), _Response({"ok": True})])
     monkeypatch.setattr(http_client, "get_http_client", AsyncMock(return_value=client))
     http_client._cache.clear()
 

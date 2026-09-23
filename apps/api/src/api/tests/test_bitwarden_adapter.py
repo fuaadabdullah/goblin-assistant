@@ -43,7 +43,9 @@ class _FakeSecrets:
         self.secrets_by_key = dict(secrets_by_key or {})
 
     def list(self, organization_id):
-        data = SimpleNamespace(data=[_identifier(s.id, s.key) for s in self.secrets_by_key.values()])
+        data = SimpleNamespace(
+            data=[_identifier(s.id, s.key) for s in self.secrets_by_key.values()]
+        )
         return _resp(data=data)
 
     def get(self, secret_id):
@@ -163,8 +165,13 @@ def test_build_client_logs_in(monkeypatch):
     fake_client = MagicMock()
     fake_client.auth.login_access_token.return_value = _resp()
     fake_client_cls = MagicMock(return_value=fake_client)
-    monkeypatch.setattr("api.integrations.secrets.bitwarden_adapter.BitwardenClient", fake_client_cls)
-    monkeypatch.setattr("api.integrations.secrets.bitwarden_adapter.ClientSettings", MagicMock(return_value="settings"))
+    monkeypatch.setattr(
+        "api.integrations.secrets.bitwarden_adapter.BitwardenClient", fake_client_cls
+    )
+    monkeypatch.setattr(
+        "api.integrations.secrets.bitwarden_adapter.ClientSettings",
+        MagicMock(return_value="settings"),
+    )
 
     adapter = BitwardenAdapter(access_token="tok", organization_id=_ORG_ID)
     client = adapter._build_client()

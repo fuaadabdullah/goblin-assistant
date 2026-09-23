@@ -34,8 +34,11 @@ async def structured_request_logging(request: Request, call_next):
     try:
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
-        logger.info("http_request", status_code=response.status_code,
-                    duration_ms=round((time.perf_counter() - started) * 1000, 2))
+        logger.info(
+            "http_request",
+            status_code=response.status_code,
+            duration_ms=round((time.perf_counter() - started) * 1000, 2),
+        )
         return response
     except Exception:
         logger.exception("http_request_failed")

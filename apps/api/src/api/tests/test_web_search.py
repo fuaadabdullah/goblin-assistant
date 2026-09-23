@@ -54,6 +54,7 @@ async def test_brave_search_success():
 @pytest.mark.asyncio
 async def test_brave_search_fallback_to_ddg():
     """Falls back to DuckDuckGo when Brave returns an error."""
+
     def _fake_ddg_sync(query: str, max_results: int):
         return {
             "results": [{"title": "DDG", "url": "https://ddg.com", "snippet": "s"}],

@@ -33,7 +33,13 @@ async def get_http_client(*, timeout: float = 15.0) -> httpx.AsyncClient:
 def _retryable(exc: BaseException) -> bool:
     if isinstance(exc, (httpx.TimeoutException, httpx.NetworkError)):
         return True
-    return isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code in {429, 500, 502, 503, 504}
+    return isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code in {
+        429,
+        500,
+        502,
+        503,
+        504,
+    }
 
 
 @retry(
@@ -42,16 +48,22 @@ def _retryable(exc: BaseException) -> bool:
     wait=wait_exponential_jitter(initial=0.2, max=2.0),
     reraise=True,
 )
-async def _get(url: str, *, params: dict[str, Any] | None = None,
-               headers: dict[str, str] | None = None) -> httpx.Response:
+async def _get(
+    url: str, *, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None
+) -> httpx.Response:
     client = await get_http_client()
     response = await client.get(url, params=params, headers=headers)
     response.raise_for_status()
     return response
 
 
-async def get_json(url: str, *, params: dict[str, Any] | None = None,
-                   headers: dict[str, str] | None = None, ttl: float = 20.0) -> Any:
+async def get_json(
+    url: str,
+    *,
+    params: dict[str, Any] | None = None,
+    headers: dict[str, str] | None = None,
+    ttl: float = 20.0,
+) -> Any:
     cache_key = _cache_key(url, params)
     async with _cache_lock:
         cached = _cache.get(cache_key)
@@ -65,8 +77,13 @@ async def get_json(url: str, *, params: dict[str, Any] | None = None,
     return value
 
 
-async def get_text(url: str, *, params: dict[str, Any] | None = None,
-                   headers: dict[str, str] | None = None, ttl: float = 20.0) -> str:
+async def get_text(
+    url: str,
+    *,
+    params: dict[str, Any] | None = None,
+    headers: dict[str, str] | None = None,
+    ttl: float = 20.0,
+) -> str:
     """Fetch a text response using the same bounded retry policy as JSON GETs."""
     cache_key = _cache_key(url, params)
     async with _cache_lock:

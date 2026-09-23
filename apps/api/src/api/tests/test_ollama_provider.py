@@ -65,7 +65,10 @@ async def test_stream_yields_text_chunks(provider: OllamaProvider) -> None:
     chat = AsyncMock()
     chat.return_value = _stream()
     with patch.object(provider._client, "chat", chat):
-        collected = [chunk["text"] async for chunk in provider.stream(messages=[{"role": "user", "content": "hi"}])]
+        collected = [
+            chunk["text"]
+            async for chunk in provider.stream(messages=[{"role": "user", "content": "hi"}])
+        ]
 
     assert collected == ["he", "llo"]
 

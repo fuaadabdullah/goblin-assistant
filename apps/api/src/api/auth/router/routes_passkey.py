@@ -167,11 +167,7 @@ async def authenticate_passkey(
     """Verify an assertion and mint a Supabase session token hash."""
     user_service = _ar.UserService(db)
     user_model = await user_service.get_user_by_email(request.email)
-    if (
-        not user_model
-        or not user_model.passkey_credential_id
-        or not user_model.passkey_public_key
-    ):
+    if not user_model or not user_model.passkey_credential_id or not user_model.passkey_public_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Passkey not registered for this user",

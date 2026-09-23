@@ -93,7 +93,9 @@ class BitwardenAdapter(SecretAdapter):
         self.organization_id = organization_id or os.getenv("BITWARDEN_ORGANIZATION_ID", "")
         self.project_id = project_id or os.getenv("BITWARDEN_PROJECT_ID", "")
         self.api_url = api_url or os.getenv("BITWARDEN_API_URL", _DEFAULT_API_URL)
-        self.identity_url = identity_url or os.getenv("BITWARDEN_IDENTITY_URL", _DEFAULT_IDENTITY_URL)
+        self.identity_url = identity_url or os.getenv(
+            "BITWARDEN_IDENTITY_URL", _DEFAULT_IDENTITY_URL
+        )
         self.cache = SecretCache(max_size=cache_size, default_ttl=cache_ttl)
         self._client: Optional[BitwardenClient] = None
 
@@ -260,5 +262,3 @@ class BitwardenAdapter(SecretAdapter):
     async def close(self) -> None:
         self._client = None
         await self.cache.stop()
-
-
