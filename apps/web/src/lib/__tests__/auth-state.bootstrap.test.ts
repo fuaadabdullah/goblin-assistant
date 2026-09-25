@@ -49,7 +49,9 @@ const mockGetSession = authGetSession as vi.MockedFunction<typeof authGetSession
 const mockSignOut = authSignOut as vi.MockedFunction<typeof authSignOut>;
 const mockClearAuthSession = clearAuthSession as vi.MockedFunction<typeof clearAuthSession>;
 const mockAuthMethodsLogout = authMethods.logout as vi.MockedFunction<typeof authMethods.logout>;
-const mockValidateToken = authMethods.validateToken as vi.MockedFunction<typeof authMethods.validateToken>;
+const mockValidateToken = authMethods.validateToken as vi.MockedFunction<
+  typeof authMethods.validateToken
+>;
 
 const testUser = {
   id: 'u1',

@@ -24,19 +24,17 @@ import { formatCost } from '@/utils/format-cost';
 const VirtuosoList = forwardRef<
   HTMLOListElement,
   { children?: ReactNode; style?: CSSProperties | undefined }
->(
-  ({ children, style }, ref) => (
-    <ol
-      ref={ref}
-      style={style}
-      aria-live="polite"
-      aria-relevant="additions"
-      className="max-w-4xl mx-auto space-y-5 px-3 py-3 md:px-4 md:py-8"
-    >
-      {children}
-    </ol>
-  )
-);
+>(({ children, style }, ref) => (
+  <ol
+    ref={ref}
+    style={style}
+    aria-live="polite"
+    aria-relevant="additions"
+    className="max-w-4xl mx-auto space-y-5 px-3 py-3 md:px-4 md:py-8"
+  >
+    {children}
+  </ol>
+));
 VirtuosoList.displayName = 'VirtuosoList';
 
 const VirtuosoItem = ({
@@ -180,138 +178,137 @@ const ChatMessageList = ({
           const approx = msg.meta?.cost_is_approx ? ' (approx)' : '';
 
           return (
-              <div className={`max-w-[80%] ${isUser ? 'text-right' : 'text-left'}`}>
-                {/* Timestamp */}
-                <div className="text-xs text-muted mb-1 px-2">
-                  <MessageTimestamp createdAt={msg.createdAt} />
-                </div>
+            <div className={`max-w-[80%] ${isUser ? 'text-right' : 'text-left'}`}>
+              {/* Timestamp */}
+              <div className="text-xs text-muted mb-1 px-2">
+                <MessageTimestamp createdAt={msg.createdAt} />
+              </div>
 
-                {/* Message role label */}
-                <div className="text-xs uppercase tracking-wide text-muted mb-1">
-                  {isUser ? 'You' : 'Assistant'}
-                </div>
+              {/* Message role label */}
+              <div className="text-xs uppercase tracking-wide text-muted mb-1">
+                {isUser ? 'You' : 'Assistant'}
+              </div>
 
-                {/* Message bubble container with hover actions */}
-                <div className="relative">
-                  {/* Message content */}
-                  <div
-                    className={`rounded-2xl px-4 py-3 leading-relaxed ${
-                      isUser
-                        ? 'bg-primary text-text-inverse shadow-glow-primary rounded-br-sm'
-                        : 'bg-surface text-text border border-border rounded-bl-sm shadow-card'
-                    } text-sm md:text-base`}
-                  >
-                    {isStreaming ? (
-                      <StreamingMessage
-                        message={msg}
-                        isStreaming={isStreaming}
-                        prefersReducedMotion={prefersReducedMotion}
-                      />
-                    ) : (
-                      <MessageMarkdown content={msg.content} inverse={isUser} />
-                    )}
-                    {/* Financial visualizations */}
-                    {!isUser && msg.meta?.visualizations && msg.meta.visualizations.length > 0 && (
-                      <div className="mt-3 space-y-2">
-                        {msg.meta.visualizations.map((viz, idx) => (
-                          <FinancialVisualization
-                            key={`viz-${idx}`}
-                            block={viz as VisualizationBlock}
-                          />
-                        ))}
-                      </div>
-                    )}
-                    {/* Attachment badges */}
-                    {msg.meta?.attachments && msg.meta.attachments.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-current/10">
-                        {msg.meta.attachments.map((att) => (
-                          <span
-                            key={att.id}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${
-                              isUser
-                                ? 'bg-white/15 text-text-inverse'
-                                : 'bg-surface-hover text-muted border border-border'
-                            }`}
-                          >
-                            <Paperclip className="w-3 h-3" />
-                            <span className="max-w-[100px] truncate">{att.filename}</span>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Message Actions - Hover overlay */}
-                  {(onCopyMessage || onDeleteMessage || onRegenerateMessage || onRateFeedback) && (
-                    <div
-                      className={`absolute ${
-                        isUser ? 'right-0 bottom-0' : 'left-0 bottom-0'
-                      } -mb-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200`}
-                    >
-                      <MessageActions
-                        role={msg.role as 'user' | 'assistant'}
-                        onCopy={() => onCopyMessage?.(msg.content)}
-                        onRegenerate={() => onRegenerateMessage?.(messageId)}
-                        onDelete={() => onDeleteMessage?.(messageId)}
-                        {...(onRateFeedback && {
-                          onThumbsUp: () => {
-                            void onRateFeedback(messageId, 1);
-                          },
-                          onThumbsDown: () => {
-                            void onRateFeedback(messageId, -1);
-                          },
-                        })}
-                        showRegenerate={true}
-                        showDelete={true}
-                      />
+              {/* Message bubble container with hover actions */}
+              <div className="relative">
+                {/* Message content */}
+                <div
+                  className={`rounded-2xl px-4 py-3 leading-relaxed ${
+                    isUser
+                      ? 'bg-primary text-text-inverse shadow-glow-primary rounded-br-sm'
+                      : 'bg-surface text-text border border-border rounded-bl-sm shadow-card'
+                  } text-sm md:text-base`}
+                >
+                  {isStreaming ? (
+                    <StreamingMessage
+                      message={msg}
+                      isStreaming={isStreaming}
+                      prefersReducedMotion={prefersReducedMotion}
+                    />
+                  ) : (
+                    <MessageMarkdown content={msg.content} inverse={isUser} />
+                  )}
+                  {/* Financial visualizations */}
+                  {!isUser && msg.meta?.visualizations && msg.meta.visualizations.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {msg.meta.visualizations.map((viz, idx) => (
+                        <FinancialVisualization
+                          key={`viz-${idx}`}
+                          block={viz as VisualizationBlock}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  {/* Attachment badges */}
+                  {msg.meta?.attachments && msg.meta.attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-current/10">
+                      {msg.meta.attachments.map((att) => (
+                        <span
+                          key={att.id}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${
+                            isUser
+                              ? 'bg-white/15 text-text-inverse'
+                              : 'bg-surface-hover text-muted border border-border'
+                          }`}
+                        >
+                          <Paperclip className="w-3 h-3" />
+                          <span className="max-w-[100px] truncate">{att.filename}</span>
+                        </span>
+                      ))}
                     </div>
                   )}
                 </div>
 
-                {/* Metadata Details toggle */}
-                {hasMeta ? (
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                    <button
-                      type="button"
-                      className="px-2 py-1 rounded-md border border-border text-muted hover:text-text hover:bg-surface-hover"
-                      onClick={() => toggle(messageId)}
-                      aria-controls={detailsId}
-                      aria-expanded={isExpanded}
-                    >
-                      Details
-                    </button>
-                    <div
-                      id={detailsId}
-                      className={`${isExpanded ? 'block' : 'hidden'} w-full font-mono text-muted`}
-                    >
-                      <div className="mt-2 rounded-lg border border-border bg-surface-hover px-3 py-2">
-                        <div>
-                          model: <span className="text-text">{msg.meta?.model || '—'}</span>
-                        </div>
-                        <div>
-                          provider: <span className="text-text">{msg.meta?.provider || '—'}</span>
-                        </div>
-                        <div>
-                          tokens: <span className="text-text">{tokens ?? '—'}</span>
-                        </div>
-                        <div>
-                          cost:{' '}
-                          <span className="text-text">
-                            {costLabel}
-                            {approx}
-                          </span>
-                        </div>
-                        {msg.meta?.correlation_id ? (
-                          <div className="opacity-80">
-                            correlation:{' '}
-                            <span className="text-text">{msg.meta.correlation_id}</span>
-                          </div>
-                        ) : null}
+                {/* Message Actions - Hover overlay */}
+                {(onCopyMessage || onDeleteMessage || onRegenerateMessage || onRateFeedback) && (
+                  <div
+                    className={`absolute ${
+                      isUser ? 'right-0 bottom-0' : 'left-0 bottom-0'
+                    } -mb-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200`}
+                  >
+                    <MessageActions
+                      role={msg.role as 'user' | 'assistant'}
+                      onCopy={() => onCopyMessage?.(msg.content)}
+                      onRegenerate={() => onRegenerateMessage?.(messageId)}
+                      onDelete={() => onDeleteMessage?.(messageId)}
+                      {...(onRateFeedback && {
+                        onThumbsUp: () => {
+                          void onRateFeedback(messageId, 1);
+                        },
+                        onThumbsDown: () => {
+                          void onRateFeedback(messageId, -1);
+                        },
+                      })}
+                      showRegenerate={true}
+                      showDelete={true}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Metadata Details toggle */}
+              {hasMeta ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                  <button
+                    type="button"
+                    className="px-2 py-1 rounded-md border border-border text-muted hover:text-text hover:bg-surface-hover"
+                    onClick={() => toggle(messageId)}
+                    aria-controls={detailsId}
+                    aria-expanded={isExpanded}
+                  >
+                    Details
+                  </button>
+                  <div
+                    id={detailsId}
+                    className={`${isExpanded ? 'block' : 'hidden'} w-full font-mono text-muted`}
+                  >
+                    <div className="mt-2 rounded-lg border border-border bg-surface-hover px-3 py-2">
+                      <div>
+                        model: <span className="text-text">{msg.meta?.model || '—'}</span>
                       </div>
+                      <div>
+                        provider: <span className="text-text">{msg.meta?.provider || '—'}</span>
+                      </div>
+                      <div>
+                        tokens: <span className="text-text">{tokens ?? '—'}</span>
+                      </div>
+                      <div>
+                        cost:{' '}
+                        <span className="text-text">
+                          {costLabel}
+                          {approx}
+                        </span>
+                      </div>
+                      {msg.meta?.correlation_id ? (
+                        <div className="opacity-80">
+                          correlation: <span className="text-text">{msg.meta.correlation_id}</span>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
-                ) : null}
-              </div>
+                </div>
+              ) : null}
+            </div>
           );
         }}
       />

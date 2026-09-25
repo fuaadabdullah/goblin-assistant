@@ -125,7 +125,7 @@ module.exports = [
     ],
     rules: {
       'max-lines-per-function': 'off',
-      'complexity': 'off',
+      complexity: 'off',
       'max-depth': 'off',
       '@typescript-eslint/naming-convention': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
