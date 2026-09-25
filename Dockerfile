@@ -41,6 +41,11 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=deps /usr/local /usr/local
+RUN rm -rf \
+      /usr/local/lib/python3.11/site-packages/setuptools/_vendor/jaraco_context-5.3.0.dist-info \
+      /usr/local/lib/python3.11/site-packages/setuptools/_vendor/wheel-0.45.1.dist-info \
+    && test -d /usr/local/lib/python3.11/site-packages/setuptools/_vendor/jaraco_context-6.1.0.dist-info \
+    && test -d /usr/local/lib/python3.11/site-packages/setuptools/_vendor/wheel-0.46.3.dist-info
 # Stable v1.102.4 predates the patched x/crypto and x/image releases. Pin the
 # upstream multi-arch build by digest until the next stable Tailscale release.
 COPY --from=docker.io/tailscale/tailscale:unstable@sha256:610baa0bc75f851648863d37159b7ed7cd6f296bb8c46c2cc4a1666d267db63f /usr/local/bin/tailscaled /usr/local/bin/tailscale /usr/local/bin/
