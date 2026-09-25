@@ -14,7 +14,7 @@ os.environ["DEBUG"] = "false"
 from api.input_validation import InputSanitizer
 
 
-def test_xss_protection():
+def check_xss_protection():
     """Test XSS protection in input sanitization"""
     print("🧪 Testing XSS Protection...")
 
@@ -78,7 +78,7 @@ def test_xss_protection():
         return False
 
 
-def test_input_validation():
+def check_input_validation():
     """Test input validation limits"""
     print("\n🧪 Testing Input Validation...")
 
@@ -168,7 +168,7 @@ def test_input_validation():
         return False
 
 
-def test_error_handling():
+def check_error_handling():
     """Test that error handling doesn't leak sensitive information"""
     print("\n🧪 Testing Error Handling...")
 
@@ -194,7 +194,7 @@ def test_error_handling():
             return False
 
 
-def test_title_sanitization():
+def check_title_sanitization():
     """Test conversation title sanitization"""
     print("\n🧪 Testing Title Sanitization...")
 
@@ -252,10 +252,10 @@ def run_security_tests():
     test_results = []
 
     # Run individual tests
-    test_results.append(("XSS Protection", test_xss_protection()))
-    test_results.append(("Input Validation", test_input_validation()))
-    test_results.append(("Error Handling", test_error_handling()))
-    test_results.append(("Title Sanitization", test_title_sanitization()))
+    test_results.append(("XSS Protection", check_xss_protection()))
+    test_results.append(("Input Validation", check_input_validation()))
+    test_results.append(("Error Handling", check_error_handling()))
+    test_results.append(("Title Sanitization", check_title_sanitization()))
 
     # Summary
     print("\n" + "=" * 50)

@@ -63,9 +63,11 @@ export default function ModularLoginForm({
         return;
       }
 
-      // Sets the goblin_auth/goblin_admin cookies the middleware needs —
-      // without them the redirect to /chat bounces straight back to /login.
       queryClient.setQueryData(queryKeys.authValidate, snapshotFromSupabaseSession(session));
+      // The seeded snapshot cannot know the admin claim, and staleTime would
+      // otherwise keep that interim value cached past the redirect. Refetch so
+      // the server-derived claim lands before any admin route renders.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.authValidate });
       onSuccess();
     } catch (error) {
       onError(formatLoginError(error, 'Authentication failed'));
@@ -83,7 +85,10 @@ export default function ModularLoginForm({
 
     setIsLoading(true);
     try {
-      const { error } = await authSignInWithOAuth('google', `${window.location.origin}/google-callback`);
+      const { error } = await authSignInWithOAuth(
+        'google',
+        `${window.location.origin}/google-callback`
+      );
       if (error) throw error;
     } catch (error) {
       devError('Google OAuth error:', error);

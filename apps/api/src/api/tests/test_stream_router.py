@@ -206,7 +206,10 @@ async def test_stream_task_raises_http_500_when_response_construction_fails(monk
         del args, kwargs
         raise RuntimeError("cannot-stream")
 
-    monkeypatch.setattr(stream, "StreamingResponse", broken_streaming_response)
+    # The route streams via sse_starlette's EventSourceResponse; patching the
+    # old StreamingResponse name just raised AttributeError and never reached
+    # the handler's error path.
+    monkeypatch.setattr(stream, "EventSourceResponse", broken_streaming_response)
 
     with pytest.raises(Exception) as exc_info:
         await stream.stream_task(

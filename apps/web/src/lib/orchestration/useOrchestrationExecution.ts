@@ -81,9 +81,15 @@ export function useOrchestrationExecution({
       dispatch({ type: 'SET_IS_STREAMING', payload: true });
       dispatch({ type: 'SET_FALLBACK_TRIGGERED', payload: false });
 
+      // Aborts the in-flight streaming request if the timeout below fires, so
+      // its callbacks can't keep firing (and racing with the fallback) after
+      // we've already moved on to non-streaming mode.
+      const streamAbortController = new AbortController();
+
       // Set up streaming timeout for fallback (10 seconds)
       const timeout = setTimeout(() => {
         debugWarn('⏰ [DEBUG] Streaming timeout - falling back to non-streaming mode');
+        streamAbortController.abort();
         dispatch({ type: 'SET_FALLBACK_TRIGGERED', payload: true });
         dispatch({ type: 'SET_IS_STREAMING', payload: false });
         fallbackToNonStreaming(orchestration, codeInput);
@@ -138,7 +144,8 @@ export function useOrchestrationExecution({
               handlers.onComplete,
               codeInput,
               provider || undefined,
-              model || undefined
+              model || undefined,
+              streamAbortController.signal
             );
 
             dispatch({
@@ -146,6 +153,12 @@ export function useOrchestrationExecution({
               payload: { stepId: step.id, status: 'completed' },
             });
           } catch (stepError: unknown) {
+            if (streamAbortController.signal.aborted) {
+              // Already falling back due to the timeout above; this rejection
+              // is just the aborted fetch unwinding, not a new failure.
+              break;
+            }
+
             debugError(`Step ${step.id} failed:`, stepError);
             dispatch({
               type: 'SET_STREAMING_TEXT',

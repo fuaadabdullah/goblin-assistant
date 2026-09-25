@@ -37,6 +37,9 @@ LLAMACPP_PORT="8080"
 OLLAMA_MODELS=("qwen2.5:3b" "llama3.2:1b")
 LLAMACPP_MODEL_URL="https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf"
 LLAMACPP_MODEL_FILE="qwen2.5-3b-instruct-q4_k_m.gguf"
+# Pin the source build to a released llama.cpp tag; never build an arbitrary
+# moving branch during VM provisioning.
+LLAMACPP_VERSION="b9999"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -202,7 +205,7 @@ apt-get install -y -qq build-essential cmake git wget python3-pip curl
 
 # Build llama.cpp from source
 cd /opt
-git clone --depth=1 https://github.com/ggerganov/llama.cpp.git
+git clone --depth=1 --branch "$LLAMACPP_VERSION" https://github.com/ggml-org/llama.cpp.git
 cd llama.cpp
 cmake -B build -DLLAMA_CURL=ON
 cmake --build build --config Release -j\$(nproc)

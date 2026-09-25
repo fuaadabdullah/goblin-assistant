@@ -30,7 +30,13 @@ def _admin_domains() -> set[str]:
     )
 
 
-def _is_admin_email(email: str | None) -> bool:
+def is_admin_email(email: str | None) -> bool:
+    """Return True when an email matches the configured admin allowlist.
+
+    Kept public so the token-validation response can surface the same
+    server-derived admin claim to the browser instead of re-deriving it from
+    the server-only ADMIN_EMAILS/ADMIN_DOMAINS env vars in the client bundle.
+    """
     normalized = (email or "").strip().lower()
     if not normalized:
         return False
@@ -44,7 +50,7 @@ async def require_admin_user(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> User:
     """Require an authenticated user from the configured admin allowlist."""
-    if _is_admin_email(current_user.email):
+    if is_admin_email(current_user.email):
         return current_user
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,

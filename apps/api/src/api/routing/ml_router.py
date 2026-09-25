@@ -266,7 +266,7 @@ def _fire_routing_event(
         if user_id:
             payload["user_id"] = user_id
 
-        _fire(_post("routing_events", payload, "return=minimal"))
+        _fire(lambda: _post("routing_events", payload, "return=minimal"))
     except Exception as exc:
         logger.debug("bandit_routing_event_write_failed error=%s", exc)
 
@@ -303,7 +303,7 @@ def _fire_bandit_state_upsert(state: BanditState) -> None:
             except Exception as exc:
                 logger.debug("bandit_state_upsert_failed error=%s", exc)
 
-        _fire(_upsert())
+        _fire(_upsert)
     except Exception as exc:
         logger.debug("bandit_state_upsert_schedule_failed error=%s", exc)
 

@@ -294,6 +294,6 @@ def _fire_rating_update(request_id: str, rating: int) -> None:
             except Exception as exc:
                 logger.debug("routing_event_rating_patch_failed error=%s", exc)
 
-        _fire(_patch())
+        _fire(_patch)
     except Exception as exc:
         logger.debug("rating_update_fire_failed error=%s", exc)

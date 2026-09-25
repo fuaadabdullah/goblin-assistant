@@ -39,7 +39,6 @@ describe('Auth Session Utilities', () => {
 
     it('should not write goblin_auth or goblin_admin cookies', () => {
       persistAuthSession({
-        token: 'jwt.token.here',
         user: { id: '123', email: 'test@example.com', name: 'Test User' } as any,
       });
 
@@ -49,8 +48,6 @@ describe('Auth Session Utilities', () => {
 
     it('should not write session_token or refresh_token cookies', () => {
       persistAuthSession({
-        token: 'jwt.token.here',
-        refreshToken: 'refresh.token.here',
         user: { id: '123', email: 'test@example.com', name: 'Test User' } as any,
       });
 

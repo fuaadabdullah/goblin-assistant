@@ -8,6 +8,7 @@ vi.mock('../../../lib/auth-state', () => ({
     user: { id: '1', name: 'Test', email: 'test@example.com', roles: ['admin'] },
     isAuthenticated: true,
     isHydrated: true,
+    isAdmin: true,
   }),
   clearAuthSessionState: vi.fn().mockResolvedValue(undefined),
   hasAnyRole: vi.fn((user: { roles?: string[] } | null, roles: string[]) => {
@@ -47,6 +48,7 @@ describe('useAuthSession', () => {
     expect(result.current.isAuthenticated).toBe(true);
     expect(result.current.token).toBe('test-token');
     expect(result.current.user?.name).toBe('Test');
+    expect(result.current.isAdmin).toBe(true);
   });
 
   it('returns isLoading true initially', () => {

@@ -22,9 +22,11 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       build-essential \
       gcc \
       git \
-    && python -m pip install --upgrade pip \
+    && python -m pip install --upgrade pip 'setuptools>=84.0.0' \
     && python -m pip install -r /app/apps/api/requirements.lock.txt \
-    && python -m pip install --upgrade 'wheel>=0.46.2'
+    && python -m pip uninstall --yes jaraco.context wheel \
+    && python -m pip install 'jaraco.context>=6.1.0' 'wheel>=0.46.2' \
+    && python -m pip check
 
 FROM base AS runtime
 
@@ -32,13 +34,21 @@ FROM base AS runtime
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     apt-get update \
+    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
       libstdc++6 \
       libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=deps /usr/local /usr/local
-COPY --from=docker.io/tailscale/tailscale:unstable-v1.103.261 /usr/local/bin/tailscaled /usr/local/bin/tailscale /usr/local/bin/
+RUN find /usr/local/lib/python3.11/site-packages -type d \
+      \( -name 'jaraco.context-5.3.0.dist-info' -o -name 'jaraco_context-5.3.0.dist-info' -o -name 'wheel-0.45.1.dist-info' \) \
+      -prune -exec rm -rf '{}' + \
+    && test -d /usr/local/lib/python3.11/site-packages/setuptools/_vendor/jaraco_context-6.1.0.dist-info \
+    && test -d /usr/local/lib/python3.11/site-packages/setuptools/_vendor/wheel-0.46.3.dist-info
+# Stable v1.102.4 predates the patched x/crypto and x/image releases. Pin the
+# upstream multi-arch build by digest until the next stable Tailscale release.
+COPY --from=docker.io/tailscale/tailscale:unstable@sha256:610baa0bc75f851648863d37159b7ed7cd6f296bb8c46c2cc4a1666d267db63f /usr/local/bin/tailscaled /usr/local/bin/tailscale /usr/local/bin/
 RUN groupadd --system --gid 1000 appuser \
     && useradd --system --uid 1000 --gid appuser --home-dir /app --shell /usr/sbin/nologin appuser \
     && mkdir -p /app/apps/api /app/config /app/packages /app/logs /app/chroma_db /app/state \
@@ -56,6 +66,9 @@ ENV PYTHONPATH=/app/apps/api/src \
     PYTHONDONTWRITEBYTECODE=1
 ENV PORT=8080
 EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/v1/health', timeout=4)"
 
 # Keep compatibility with current runtime assumptions.
 RUN if [ -d /app/apps/api/src/api ] && [ ! -f /app/apps/api/src/api/__init__.py ]; then touch /app/apps/api/src/api/__init__.py; fi || true

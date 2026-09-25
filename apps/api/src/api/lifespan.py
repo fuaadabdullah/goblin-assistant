@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from .artifact_cleanup import artifact_cleanup_service
 from .monitoring import monitor
 from .routes.secrets_router import cleanup_secrets_adapter, init_secrets_adapter
+from .services.http_client import close_http_client
 from .services.provider_health import health_monitor
 from .storage.cache import cache
 from .storage.database import engine, init_db, is_postgres, warmup_pool
@@ -347,6 +348,9 @@ async def lifespan(_app: FastAPI):
 
         await cache.close()
         logger.info("Redis cache closed")
+
+        await close_http_client()
+        logger.info("Shared outbound HTTP client closed")
 
         try:
             from .routing.router import registry  # noqa: PLC0415

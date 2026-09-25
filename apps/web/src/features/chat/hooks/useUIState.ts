@@ -10,7 +10,6 @@ export interface UIState {
   authError: boolean;
   pendingAttachments: PendingAttachment[];
   inputRef: RefObject<HTMLTextAreaElement | null>;
-  bottomRef: RefObject<HTMLDivElement | null>;
   isUploading: boolean;
   setInput: (value: string) => void;
   handleKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
@@ -35,7 +34,6 @@ export const useUIState = ({ onSendMessage, onClearMessages }: UIStateProps): UI
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
-  const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -105,7 +103,6 @@ export const useUIState = ({ onSendMessage, onClearMessages }: UIStateProps): UI
     authError,
     pendingAttachments,
     inputRef,
-    bottomRef,
     isUploading,
     handleKeyDown,
     handlePromptClick,

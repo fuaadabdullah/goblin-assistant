@@ -17,8 +17,6 @@ module.exports = [
       '**/*.stories.*',
       'tests/test_connection.js',
       'scripts/root-tools/**',
-      // Debug page is a developer tool - relaxed linting rules
-      'app/debug/**',
     ],
   },
   {
@@ -116,6 +114,21 @@ module.exports = [
           message: 'Use a specific verb name instead of process().',
         },
       ],
+    },
+  },
+  {
+    files: [
+      '**/*.test.{ts,tsx,js,jsx}',
+      '**/*.spec.{ts,tsx,js,jsx}',
+      '**/__tests__/**/*.{ts,tsx,js,jsx}',
+      'e2e/**/*.{ts,tsx,js,jsx}',
+    ],
+    rules: {
+      'max-lines-per-function': 'off',
+      complexity: 'off',
+      'max-depth': 'off',
+      '@typescript-eslint/naming-convention': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
   {

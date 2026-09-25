@@ -100,11 +100,9 @@ vi.mock('../useChatThreads', () => ({
   useChatThreads: () => useChatThreadsMock(),
 }));
 
-vi.mock('../../../../contexts/ProviderContext', () => ({
-  useProvider: vi.fn(() => ({
-    selectedProvider: 'openai',
-    selectedModel: 'gpt-4o-mini',
-  })),
+vi.mock('../../../../store/providerStore', () => ({
+  useProviderStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({ selectedProvider: 'openai', selectedModel: 'gpt-4o-mini' }),
 }));
 
 vi.mock('../../../../hooks/useToast', () => ({

@@ -8,6 +8,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import jwt
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
@@ -39,6 +40,69 @@ def _is_trusted_proxy(host: str | None) -> bool:
     except ValueError:
         return False
     return any(ip in network for network in _trusted_proxy_networks())
+
+
+def _bucket_signing_secrets() -> list[str]:
+    """Locally-held HMAC secrets a bearer token may legitimately be signed with.
+
+    Read per call rather than at import so tests and runtime config reloads
+    see the current environment. Both lookups are dict reads, negligible next
+    to the Redis round-trip this middleware already performs.
+    """
+    secrets: list[str] = []
+    for name in ("JWT_SECRET_KEY", "SUPABASE_JWT_SECRET"):
+        value = (os.getenv(name) or "").strip()
+        if value:
+            secrets.append(value)
+    return secrets
+
+
+def _bucket_user_id(request: Request) -> str | None:
+    """User id for rate-limit bucketing, taken from a *verified* bearer token.
+
+    This middleware runs before route dependencies resolve, so
+    request.state.user_id isn't set yet — keying on it here was dead code and
+    every request fell through to the IP bucket below.
+
+    The subject is only usable as a bucket key if the token's signature is
+    verified: the bucket key decides which counter a request is charged to, so
+    an unverified `sub` lets any caller mint an unlimited supply of empty
+    buckets by forging a token (no signing key required) and rotating the
+    claim, which disables rate limiting entirely on every route this global
+    middleware guards, including unauthenticated ones.
+
+    Verification here is deliberately local-only: HS256 against the secrets we
+    already hold, so this stays a cheap in-process check on every request.
+    Tokens we cannot verify locally — asymmetric Supabase tokens needing a
+    JWKS fetch, expired tokens, forged tokens, anything malformed — return
+    None and bucket by IP, the same conservative fallback anonymous traffic
+    gets. Authorization itself is unchanged and still happens downstream in
+    the route's own auth dependency; this function only picks a counter.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return None
+    token = auth_header[7:].strip()
+    if not token:
+        return None
+
+    for secret in _bucket_signing_secrets():
+        try:
+            payload = jwt.decode(
+                token,
+                secret,
+                algorithms=["HS256"],  # pinned: never honour the token's own alg
+                # Audience varies by issuer (Supabase uses "authenticated") and
+                # is irrelevant to choosing a counter; signature + exp are what
+                # make the subject trustworthy here.
+                options={"verify_aud": False},
+            )
+        except jwt.PyJWTError:
+            continue
+        subject = payload.get("sub")
+        return str(subject) if subject else None
+
+    return None
 
 
 def _client_ip_from_request(request: Request) -> str:
@@ -78,8 +142,9 @@ class RateLimiter:
 
     def _get_client_identifier(self, request: Request) -> str:
         """Get unique client identifier from request."""
-        # Try to get authenticated user ID first
-        user_id = getattr(request.state, "user_id", None)
+        # Prefer bucketing by the (unverified) bearer token's subject, so a
+        # logged-in user's limit follows them across IPs/proxies.
+        user_id = _bucket_user_id(request)
         if user_id:
             return f"user:{user_id}"
 

@@ -237,4 +237,14 @@ export const patchFrontend = async <T, B = unknown>(
   }
 };
 
+export const deleteFrontend = async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
+  try {
+    assertNoVersionedClientPath(url);
+    const response = await frontendHttp.delete<T>(url, await withResolvedAuth(url, config));
+    return unwrapEnvelope<T>(response.data as T | StandardApiEnvelope<T>);
+  } catch (error) {
+    return normalizeAxiosError(error);
+  }
+};
+
 export { devWarn };

@@ -24,19 +24,25 @@ module.exports = {
         foreground: 'var(--foreground)',
         bg: 'var(--bg)',
         surface: 'var(--surface)',
+        'surface-hover': 'var(--surface-hover)',
+        'surface-active': 'var(--surface-active)',
         text: 'var(--text)',
+        'text-inverse': 'var(--text-inverse)',
         muted: 'var(--muted)',
 
         // Brand colors with variants
         primary: 'var(--primary)',
+        'primary-hover': 'var(--primary-hover)',
         'primary-300': 'var(--primary-300)',
         'primary-600': 'var(--primary-600)',
 
         accent: 'var(--accent)',
+        'accent-hover': 'var(--accent-hover)',
         'accent-300': 'var(--accent-300)',
         'accent-600': 'var(--accent-600)',
 
         cta: 'var(--cta)',
+        'cta-hover': 'var(--cta-hover)',
         'cta-300': 'var(--cta-300)',
         'cta-600': 'var(--cta-600)',
 

@@ -146,7 +146,8 @@ describe('runtimeClient', () => {
       {
         onChunk: expect.any(Function),
         onComplete: undefined,
-      }
+      },
+      undefined
     );
 
     await runtimeClient.setProviderApiKey('openai', 'key-1');

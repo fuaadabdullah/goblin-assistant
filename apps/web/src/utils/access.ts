@@ -10,8 +10,13 @@ const parseList = (value?: string): string[] =>
     .map((item) => item.trim().toLowerCase())
     .filter(Boolean);
 
-const ADMIN_EMAILS = parseList(process.env['NEXT_PUBLIC_ADMIN_EMAILS']);
-const ADMIN_DOMAINS = parseList(process.env['NEXT_PUBLIC_ADMIN_DOMAINS']);
+// Deliberately NOT NEXT_PUBLIC_-prefixed: a public env var here would inline
+// the full admin allowlist into the browser bundle. Keeping these server-only
+// means the email/domain checks below only ever match when this code runs
+// server-side (e.g. proxy.ts); the backend's admin.py uses the same names.
+// Client-side admin gating uses the server-derived isAdmin claim instead.
+const ADMIN_EMAILS = parseList(process.env['ADMIN_EMAILS']);
+const ADMIN_DOMAINS = parseList(process.env['ADMIN_DOMAINS']);
 
 export const isAdminUser = (user?: AccessUser | null): boolean => {
   if (!user) return false;

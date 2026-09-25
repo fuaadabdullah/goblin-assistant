@@ -1,3 +1,4 @@
+import { createParser } from 'eventsource-parser';
 import { getAuthTokenForRequest } from '@/utils/auth-session';
 import { hasMockFallbackSignal } from '@/lib/api/fallback';
 import type { StreamChunk, TaskResponse } from '@/types/api';
@@ -62,11 +63,9 @@ const readResponseText = async (response: Response): Promise<string> => {
   }
 };
 
-const parseStreamPayload = (line: string): Record<string, unknown> | null => {
-  if (!line.startsWith('data: ')) return null;
-
+const parseEventPayload = (data: string): Record<string, unknown> | null => {
   try {
-    return JSON.parse(line.slice(6)) as Record<string, unknown>;
+    return JSON.parse(data) as Record<string, unknown>;
   } catch {
     return null;
   }
@@ -115,76 +114,60 @@ const emitStreamChunk = (
   });
 };
 
-const processRuntimeStreamLine = (
-  line: string,
-  onChunk: (chunk: StreamChunk) => void
-): TaskResponse | null => {
-  if (!line) return null;
-
-  const payload = parseStreamPayload(line);
-  if (!payload) return null;
-
-  const error = extractStreamError(payload);
-  if (error) {
-    throw new Error(error);
-  }
-
-  emitStreamChunk(payload, onChunk);
-
-  if (payload['done'] === true) {
-    return buildTaskResponse(payload);
-  }
-
-  return null;
-};
-
-const processRuntimeStreamBuffer = (
-  buffer: string,
-  onChunk: (chunk: StreamChunk) => void
-): { buffer: string; finalResponse: TaskResponse | null } => {
-  const lines = buffer.split('\n');
-  let finalResponse: TaskResponse | null = null;
-
-  for (let i = 0; i < lines.length - 1; i++) {
-    const parsed = processRuntimeStreamLine(lines[i]?.trim() ?? '', onChunk);
-    if (parsed) {
-      finalResponse = parsed;
-      break;
-    }
-  }
-
-  return {
-    buffer: lines[lines.length - 1] || '',
-    finalResponse,
-  };
-};
-
 const consumeRuntimeStream = async (
   reader: ReadableStreamDefaultReader<Uint8Array>,
   decoder: TextDecoder,
-  callbacks: RuntimeStreamCallbacks
-): Promise<TaskResponse | null> => {
-  let buffer = '';
+  callbacks: RuntimeStreamCallbacks,
+  signal: AbortSignal | undefined
+): Promise<TaskResponse> => {
+  let finalResponse: TaskResponse | null = null;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) return null;
+  const parser = createParser({
+    onEvent(event) {
+      if (finalResponse || !event.data) return;
 
-    buffer += decoder.decode(value, { stream: true });
-    const processed = processRuntimeStreamBuffer(buffer, callbacks.onChunk);
-    buffer = processed.buffer;
+      const payload = parseEventPayload(event.data);
+      if (!payload) return;
 
-    if (processed.finalResponse) {
-      callbacks.onComplete?.(processed.finalResponse);
+      const error = extractStreamError(payload);
+      if (error) {
+        throw new Error(error);
+      }
+
+      emitStreamChunk(payload, callbacks.onChunk);
+
+      if (payload['done'] === true) {
+        finalResponse = buildTaskResponse(payload);
+      }
+    },
+  });
+
+  while (!finalResponse) {
+    if (signal?.aborted) {
       await reader.cancel();
-      return processed.finalResponse;
+      throw new DOMException('Runtime stream aborted', 'AbortError');
     }
+
+    const { done, value } = await reader.read();
+    if (done) {
+      // The connection dropped (or the server closed it) before sending a
+      // "done" event. Surface this as a real failure rather than faking a
+      // completion — callers already have error handling/fallback paths that
+      // depend on this actually rejecting.
+      throw new Error('Runtime stream ended before the server sent a completion event.');
+    }
+
+    parser.feed(decoder.decode(value, { stream: true }));
   }
+
+  await reader.cancel();
+  return finalResponse;
 };
 
 const readRuntimeStream = async (
   response: Response,
-  { onChunk, onComplete }: RuntimeStreamCallbacks
+  { onChunk, onComplete }: RuntimeStreamCallbacks,
+  signal: AbortSignal | undefined
 ): Promise<void> => {
   if (!response.body) {
     throw new Error('Streaming response body is empty');
@@ -192,16 +175,19 @@ const readRuntimeStream = async (
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
-  const finalResponse = await consumeRuntimeStream(reader, decoder, { onChunk, onComplete });
-
-  if (!finalResponse) {
-    onComplete?.({ result: { message: 'Stream closed without completion event.' } });
-  }
+  const finalResponse = await consumeRuntimeStream(
+    reader,
+    decoder,
+    { onChunk, onComplete },
+    signal
+  );
+  onComplete?.(finalResponse);
 };
 
 export const streamRuntimeTask = async (
   request: RuntimeStreamRequest,
-  callbacks: RuntimeStreamCallbacks
+  callbacks: RuntimeStreamCallbacks,
+  signal?: AbortSignal
 ): Promise<void> => {
   const token = await getAuthTokenForRequest();
 
@@ -210,6 +196,7 @@ export const streamRuntimeTask = async (
     headers: createStreamHeaders(token),
     body: createStreamBody(request),
     credentials: 'include',
+    signal: signal ?? null,
   });
 
   if (!response.ok) {
@@ -236,5 +223,5 @@ export const streamRuntimeTask = async (
     );
   }
 
-  await readRuntimeStream(response, callbacks);
+  await readRuntimeStream(response, callbacks, signal);
 };

@@ -23,22 +23,27 @@ export default function AdminLayout({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { isAuthenticated, isHydrated, hasRole } = useAuthSession();
+  const { isAuthenticated, isHydrated, isAdmin, isFetching } = useAuthSession();
   const contentClassName = fullWidth ? 'px-6' : 'max-w-7xl mx-auto p-6';
 
   // Auth guard: redirect non-admin users before rendering anything
   useEffect(() => {
     if (!isHydrated) return; // wait for Zustand store to rehydrate from session
-    if (!isAuthenticated || !hasRole('admin')) {
+    // The login flows seed this session synchronously and cannot know the
+    // admin claim yet, so `isAdmin` is false until the server resolves it.
+    // Redirecting on that interim value bounces a real admin straight back
+    // to /login; wait for the in-flight validation to land first.
+    if (isFetching) return;
+    if (!isAuthenticated || !isAdmin) {
       const query = searchParams.toString();
       const asPath = query ? `${pathname}?${query}` : pathname;
       const redirect = encodeURIComponent(asPath ?? '/');
       router.replace(`/login?redirect=${redirect}`);
     }
-  }, [isHydrated, isAuthenticated, hasRole, router, pathname, searchParams]);
+  }, [isHydrated, isFetching, isAuthenticated, isAdmin, router, pathname, searchParams]);
 
   // Render nothing until hydration is complete and auth is confirmed
-  if (!isHydrated || !isAuthenticated || !hasRole('admin')) {
+  if (!isHydrated || isFetching || !isAuthenticated || !isAdmin) {
     return null;
   }
 

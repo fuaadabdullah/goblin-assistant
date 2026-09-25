@@ -9,6 +9,7 @@ import pytest
 
 from api.providers.base import ProviderHealth, ProviderResult
 from api.providers.openai_provider import OpenAIProvider
+from api.providers.pricing import resolve_model_pricing
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -121,7 +122,6 @@ class TestInvokeSuccess:
     async def test_invoke_cost_calculation_gpt4o(self):
         """Test cost calculation for gpt-4o model."""
         provider = _provider()
-        # gpt-4o costs: input 0.005, output 0.015 per 1k tokens
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = _chat_response(
@@ -141,10 +141,16 @@ class TestInvokeSuccess:
 
             result = await provider.invoke(model="gpt-4o")
 
-        # Cost = (1000 * 0.005 / 1000) + (1000 * 0.015 / 1000)
-        # = 0.005 + 0.015 = 0.02
+        # Derive the expectation from the same pricing source the provider
+        # uses. Hardcoding a figure pinned this to gpt-4o's launch prices, so
+        # the test passed only where LiteLLM was absent and the stale
+        # providers.toml fallback applied, and failed wherever LiteLLM
+        # supplied current pricing.
+        pricing = resolve_model_pricing("openai", "gpt-4o")
+        expected = (1000 * pricing.input_per1k / 1000) + (1000 * pricing.output_per1k / 1000)
+
         assert result.ok is True
-        assert result.cost_usd == 0.02
+        assert result.cost_usd == pytest.approx(expected)
 
     @pytest.mark.asyncio
     async def test_invoke_uses_default_model(self):

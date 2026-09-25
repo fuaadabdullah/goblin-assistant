@@ -32,6 +32,9 @@ const GoogleCallback: React.FC = () => {
       const { session, error } = await authGetSession();
       if (!error && session) {
         queryClient.setQueryData(queryKeys.authValidate, snapshotFromSupabaseSession(session));
+        // Refetch so the server-derived admin claim replaces the seeded interim
+        // value before any admin route renders (see ModularLoginForm).
+        void queryClient.invalidateQueries({ queryKey: queryKeys.authValidate });
         router.push('/chat');
         return;
       }

@@ -14,7 +14,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 import httpx
 
@@ -55,13 +55,13 @@ async def _post(table: str, payload: Dict[str, Any], prefer: str) -> None:
         logger.debug("supabase_event_write_failed table=%s error=%s", table, exc)
 
 
-def _fire(coro: Any) -> None:
-    """Schedule coro on the running loop without awaiting."""
+def _fire(coro_factory: Callable[[], Awaitable[Any]]) -> None:
+    """Create and schedule a coroutine only when an event loop is available."""
     try:
         loop = asyncio.get_running_loop()
-        loop.create_task(coro)
     except RuntimeError:
-        pass
+        return
+    loop.create_task(coro_factory())
 
 
 def upsert_provider_status(
@@ -96,7 +96,7 @@ def upsert_provider_status(
         payload["error_message"] = error_message[:500]
 
     _fire(
-        _post(
+        lambda: _post(
             "provider_status",
             payload,
             "resolution=merge-duplicates,return=minimal",
@@ -157,7 +157,7 @@ def insert_routing_audit(
         if shadow := dept_routing.get("shadow"):
             payload["department_router_shadow"] = str(shadow)
 
-    _fire(_post("routing_audit_log", payload, "return=minimal"))
+    _fire(lambda: _post("routing_audit_log", payload, "return=minimal"))
 
 
 async def check_provider_access(user_id: str, provider_id: str) -> bool:

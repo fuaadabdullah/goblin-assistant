@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, Dict, Optional
 
+import structlog
+
 from .provider_config_runtime import load_provider_config
+
+logger = structlog.get_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -53,6 +58,40 @@ def _normalize_provider_config(
     return dict(config or {})
 
 
+@lru_cache(maxsize=256)
+def _litellm_cost_lookup(model: str) -> Optional[ModelPricing]:
+    """Look up per-1k pricing from LiteLLM's upstream-maintained model cost map
+    (https://github.com/BerriAI/litellm). Returns ``None`` if LiteLLM isn't
+    importable or doesn't recognize *model*, so callers fall back to the local
+    ``providers.toml`` table — which stays authoritative for self-hosted/custom
+    backends LiteLLM has no pricing for.
+    """
+    try:
+        import litellm
+
+        prompt_cost, completion_cost = litellm.cost_per_token(
+            model=model, prompt_tokens=1000, completion_tokens=1000
+        )
+    except Exception as exc:
+        logger.debug("litellm_pricing_lookup_failed", model=model, error=str(exc))
+        return None
+    if not prompt_cost and not completion_cost:
+        return None
+    return ModelPricing(input_per1k=float(prompt_cost), output_per1k=float(completion_cost))
+
+
+def _resolve_litellm_pricing(provider_id: str, model: Optional[str]) -> Optional[ModelPricing]:
+    if not model:
+        return None
+    pricing = _litellm_cost_lookup(model)
+    if pricing is not None:
+        return pricing
+    # Some providers need an explicit "<provider>/<model>" hint for LiteLLM to
+    # disambiguate — mirrors the litellm_provider/model pairing router_service.py
+    # already builds for the LiteLLM Router's own model list.
+    return _litellm_cost_lookup(f"{provider_id}/{model}")
+
+
 def resolve_model_pricing(
     provider_id: str,
     model: Optional[str] = None,
@@ -60,17 +99,29 @@ def resolve_model_pricing(
     config: Optional[Dict[str, Any]] = None,
 ) -> ModelPricing:
     """
-    Resolve per-model pricing from the single source of truth (providers.toml).
+    Resolve per-model pricing, preferring LiteLLM's upstream-maintained model
+    cost map so pricing can't quietly go stale. Falls back to the local
+    ``providers.toml`` table when LiteLLM doesn't recognize the model — this is
+    what keeps self-hosted/custom backends (e.g. Ollama, a private llama.cpp
+    node) working, since LiteLLM has no pricing data for those.
 
-    Looks up costs in the ``[providers.<id>.costs]`` section keyed by:
+    The ``providers.toml`` fallback looks up costs in the
+    ``[providers.<id>.costs]`` section keyed by:
       1. the exact *model* name,
       2. the provider's *default_model*,
       3. ``"default"``,
       4. ``"*"`` (wildcard fallback).
 
-    If nothing is found, returns ``ModelPricing(0.0, 0.0)``.
+    If nothing is found anywhere, returns ``ModelPricing(0.0, 0.0)``.
     """
     provider_cfg = _normalize_provider_config(provider_id, config)
+
+    litellm_pricing = _resolve_litellm_pricing(
+        provider_id, model or provider_cfg.get("default_model")
+    )
+    if litellm_pricing is not None:
+        return litellm_pricing
+
     costs = _as_dict(provider_cfg.get("costs"))
     candidate_keys = [
         key
@@ -142,6 +193,26 @@ def resolve_rate_limit(
 
     legacy_requests = int(provider_cfg.get("rate_limit_per_min", 0) or 0)
     return RateLimitConfig(requests_per_minute=legacy_requests)
+
+
+@dataclass(frozen=True)
+class CircuitBreakerThresholds:
+    soft_threshold: int = 2
+    failure_threshold: int = 3
+    recovery_timeout_seconds: float = 30.0
+
+
+def resolve_circuit_breaker_thresholds() -> CircuitBreakerThresholds:
+    """Resolve provider circuit-breaker thresholds from the single source of
+    truth (providers.toml [load_balancing]) instead of hardcoding them at
+    each call site. Respects config reload the same way resolve_model_pricing
+    does, so dispatcher.reload_config() picks up threshold changes too."""
+    load_balancing = load_provider_config(use_cache=True).load_balancing
+    return CircuitBreakerThresholds(
+        soft_threshold=load_balancing.circuit_breaker_soft_threshold,
+        failure_threshold=load_balancing.circuit_breaker_failure_threshold,
+        recovery_timeout_seconds=float(load_balancing.circuit_breaker_recovery_timeout),
+    )
 
 
 def resolve_canonical_model(model: Optional[str]) -> Optional[str]:

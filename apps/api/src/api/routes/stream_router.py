@@ -3,8 +3,8 @@ import logging
 from typing import Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from sse_starlette import EventSourceResponse
 
 from ..services.stream_state_store import get_stream_state_store
 from ..services.task_streaming import iter_task_stream_chunks
@@ -74,7 +74,7 @@ async def generate_stream_events(
 async def stream_task(request: StreamTaskRequest):
     """Stream task execution results using Server-Sent Events with real provider"""
     try:
-        return StreamingResponse(
+        return EventSourceResponse(
             generate_stream_events(
                 task_id=request.task_id,
                 messages=request.messages,
@@ -84,10 +84,10 @@ async def stream_task(request: StreamTaskRequest):
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Headers": "Cache-Control",
             },
+            ping=15,
         )
     except Exception as e:
         logger.error("Stream task failed: %s", e)

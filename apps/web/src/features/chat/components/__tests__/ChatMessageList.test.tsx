@@ -1,6 +1,46 @@
-import React, { createRef } from 'react';
+import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import ChatMessageList from '../ChatMessageList';
+
+// JSDOM has no real layout engine, so react-virtuoso (which measures actual
+// element sizes to decide what's "visible") can't meaningfully virtualize
+// here. Render every item directly instead, through the same custom
+// List/Item components the real app uses, so DOM structure/keying still
+// matches production.
+vi.mock('react-virtuoso', () => ({
+  Virtuoso: ({
+    data,
+    itemContent,
+    computeItemKey,
+    components,
+  }: {
+    data: Array<{ id: string }>;
+    itemContent: (index: number, item: { id: string }) => React.ReactNode;
+    computeItemKey?: (index: number, item: { id: string }) => React.Key;
+    components?: {
+      List?: React.ComponentType<{ children?: React.ReactNode }>;
+      Item?: React.ComponentType<{ children?: React.ReactNode; item: unknown }>;
+    };
+  }) => {
+    const List = components?.List ?? 'ol';
+    const Item = components?.Item ?? 'li';
+    return (
+      <List>
+        {data.map((item, index) => (
+          <Item
+            key={computeItemKey ? computeItemKey(index, item) : index}
+            item={item}
+            data-index={index}
+            data-item-index={index}
+            data-known-size={0}
+          >
+            {itemContent(index, item)}
+          </Item>
+        ))}
+      </List>
+    );
+  },
+}));
 
 vi.mock('next/dynamic', () => ({
   // Synchronous wrapper — avoids async useState/useEffect that leaves content
@@ -41,7 +81,6 @@ vi.mock('../MessageMarkdown', () => ({
 const baseProps = {
   quickPrompts: [],
   onPromptClick: vi.fn(),
-  bottomRef: createRef<HTMLDivElement>(),
   isSending: false,
 };
 

@@ -32,7 +32,7 @@ const ChatFAB: React.FC = () => {
       <button
         aria-label="Open Chat"
         onClick={handleClick}
-        className="inline-flex items-center justify-center h-14 w-14 rounded-full bg-primary text-white shadow-glow-primary hover:brightness-95 active:scale-95 transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+        className="inline-flex items-center justify-center h-14 w-14 rounded-full bg-primary text-text-inverse shadow-glow-primary hover:brightness-95 active:scale-95 transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
       >
         <MessageSquare className="w-6 h-6" aria-hidden="true" />
       </button>

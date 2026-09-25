@@ -183,6 +183,11 @@ export interface components {
         };
         /** ApiKeyResponse */
         ApiKeyResponse: {
+            /**
+             * Configured
+             * @default false
+             */
+            configured: boolean;
             /** Key */
             key?: string | null;
             /** Provider */
@@ -874,31 +879,41 @@ export interface components {
         };
         /** PasskeyAuthRequest */
         PasskeyAuthRequest: {
-            /** Authenticator Data */
-            authenticator_data: string;
-            /** Client Data Json */
-            client_data_json: string;
-            /** Credential Id */
-            credential_id: string;
+            /** Assertion */
+            assertion: {
+                [key: string]: unknown;
+            };
             /**
              * Email
              * Format: email
              */
             email: string;
-            /** Signature */
-            signature: string;
+        };
+        /** PasskeyAuthResponse */
+        PasskeyAuthResponse: {
+            /** Token Hash */
+            token_hash: string;
+            user: components["schemas"]["User"];
+        };
+        /** PasskeyChallengeRequest */
+        PasskeyChallengeRequest: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
         };
         /** PasskeyRegistrationRequest */
         PasskeyRegistrationRequest: {
-            /** Credential Id */
-            credential_id: string;
+            /** Credential */
+            credential: {
+                [key: string]: unknown;
+            };
             /**
              * Email
              * Format: email
              */
             email: string;
-            /** Public Key */
-            public_key: string;
         };
         /** PreferencesResponse */
         PreferencesResponse: {
@@ -1586,6 +1601,15 @@ export interface components {
              */
             success: boolean;
         };
+        /** SuccessEnvelope[PasskeyAuthResponse] */
+        SuccessEnvelope_PasskeyAuthResponse_: {
+            data: components["schemas"]["PasskeyAuthResponse"];
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+        };
         /** SuccessEnvelope[PreferencesResponse] */
         SuccessEnvelope_PreferencesResponse_: {
             data: components["schemas"]["PreferencesResponse"];
@@ -1804,6 +1828,11 @@ export interface components {
          * @description Response for token validation endpoint.
          */
         TokenValidationResponse: {
+            /**
+             * Is Admin
+             * @default false
+             */
+            is_admin: boolean;
             user?: components["schemas"]["User"] | null;
             /** Valid */
             valid: boolean;

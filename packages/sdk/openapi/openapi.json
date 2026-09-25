@@ -564,6 +564,11 @@
       },
       "ApiKeyResponse": {
         "properties": {
+          "configured": {
+            "default": false,
+            "title": "Configured",
+            "type": "boolean"
+          },
           "key": {
             "anyOf": [
               {
@@ -2433,58 +2438,71 @@
       },
       "PasskeyAuthRequest": {
         "properties": {
-          "authenticator_data": {
-            "title": "Authenticator Data",
-            "type": "string"
-          },
-          "client_data_json": {
-            "title": "Client Data Json",
-            "type": "string"
-          },
-          "credential_id": {
-            "title": "Credential Id",
-            "type": "string"
+          "assertion": {
+            "additionalProperties": true,
+            "title": "Assertion",
+            "type": "object"
           },
           "email": {
             "format": "email",
             "title": "Email",
             "type": "string"
-          },
-          "signature": {
-            "title": "Signature",
-            "type": "string"
           }
         },
         "required": [
           "email",
-          "credential_id",
-          "authenticator_data",
-          "client_data_json",
-          "signature"
+          "assertion"
         ],
         "title": "PasskeyAuthRequest",
         "type": "object"
       },
+      "PasskeyAuthResponse": {
+        "properties": {
+          "token_hash": {
+            "title": "Token Hash",
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          }
+        },
+        "required": [
+          "token_hash",
+          "user"
+        ],
+        "title": "PasskeyAuthResponse",
+        "type": "object"
+      },
+      "PasskeyChallengeRequest": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "PasskeyChallengeRequest",
+        "type": "object"
+      },
       "PasskeyRegistrationRequest": {
         "properties": {
-          "credential_id": {
-            "title": "Credential Id",
-            "type": "string"
+          "credential": {
+            "additionalProperties": true,
+            "title": "Credential",
+            "type": "object"
           },
           "email": {
             "format": "email",
             "title": "Email",
             "type": "string"
-          },
-          "public_key": {
-            "title": "Public Key",
-            "type": "string"
           }
         },
         "required": [
           "email",
-          "credential_id",
-          "public_key"
+          "credential"
         ],
         "title": "PasskeyRegistrationRequest",
         "type": "object"
@@ -4378,6 +4396,23 @@
         "title": "SuccessEnvelope[LogoutResponse]",
         "type": "object"
       },
+      "SuccessEnvelope_PasskeyAuthResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PasskeyAuthResponse"
+          },
+          "success": {
+            "default": true,
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "SuccessEnvelope[PasskeyAuthResponse]",
+        "type": "object"
+      },
       "SuccessEnvelope_PreferencesResponse_": {
         "properties": {
           "data": {
@@ -4829,6 +4864,11 @@
       "TokenValidationResponse": {
         "description": "Response for token validation endpoint.",
         "properties": {
+          "is_admin": {
+            "default": false,
+            "title": "Is Admin",
+            "type": "boolean"
+          },
           "user": {
             "anyOf": [
               {
@@ -5819,6 +5859,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Delete Api Key",
         "tags": [
           "api-keys"
@@ -5860,6 +5905,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get Api Key",
         "tags": [
           "api-keys"
@@ -5909,6 +5959,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Store Api Key",
         "tags": [
           "api-keys"
@@ -6925,6 +6980,7 @@
     },
     "/api/v1/auth/passkey/auth": {
       "post": {
+        "description": "Verify an assertion and mint a Supabase session token hash.",
         "operationId": "authenticate_passkey_api_v1_auth_passkey_auth_post",
         "requestBody": {
           "content": {
@@ -6941,7 +6997,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessEnvelope_TokenWithRefresh_"
+                  "$ref": "#/components/schemas/SuccessEnvelope_PasskeyAuthResponse_"
                 }
               }
             },
@@ -6966,8 +7022,18 @@
     },
     "/api/v1/auth/passkey/challenge": {
       "post": {
-        "description": "Get a challenge for passkey registration/authentication.",
+        "description": "Return registration or authentication options for a user's email.",
         "operationId": "get_passkey_challenge_api_v1_auth_passkey_challenge_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyChallengeRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -6976,6 +7042,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Get Passkey Challenge",
@@ -6986,6 +7062,7 @@
     },
     "/api/v1/auth/passkey/register": {
       "post": {
+        "description": "Verify a registration response and store the credential.",
         "operationId": "register_passkey_api_v1_auth_passkey_register_post",
         "requestBody": {
           "content": {
@@ -9892,6 +9969,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get Feature Flag",
         "tags": [
           "feature-flags"
@@ -9942,6 +10024,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Upsert Feature Flag",
         "tags": [
           "feature-flags"
@@ -12382,14 +12469,6 @@
         "operationId": "submit_job_api_v1_sandbox_submit_post",
         "parameters": [
           {
-            "in": "query",
-            "name": "request",
-            "required": false,
-            "schema": {
-              "title": "Request"
-            }
-          },
-          {
             "in": "header",
             "name": "x-api-key",
             "required": false,
@@ -12758,6 +12837,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List Secrets",
         "tags": [
           "secrets"
@@ -12780,6 +12864,11 @@
             "description": "Successful Response"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Secrets Health",
         "tags": [
           "secrets"
@@ -12837,6 +12926,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Delete Secret",
         "tags": [
           "secrets"
@@ -12894,6 +12988,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get Secret",
         "tags": [
           "secrets"
@@ -12945,6 +13044,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Put Secret",
         "tags": [
           "secrets"
@@ -12986,6 +13090,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Rotate Secret",
         "tags": [
           "secrets"

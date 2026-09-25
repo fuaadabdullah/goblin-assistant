@@ -6,8 +6,8 @@ describe('isAdminUser', () => {
   beforeEach(() => {
     vi.resetModules();
     process.env = { ...originalEnv };
-    delete process.env.NEXT_PUBLIC_ADMIN_EMAILS;
-    delete process.env.NEXT_PUBLIC_ADMIN_DOMAINS;
+    delete process.env.ADMIN_EMAILS;
+    delete process.env.ADMIN_DOMAINS;
   });
 
   afterEach(() => {

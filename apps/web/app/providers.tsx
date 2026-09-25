@@ -5,9 +5,7 @@ import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Analytics } from '@vercel/analytics/react';
-import { datadogRum } from '@datadog/browser-rum';
-import { datadogLogs } from '@datadog/browser-logs';
-import { ProviderProvider } from '@/contexts/ProviderContext';
+import { migrateLegacyProviderSelection, useProviderStore } from '@/store/providerStore';
 import { ContrastModeProvider } from '@/hooks/useContrastMode';
 import AuthBootstrapper from '@/auth/AuthBootstrapper';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -29,21 +27,19 @@ function sanitizeDatadogTagValue(value: string | undefined, fallback?: string): 
   return fallback;
 }
 
-function shouldLoadProviderRegistry(pathname: string | null): boolean {
-  if (!pathname) return true;
-  return !['/login', '/register'].some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`)
-  );
-}
-
 function shouldRenderAnalytics(): boolean {
   return process.env['VERCEL_ENV'] === 'production';
 }
 
-function initDatadog() {
+async function initDatadog() {
+  if (process.env['NODE_ENV'] !== 'production') return;
   const appId = process.env['NEXT_PUBLIC_DD_APPLICATION_ID'];
   const clientToken = process.env['NEXT_PUBLIC_DD_CLIENT_TOKEN'];
   if (!appId || !clientToken) return;
+  const [{ datadogRum }, { datadogLogs }] = await Promise.all([
+    import('@datadog/browser-rum'),
+    import('@datadog/browser-logs'),
+  ]);
 
   const site = process.env['NEXT_PUBLIC_DD_SITE'] ?? 'datadoghq.com';
   const env = sanitizeDatadogTagValue(
@@ -52,43 +48,50 @@ function initDatadog() {
   );
   const version = sanitizeDatadogTagValue(process.env['NEXT_PUBLIC_DD_VERSION'], '0');
 
-  datadogRum.init({
-    applicationId: appId,
-    clientToken,
-    site,
-    service: 'goblin-web',
-    env,
-    version,
-    sessionSampleRate: 100,
-    sessionReplaySampleRate: 10,
-    trackUserInteractions: true,
-    trackResources: true,
-    trackLongTasks: true,
-    defaultPrivacyLevel: 'mask-user-input',
-  });
+  if (!datadogRum.getInitConfiguration()) {
+    datadogRum.init({
+      applicationId: appId,
+      clientToken,
+      site,
+      service: 'goblin-web',
+      env,
+      version,
+      sessionSampleRate: 100,
+      sessionReplaySampleRate: 10,
+      trackUserInteractions: true,
+      trackResources: true,
+      trackLongTasks: true,
+      defaultPrivacyLevel: 'mask-user-input',
+    });
+  }
 
-  datadogLogs.init({
-    clientToken,
-    site,
-    service: 'goblin-web',
-    env,
-    version,
-    forwardErrorsToLogs: true,
-    sessionSampleRate: 100,
-  } as any);
+  if (!datadogLogs.getInitConfiguration()) {
+    datadogLogs.init({
+      clientToken,
+      site,
+      service: 'goblin-web',
+      env,
+      version,
+      forwardErrorsToLogs: true,
+      sessionSampleRate: 100,
+    });
+  }
 }
 
 export default function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => createQueryClient());
   const pathname = usePathname();
-  const enableProviderRegistry = shouldLoadProviderRegistry(pathname);
   const enableAnalytics = shouldRenderAnalytics();
 
   useEffect(() => {
-    initDatadog();
+    void initDatadog();
     initGA();
     setupGlobalErrorTracking();
     monitorNetworkStatus();
+  }, []);
+
+  useEffect(() => {
+    void Promise.resolve(useProviderStore.persist.rehydrate()).then(migrateLegacyProviderSelection);
   }, []);
 
   return (
@@ -110,17 +113,15 @@ export default function Providers({ children }: { children: ReactNode }) {
     >
       <QueryClientProvider client={queryClient}>
         <AuthBootstrapper />
-        <ProviderProvider enableRegistry={enableProviderRegistry}>
-          <ContrastModeProvider>
-            <a href="#main-content" className="skip-link">
-              Skip to main content
-            </a>
-            <PageTransition routeKey={pathname ?? '/'}>{children}</PageTransition>
-            <ChatFAB />
-            <StatusBar />
-            {enableAnalytics ? <Analytics /> : null}
-          </ContrastModeProvider>
-        </ProviderProvider>
+        <ContrastModeProvider>
+          <a href="#main-content" className="skip-link">
+            Skip to main content
+          </a>
+          <PageTransition routeKey={pathname ?? '/'}>{children}</PageTransition>
+          <ChatFAB />
+          <StatusBar />
+          {enableAnalytics ? <Analytics /> : null}
+        </ContrastModeProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

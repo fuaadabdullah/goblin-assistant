@@ -1,6 +1,11 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+vi.mock('../../hooks/useRoutingAnalytics', () => ({
+  useRoutingProviders: () => ({ data: null }),
+}));
+
 import ProviderDetails from '../ProviderDetails';
 
 function renderWithQuery(ui: React.ReactElement) {

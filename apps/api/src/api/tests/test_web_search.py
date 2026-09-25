@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -29,16 +28,6 @@ _BRAVE_RAW = {
 }
 
 
-def _make_httpx_response(data: Any, status_code: int = 200) -> MagicMock:
-    resp = MagicMock()
-    resp.status_code = status_code
-    resp.json.return_value = data
-    resp.raise_for_status = MagicMock()
-    if status_code >= 400:
-        resp.raise_for_status.side_effect = Exception(f"HTTP {status_code}")
-    return resp
-
-
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -47,15 +36,11 @@ def _make_httpx_response(data: Any, status_code: int = 200) -> MagicMock:
 @pytest.mark.asyncio
 async def test_brave_search_success():
     """Brave Search is used when key is present and returns results."""
-    mock_resp = _make_httpx_response(_BRAVE_RAW)
-
     with patch.dict("os.environ", {"BRAVE_SEARCH_API_KEY": "test-key"}):
-        with patch("api.assistant_tools.skills.web_search.httpx.AsyncClient") as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-            mock_client.get = AsyncMock(return_value=mock_resp)
-
+        with patch(
+            "api.assistant_tools.skills.web_search.get_json",
+            return_value=_BRAVE_RAW,
+        ):
             from api.assistant_tools.skills.web_search import _handle_web_search
 
             result = await _handle_web_search("test query", max_results=3)
@@ -69,7 +54,6 @@ async def test_brave_search_success():
 @pytest.mark.asyncio
 async def test_brave_search_fallback_to_ddg():
     """Falls back to DuckDuckGo when Brave returns an error."""
-    mock_resp = _make_httpx_response({}, status_code=500)
 
     def _fake_ddg_sync(query: str, max_results: int):
         return {
@@ -80,12 +64,10 @@ async def test_brave_search_fallback_to_ddg():
         }
 
     with patch.dict("os.environ", {"BRAVE_SEARCH_API_KEY": "test-key"}):
-        with patch("api.assistant_tools.skills.web_search.httpx.AsyncClient") as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-            mock_client.get = AsyncMock(return_value=mock_resp)
-
+        with patch(
+            "api.assistant_tools.skills.web_search.get_json",
+            side_effect=RuntimeError("HTTP 500"),
+        ):
             with patch(
                 "api.assistant_tools.skills.web_search._ddg_search_sync",
                 side_effect=_fake_ddg_sync,

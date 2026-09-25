@@ -70,14 +70,48 @@ def _build_operation_index(schema: dict[str, object]) -> dict[tuple[str, str], d
     return index
 
 
+def _iter_route_like(api_app):
+    """Yield the app's API routes, whether or not FastAPI flattened them.
+
+    FastAPI now includes sub-routers lazily: ``app.routes`` holds
+    ``_IncludedRouter`` wrappers rather than the flattened ``APIRoute``
+    objects, so scanning for ``APIRoute`` alone finds only the handful of
+    routes declared directly on the app and the manifest comes out
+    essentially empty. Each wrapper can materialise its routes with their
+    final prefixed paths, and those objects expose the same attributes this
+    module reads (path, methods, include_in_schema, openapi_extra, ...).
+
+    Wrappers nest, because routers include routers, so materialising one
+    level yields further wrappers alongside real routes and this has to
+    recurse -- stopping at the first level silently drops whole routers
+    (auth, chat) from the manifest.
+
+    Older FastAPI versions still flatten into ``app.routes``, so the
+    ``APIRoute`` branch is kept for them. Anything that is neither -- the
+    Starlette routes behind /docs and /openapi.json, for instance -- is
+    skipped, which is what the previous isinstance check did.
+    """
+    yield from _expand_routes(getattr(api_app, "routes", ()))
+
+
+def _expand_routes(routes):
+    for route in routes:
+        materialize = getattr(route, "effective_candidates", None)
+        if callable(materialize):
+            yield from _expand_routes(materialize())
+            continue
+
+        # APIRoute on older FastAPI; the materialised context on newer ones,
+        # which carries the same fields plus its final prefixed path.
+        if isinstance(route, APIRoute) or hasattr(route, "from_api_route"):
+            yield route
+
+
 def _route_records_from_app(api_app, schema: dict[str, object] | None = None) -> list[RouteRecord]:
     operation_index = _build_operation_index(schema or {})
     records: list[RouteRecord] = []
 
-    for route in api_app.routes:
-        if not isinstance(route, APIRoute):
-            continue
-
+    for route in _iter_route_like(api_app):
         path = getattr(route, "path", "")
         if not isinstance(path, str) or not path:
             continue

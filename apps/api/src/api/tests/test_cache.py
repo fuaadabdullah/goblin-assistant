@@ -139,22 +139,27 @@ class TestRedisCacheOperations:
         cache._redis.delete.side_effect = Exception("delete error")
         await cache.delete("fail-key")  # Should not raise
 
+    @staticmethod
+    async def _agen(*items):
+        for item in items:
+            yield item
+
     @pytest.mark.asyncio
     async def test_delete_pattern(self, cache):
-        cache._redis.keys.return_value = [b"k1", b"k2"]
+        cache._redis.scan_iter = MagicMock(return_value=self._agen(b"k1", b"k2"))
         await cache.delete_pattern("test:*")
-        cache._redis.keys.assert_awaited_with("test:*")
+        cache._redis.scan_iter.assert_called_once_with(match="test:*", count=500)
         cache._redis.delete.assert_awaited_with(b"k1", b"k2")
 
     @pytest.mark.asyncio
     async def test_delete_pattern_no_keys(self, cache):
-        cache._redis.keys.return_value = []
+        cache._redis.scan_iter = MagicMock(return_value=self._agen())
         await cache.delete_pattern("empty:*")
         cache._redis.delete.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_delete_pattern_error_handled(self, cache):
-        cache._redis.keys.side_effect = Exception("keys error")
+        cache._redis.scan_iter = MagicMock(side_effect=Exception("scan error"))
         await cache.delete_pattern("fail:*")  # Should not raise
 
     @pytest.mark.asyncio

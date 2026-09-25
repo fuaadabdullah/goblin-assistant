@@ -1,12 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { checkA11y, injectAxe } from '@axe-core/playwright';
-import { mockCommonApiRoutes } from './support/common-mocks';
-
-const AUTH_COOKIES = [
-  { name: 'goblin_auth', value: '1', domain: 'localhost', path: '/' },
-  { name: 'goblin_admin', value: '1', domain: 'localhost', path: '/' },
-  { name: 'session_token', value: 'mock-session-token-e2e', domain: 'localhost', path: '/' },
-];
+import AxeBuilder from '@axe-core/playwright';
+import { authenticateE2EUser, mockCommonApiRoutes } from './support/common-mocks';
 
 const envelope = <T>(data: T) => JSON.stringify({ success: true, data });
 
@@ -37,23 +31,23 @@ async function mockAuditApi(page: import('@playwright/test').Page) {
     await route.fulfill({ status: 200, contentType: 'application/json', body: envelope([]) });
   });
 
-  await page.route('**/api/v1/search/**', async (route) => {
+  await page.route('**/api/search/**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: envelope({ results: [], collections: [] }),
+      body: envelope([]),
     });
   });
 
-  await page.route('**/api/v1/settings/**', async (route) => {
+  await page.route('**/api/settings/**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: envelope({ providers: [], models: [], default_provider: null, default_model: null }),
+      body: envelope([]),
     });
   });
 
-  await page.route('**/api/v1/sandbox/**', async (route) => {
+  await page.route('**/api/sandbox/**', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: envelope([]) });
   });
 
@@ -65,7 +59,10 @@ async function mockAuditApi(page: import('@playwright/test').Page) {
 test.describe('core accessibility audit', () => {
   test.beforeEach(async ({ page, context }) => {
     await mockAuditApi(page);
-    await context.addCookies(AUTH_COOKIES);
+    await authenticateE2EUser(context);
+    await context.addCookies([
+      { name: 'goblin_e2e_admin', value: '1', domain: 'localhost', path: '/' },
+    ]);
     await page.addInitScript(() => {
       window.localStorage.setItem(
         'user_data',
@@ -91,11 +88,13 @@ test.describe('core accessibility audit', () => {
     test(`${route} has no automated accessibility violations`, async ({ page }) => {
       await page.goto(route, { waitUntil: 'networkidle' });
       await expect(page.locator('body')).toBeVisible();
-      await injectAxe(page);
-      await checkA11y(page, undefined, {
-        detailedReport: true,
-        detailedReportOptions: { html: true },
-      });
+      const results = await new AxeBuilder({ page }).analyze();
+      expect(
+        results.violations.map(({ id, nodes }) => ({
+          id,
+          targets: nodes.map(({ target }) => target),
+        }))
+      ).toEqual([]);
     });
   }
 });

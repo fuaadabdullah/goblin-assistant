@@ -47,7 +47,7 @@ describe('AdminLayout', () => {
     mockUseAuthSession.mockReturnValue({
       isAuthenticated: true,
       isHydrated: true,
-      hasRole: (role: string) => role === 'admin',
+      isAdmin: true,
     });
   });
 
@@ -55,7 +55,7 @@ describe('AdminLayout', () => {
     mockUseAuthSession.mockReturnValue({
       isAuthenticated: false,
       isHydrated: false,
-      hasRole: () => false,
+      isAdmin: false,
     });
 
     const { container } = render(
@@ -72,7 +72,7 @@ describe('AdminLayout', () => {
     mockUseAuthSession.mockReturnValue({
       isAuthenticated: false,
       isHydrated: true,
-      hasRole: () => false,
+      isAdmin: false,
     });
 
     const { container } = render(
@@ -91,7 +91,7 @@ describe('AdminLayout', () => {
     mockUseAuthSession.mockReturnValue({
       isAuthenticated: true,
       isHydrated: true,
-      hasRole: () => false,
+      isAdmin: false,
     });
 
     render(
@@ -102,6 +102,29 @@ describe('AdminLayout', () => {
 
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/login?redirect=%2Fadmin%2Flogs%3Ftab%3Dstream');
+    });
+  });
+
+  it('waits for an in-flight validation instead of bouncing a real admin', async () => {
+    // Login seeds the session synchronously with isAdmin:false and refetches
+    // the real claim. Redirecting on that interim value sent an admin who had
+    // just logged in straight back to /login.
+    mockUseAuthSession.mockReturnValue({
+      isAuthenticated: true,
+      isHydrated: true,
+      isAdmin: false,
+      isFetching: true,
+    });
+
+    const { container } = render(
+      <AdminLayout>
+        <div>hidden</div>
+      </AdminLayout>
+    );
+
+    expect(container.firstChild).toBeNull();
+    await waitFor(() => {
+      expect(mockReplace).not.toHaveBeenCalled();
     });
   });
 

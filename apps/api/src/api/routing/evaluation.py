@@ -371,8 +371,11 @@ def _stage_durations_from_explanation(explanation: Dict[str, Any]) -> Dict[str, 
 
 
 def _load_provider_costs() -> Dict[str, tuple]:
-    """Read (input_per1k, output_per1k) straight from providers.toml — no
-    dispatcher/live-provider dependency, so this stays usable in CI."""
+    """Per-provider (input_per1k, output_per1k), preferring LiteLLM's model
+    cost map with the providers.toml table as fallback (see
+    api.providers.pricing.resolve_model_pricing). Pure config lookups only —
+    no dispatcher/live-provider dependency, no network calls — so this stays
+    usable in CI."""
     if not _PROVIDERS_TOML_PATH.exists():
         return {}
     try:
@@ -387,14 +390,14 @@ def _load_provider_costs() -> Dict[str, tuple]:
     except Exception:
         return {}
 
+    from ..providers.pricing import resolve_model_pricing
+
     costs: Dict[str, tuple] = {}
     for pid, raw in parsed.get("providers", {}).items():
         if not isinstance(raw, dict):
             continue
-        costs[pid] = (
-            float(raw.get("cost_input_per1k", 0.0)),
-            float(raw.get("cost_output_per1k", 0.0)),
-        )
+        pricing = resolve_model_pricing(pid, raw.get("default_model"), config=raw)
+        costs[pid] = (pricing.input_per1k, pricing.output_per1k)
     return costs
 
 

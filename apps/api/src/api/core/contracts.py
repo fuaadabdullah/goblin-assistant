@@ -35,6 +35,7 @@ class ApiErrorPayload(BaseModel):
 
     code: str
     type: ErrorType
+    type_uri: Optional[str] = None
     message: str
     request_id: Optional[str] = None
     timestamp: Optional[str] = None

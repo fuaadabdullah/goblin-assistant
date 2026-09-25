@@ -166,7 +166,8 @@ async def test_select_provider_prefers_healthy_preferred_provider():
 
 
 @pytest.mark.asyncio
-async def test_select_provider_returns_emergency_selection_when_no_candidates():
+async def test_select_provider_returns_mock_when_fallback_allowed(monkeypatch):
+    monkeypatch.setenv("ALLOW_MOCK_PROVIDER_FALLBACK", "true")
     router = SmartRouter(strategy=RoutingStrategy.BALANCED)
 
     with patch(
@@ -177,6 +178,43 @@ async def test_select_provider_returns_emergency_selection_when_no_candidates():
 
     assert selection.provider_id == "mock"
     assert selection.reason.startswith("No providers available")
+
+
+@pytest.mark.asyncio
+async def test_select_provider_returns_empty_when_fallback_not_allowed(monkeypatch):
+    monkeypatch.delenv("ALLOW_MOCK_PROVIDER_FALLBACK", raising=False)
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    router = SmartRouter(strategy=RoutingStrategy.BALANCED)
+
+    with patch(
+        "api.services.smart_router.top_providers_for",
+        return_value=[],
+    ):
+        selection = await router.select_provider(task_type="chat")
+
+    assert selection.provider_id == ""
+    assert selection.reason.startswith("No providers available")
+
+
+@pytest.mark.asyncio
+async def test_route_returns_failure_when_no_provider_available(monkeypatch):
+    monkeypatch.delenv("ALLOW_MOCK_PROVIDER_FALLBACK", raising=False)
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    router = SmartRouter(strategy=RoutingStrategy.BALANCED)
+    invoke_fn = AsyncMock()
+
+    with patch(
+        "api.services.smart_router.top_providers_for",
+        return_value=[],
+    ):
+        result = await router.invoke_with_fallback(
+            invoke_fn,
+            [{"role": "user", "content": "hello"}],
+        )
+
+    assert result["ok"] is False
+    assert result["error"] == "no providers available"
+    invoke_fn.assert_not_awaited()
 
 
 def test_get_status_includes_cost_tracking_and_router_state():

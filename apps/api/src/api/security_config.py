@@ -6,6 +6,8 @@ import logging
 import os
 from typing import List
 
+from .config.settings import get_settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -15,10 +17,7 @@ DEFAULT_LOCAL_ORIGINS = [
     "http://localhost:3001",
 ]
 
-CANONICAL_PUBLIC_ORIGINS = [
-    "https://goblin-assistant.vercel.app",
-    "https://goblin-backend-dt30.onrender.com",
-]
+DEFAULT_PUBLIC_FRONTEND_ORIGINS = ["https://goblin-assistant.vercel.app"]
 
 PRODUCTION_ALLOWED_HEADERS = [
     "Accept",
@@ -56,13 +55,13 @@ def build_allowed_origins(environment: str, raw_origins: str) -> List[str]:
     if environment == "production":
         dynamic = _dedupe_origins(
             [
-                os.getenv("FRONTEND_URL", ""),
-                os.getenv("BACKEND_URL", ""),
+                get_settings().frontend_url,
+                get_settings().backend_url,
             ]
         )
-        return _dedupe_origins(parsed_custom + dynamic + CANONICAL_PUBLIC_ORIGINS)
+        return _dedupe_origins(parsed_custom + dynamic + DEFAULT_PUBLIC_FRONTEND_ORIGINS)
 
-    return _dedupe_origins(parsed_custom + DEFAULT_LOCAL_ORIGINS + CANONICAL_PUBLIC_ORIGINS)
+    return _dedupe_origins(parsed_custom + DEFAULT_LOCAL_ORIGINS + DEFAULT_PUBLIC_FRONTEND_ORIGINS)
 
 
 def _resolve_origins(environment: str) -> List[str]:
@@ -75,7 +74,7 @@ def _resolve_origins(environment: str) -> List[str]:
     This logic ensures production does not accidentally allow
     development-only origins.
     """
-    custom = os.getenv("ALLOWED_ORIGINS", "")
+    custom = get_settings().allowed_origins
     return build_allowed_origins(environment=environment, raw_origins=custom)
 
 
@@ -88,8 +87,8 @@ def _resolve_auth_cookie_samesite(environment: str) -> str:
     In development, 'lax' is preferred for CSRF protection.
     """
     if environment == "production":
-        return os.getenv("AUTH_COOKIE_SAMESITE", "none")
-    return os.getenv("AUTH_COOKIE_SAMESITE", "lax")
+        return get_settings().auth_cookie_samesite or "none"
+    return get_settings().auth_cookie_samesite or "lax"
 
 
 def _resolve_rate_limit_enabled(environment: str) -> bool:
@@ -129,16 +128,19 @@ class SecurityConfig:
     """
 
     # Environment
-    ENVIRONMENT = os.getenv("ENVIRONMENT", "production")
+    _settings = get_settings()
+    ENVIRONMENT = _settings.environment
 
     # CORS Configuration - resolved via helper
     ALLOWED_ORIGINS = _resolve_origins(ENVIRONMENT)
     ALLOWED_HEADERS = _resolve_allowed_headers(ENVIRONMENT)
 
     # Rate Limiting
+    # The actual request-count/window thresholds live with the enforcing
+    # middleware (RATE_LIMIT_PER_MINUTE / RATE_LIMIT_PER_HOUR, read directly
+    # in bootstrap/middleware.py) — this class only tracks whether limiting
+    # is on at all, which is what get_security_status() reports.
     RATE_LIMIT_ENABLED = _resolve_rate_limit_enabled(ENVIRONMENT)
-    RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
-    RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))  # seconds
 
     # Security Headers
     SECURITY_HEADERS = {
@@ -150,7 +152,7 @@ class SecurityConfig:
     }
 
     # Debug Mode - STRICTLY DISABLED IN PRODUCTION
-    DEBUG = os.getenv("DEBUG", "false").lower() == "true"
+    DEBUG = _settings.debug
 
     # Override debug mode based on environment
     if ENVIRONMENT == "production" and DEBUG:
@@ -165,10 +167,10 @@ class SecurityConfig:
     VAULT_MOUNT_POINT = os.getenv("VAULT_MOUNT_POINT", "secret")
 
     # Database Security
-    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./goblin_assistant.db")
+    DATABASE_URL = _settings.database_url
 
     # Redis Security
-    REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    REDIS_URL = _settings.redis_url
 
     @classmethod
     def validate_config(cls) -> List[str]:

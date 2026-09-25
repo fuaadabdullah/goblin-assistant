@@ -69,7 +69,10 @@ export default function LoginPage({ initialMode = 'login' }: LoginPageProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-accent/10 to-cta/10 px-4">
+    <main
+      id="main-content"
+      className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-accent/10 to-cta/10 px-4"
+    >
       <Seo title="Sign In" description="Sign in to Goblin Assistant." robots="index,follow" />
       <div className="w-full max-w-md">
         {(error || visibleOauthMessage) && (
@@ -101,6 +104,6 @@ export default function LoginPage({ initialMode = 'login' }: LoginPageProps) {
           to chat without an account.
         </div>
       </div>
-    </div>
+    </main>
   );
 }

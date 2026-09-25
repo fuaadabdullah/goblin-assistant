@@ -72,6 +72,11 @@ export interface LoginResponse {
   user: User;
 }
 
+export interface PasskeyAuthResponse {
+  token_hash: string;
+  user: User;
+}
+
 export interface RefreshTokenRequest {
   refresh_token: string;
 }
@@ -115,6 +120,7 @@ export interface EmergencyLogoutResponse {
 export interface ValidateTokenResponse {
   valid: boolean;
   user?: User | undefined;
+  is_admin?: boolean | undefined;
   expires_in?: number | undefined;
 }
 
@@ -339,7 +345,8 @@ export interface RuntimeClient {
     onComplete?: (response: TaskResponse) => void,
     code?: string,
     provider?: string,
-    model?: string
+    model?: string,
+    signal?: AbortSignal
   ): Promise<void>;
   setProviderApiKey(provider: string, key: string): Promise<void>;
   storeApiKey(provider: string, key: string): Promise<void>;

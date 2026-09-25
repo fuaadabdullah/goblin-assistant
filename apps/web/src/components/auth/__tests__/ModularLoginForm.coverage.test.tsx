@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 
 const {
   mockSetQueryData,
+  mockInvalidateQueries,
   mockSignIn,
   mockSignUp,
   mockSignInWithOAuth,
@@ -11,6 +12,7 @@ const {
   featureFlagsState,
 } = vi.hoisted(() => ({
   mockSetQueryData: vi.fn(),
+  mockInvalidateQueries: vi.fn(),
   mockSignIn: vi.fn(),
   mockSignUp: vi.fn(),
   mockSignInWithOAuth: vi.fn(),
@@ -31,7 +33,10 @@ const {
 }));
 
 vi.mock('@tanstack/react-query', () => ({
-  useQueryClient: () => ({ setQueryData: mockSetQueryData }),
+  useQueryClient: () => ({
+    setQueryData: mockSetQueryData,
+    invalidateQueries: mockInvalidateQueries,
+  }),
 }));
 
 vi.mock('@/lib/supabase', () => ({

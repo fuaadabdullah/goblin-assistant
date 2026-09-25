@@ -11,6 +11,20 @@ from api.assistant_tools.registry import TOOL_REGISTRY
 from api.assistant_tools.skills.github_tool_pkg import client, handlers
 
 
+@pytest.fixture(autouse=True)
+def _clear_repo_scope(monkeypatch):
+    """Keep the host's repository out of the client's scope check.
+
+    get_allowed_repository() reads AGENT_GITHUB_ALLOWED_REPOSITORY and then
+    GITHUB_REPOSITORY. GitHub Actions always sets the latter, so on CI the
+    scope guard was live and rejected the fixture repos these tests use,
+    while locally it stayed unset and everything passed. Clear both so the
+    default is "unscoped"; the tests that exercise scoping set it themselves.
+    """
+    monkeypatch.delenv("AGENT_GITHUB_ALLOWED_REPOSITORY", raising=False)
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+
+
 class _FakeResponse:
     def __init__(self, status_code: int, payload: dict | list, text: str = ""):
         self.status_code = status_code

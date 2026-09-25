@@ -1,11 +1,11 @@
 import type { RefObject } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { chatClient } from '../api';
 import type { ChatMessage, ChatThread, Mode, QuickPrompt } from '../types';
 import { useChatThreads } from './useChatThreads';
-import { readChatMessages, buildThreadKey } from '../../../lib/chat-history';
+import { readChatMessages, buildThreadKey, writeChatMessages } from '../../../lib/chat-history';
 import { queryKeys } from '../../../lib/query-keys';
 import { useMessages, type MessagesState } from './useMessages';
 import { useUIState, type UIState } from './useUIState';
@@ -35,7 +35,6 @@ export interface ChatSessionState {
   isThreadsLoading: boolean;
   activeThreadKey: string | null;
   inputRef: RefObject<HTMLTextAreaElement | null>;
-  bottomRef: RefObject<HTMLDivElement | null>;
   selectedProvider?: string | undefined;
   selectedModel?: string | undefined;
   selectedMode: Mode;
@@ -75,7 +74,6 @@ export const useChatSession = ({
   const searchParams = useSearchParams();
   const promptParam = searchParams.get('prompt');
   const hasHydratedRef = useRef(false);
-  const bottomRef = useRef<HTMLDivElement | null>(null);
 
   // Thread management
   const {
@@ -146,16 +144,6 @@ export const useChatSession = ({
     selectedModel: quickActionsState.selectedModel,
   });
 
-  // Scroll to bottom on new messages
-  const prefersReducedMotion = useMemo(() => {
-    if (typeof window === 'undefined') return false;
-    return window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
-  }, []);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth' });
-  }, [messagesState.messages, prefersReducedMotion]);
-
   // Prefill input from URL query param
   useEffect(() => {
     if (typeof promptParam === 'string' && promptParam.trim().length > 0) {
@@ -214,6 +202,18 @@ export const useChatSession = ({
     threads,
   ]);
 
+  // Persist legacy-local thread messages so edits survive a reload.
+  useEffect(() => {
+    const activeThread = threadSelection.activeThread;
+    if (!activeThread || activeThread.source !== 'legacy-local') {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      writeChatMessages(activeThread.id, messagesState.messages);
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [threadSelection.activeThread, messagesState.messages]);
+
   // Wrap sendMessage to clear attachments after sending
   const sendMessageWithCleanup = useCallback(
     async (messageOverride?: string) => {
@@ -256,7 +256,6 @@ export const useChatSession = ({
     pendingAttachments: uiState.pendingAttachments,
     isUploading: uiState.isUploading,
     inputRef: uiState.inputRef,
-    bottomRef,
 
     // Thread state
     threads: threadSelection.threads,

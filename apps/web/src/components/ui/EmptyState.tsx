@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
-import Button from './Button';
-import { Card, CardContent, CardHeader, CardTitle } from './card';
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@goblin/ui';
 
 export interface EmptyStateProps {
   title: string;
@@ -27,7 +26,7 @@ export default function EmptyState({
     actionHref ? (
       <a
         href={actionHref}
-        className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-text transition-all hover:bg-primary-600"
+        className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-text-inverse transition-all hover:bg-primary-600"
       >
         {actionLabel}
       </a>

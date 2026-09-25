@@ -39,7 +39,7 @@ class TestTokenHelpers:
 
         token = jwt.encode(
             {"sub": "supabase-user", "email": "supabase@example.com", "exp": 2000000000},
-            "secret",
+            "test-secret-at-least-32-bytes-long",
             algorithm="HS256",
         )
         calls = {"count": 0}
@@ -68,10 +68,11 @@ class TestTokenHelpers:
         assert calls["count"] == 1
 
     def test_verify_supabase_token_hs256_es256_and_invalid_paths(self, monkeypatch):
-        monkeypatch.setattr(tokens_module, "SUPABASE_JWT_SECRET", "supabase-secret")
+        jwt_secret = "test-supabase-secret-at-least-32-bytes"
+        monkeypatch.setattr(tokens_module, "SUPABASE_JWT_SECRET", jwt_secret)
         hs_token = jwt.encode(
             {"sub": "user-1", "aud": "authenticated"},
-            "supabase-secret",
+            jwt_secret,
             algorithm="HS256",
         )
         assert tokens_module.verify_supabase_token(hs_token)["sub"] == "user-1"

@@ -31,7 +31,11 @@ class ChainOfThoughtSuppression(BaseModel):
 class CostOptimization(BaseModel):
     max_budget_per_hour: float = 10.0
     preferred_providers_under_budget: List[str] = [
-        "groq", "siliconeflow", "azure", "deepseek", "openai"
+        "groq",
+        "siliconeflow",
+        "azure",
+        "deepseek",
+        "openai",
     ]
 
 
@@ -80,8 +84,8 @@ class LoadBalancingHealthChecks(BaseModel):
 
 
 class LoadBalancingServerPriorities(BaseModel):
-    primary_ollama: str = "192.175.23.150:8002"
-    backup_router: str = "45.61.51.220:8000"
+    primary_ollama: str = ""
+    backup_router: str = ""
 
 
 class LoadBalancing(BaseModel):
@@ -99,9 +103,7 @@ class LoadBalancing(BaseModel):
     circuit_breaker_canary_percent: float = 0.1
     circuit_breaker_hard_categories: List[str] = ["auth", "billing"]
     health_checks: LoadBalancingHealthChecks = LoadBalancingHealthChecks()
-    server_priorities: LoadBalancingServerPriorities = (
-        LoadBalancingServerPriorities()
-    )
+    server_priorities: LoadBalancingServerPriorities = LoadBalancingServerPriorities()
 
 
 class ProviderConfig(BaseModel):
@@ -231,8 +233,13 @@ class ProviderToml(BaseModel):
         # Flatten nested sections
         defaults_raw = raw.get("default", {})
         if isinstance(defaults_raw, dict):
-            for key in ("scoring_weights", "chain_of_thought_suppression",
-                        "cost_optimization", "health", "raptor"):
+            for key in (
+                "scoring_weights",
+                "chain_of_thought_suppression",
+                "cost_optimization",
+                "health",
+                "raptor",
+            ):
                 if key in raw:
                     defaults_raw[key] = raw[key]
 
@@ -257,12 +264,14 @@ class ProviderToml(BaseModel):
             load_balancing=raw.get("load_balancing", {}),
             provider_aliases=raw.get("provider_aliases", {}),
             model_aliases={
-                k: v for k, v in raw.get("model_aliases", {}).items()
+                k: v
+                for k, v in raw.get("model_aliases", {}).items()
                 if isinstance(v, dict)
             },
             visible_providers=raw.get("visible_providers", []),
             model_context_windows={
-                k: int(v) for k, v in raw.get("model_context_windows", {}).items()
+                k: int(v)
+                for k, v in raw.get("model_context_windows", {}).items()
                 if isinstance(v, (int, float))
             },
             router_models=router_models_raw,
@@ -276,9 +285,7 @@ class ProviderToml(BaseModel):
         canonical = self.provider_aliases.get(provider_id, provider_id)
         return self.providers.get(canonical)
 
-    def resolve_model_alias(
-        self, model: str
-    ) -> tuple[Optional[str], Optional[str]]:
+    def resolve_model_alias(self, model: str) -> tuple[Optional[str], Optional[str]]:
         """Resolve a short model name → (canonical_provider_id, canonical_model)."""
         alias = self.model_aliases.get(model)
         if alias is None:
@@ -326,7 +333,9 @@ class ProviderToml(BaseModel):
                 "rate_limit_per_min": cfg.rate_limit_per_min,
                 "display_name": cfg.resolved_display_name,
                 "is_active": cfg.is_active,
-                "invoke_path": cfg.invoke_path if cfg.invoke_path != "/chat/completions" else None,
+                "invoke_path": cfg.invoke_path
+                if cfg.invoke_path != "/chat/completions"
+                else None,
             }
             # Strip None values for JSON cleanliness
             entry = {k: v for k, v in entry.items() if v is not None}
@@ -337,7 +346,8 @@ class ProviderToml(BaseModel):
             "version": 2,
             "default_timeout_ms": self.default.timeout_ms,
             "model_budgets": {
-                model: budget.model_dump() for model, budget in self.model_budgets.items()
+                model: budget.model_dump()
+                for model, budget in self.model_budgets.items()
             },
             "providers": providers_out,
         }

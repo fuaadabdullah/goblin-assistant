@@ -28,7 +28,7 @@ describe('useSandboxSession', () => {
   });
 
   it('returns initial state', () => {
-    const { result } = renderHook(() => useSandboxSession());
+    const { result } = renderHook(() => useSandboxSession({ isGuest: true }));
     expect(result.current.code).toBe('');
     expect(result.current.language).toBe('python');
     expect(result.current.logs).toBe('');
@@ -59,19 +59,19 @@ describe('useSandboxSession', () => {
   });
 
   it('setCode updates code', () => {
-    const { result } = renderHook(() => useSandboxSession());
+    const { result } = renderHook(() => useSandboxSession({ isGuest: true }));
     act(() => result.current.setCode('print("hi")'));
     expect(result.current.code).toBe('print("hi")');
   });
 
   it('setLanguage updates language', () => {
-    const { result } = renderHook(() => useSandboxSession());
+    const { result } = renderHook(() => useSandboxSession({ isGuest: true }));
     act(() => result.current.setLanguage('javascript'));
     expect(result.current.language).toBe('javascript');
   });
 
   it('clearCode resets code to empty', () => {
-    const { result } = renderHook(() => useSandboxSession());
+    const { result } = renderHook(() => useSandboxSession({ isGuest: true }));
     act(() => result.current.setCode('some code'));
     act(() => result.current.clearCode());
     expect(result.current.code).toBe('');

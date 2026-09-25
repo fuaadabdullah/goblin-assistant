@@ -55,7 +55,7 @@ class TestAnthropicInvoke:
         mock_resp.raise_for_status = MagicMock()
 
         with patch("httpx.AsyncClient") as MockClient:
-            instance = AsyncMock()
+            instance = MagicMock()
             instance.post = AsyncMock(return_value=mock_resp)
             instance.__aenter__ = AsyncMock(return_value=instance)
             instance.__aexit__ = AsyncMock(return_value=False)
@@ -80,7 +80,7 @@ class TestAnthropicInvoke:
         mock_resp.raise_for_status = MagicMock()
 
         with patch("httpx.AsyncClient") as MockClient:
-            instance = AsyncMock()
+            instance = MagicMock()
             instance.post = AsyncMock(return_value=mock_resp)
             instance.__aenter__ = AsyncMock(return_value=instance)
             instance.__aexit__ = AsyncMock(return_value=False)
@@ -112,7 +112,7 @@ class TestAnthropicInvoke:
         mock_resp.raise_for_status = MagicMock()
 
         with patch("httpx.AsyncClient") as MockClient:
-            instance = AsyncMock()
+            instance = MagicMock()
             instance.post = AsyncMock(return_value=mock_resp)
             instance.__aenter__ = AsyncMock(return_value=instance)
             instance.__aexit__ = AsyncMock(return_value=False)
@@ -144,7 +144,7 @@ class TestAnthropicInvoke:
         )
 
         with patch("httpx.AsyncClient") as MockClient:
-            instance = AsyncMock()
+            instance = MagicMock()
             instance.post = AsyncMock(return_value=mock_resp)
             instance.__aenter__ = AsyncMock(return_value=instance)
             instance.__aexit__ = AsyncMock(return_value=False)
@@ -169,8 +169,8 @@ class TestAnthropicStream:
         mock_resp.aiter_lines = mock_aiter_lines
 
         with patch("httpx.AsyncClient") as MockClient:
-            instance = AsyncMock()
-            stream_ctx = AsyncMock()
+            instance = MagicMock()
+            stream_ctx = MagicMock()
             stream_ctx.__aenter__ = AsyncMock(return_value=mock_resp)
             stream_ctx.__aexit__ = AsyncMock(return_value=False)
             instance.stream = MagicMock(return_value=stream_ctx)
@@ -192,7 +192,7 @@ class TestAnthropicHealth:
         mock_resp.status_code = 200
 
         with patch("httpx.AsyncClient") as MockClient:
-            instance = AsyncMock()
+            instance = MagicMock()
             instance.get = AsyncMock(return_value=mock_resp)
             instance.__aenter__ = AsyncMock(return_value=instance)
             instance.__aexit__ = AsyncMock(return_value=False)

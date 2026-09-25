@@ -3,6 +3,8 @@
 from enum import Enum
 from http import HTTPStatus
 
+from ..config.settings import get_settings
+
 
 class ErrorType(str, Enum):
     """Standard error categories for API responses."""
@@ -135,6 +137,11 @@ ERROR_CODES = {
         },
     },
 }
+
+
+def get_error_type_uri(error_type: ErrorType) -> str:
+    """Return a deployment-configured URI for an error category."""
+    return f"{get_settings().error_type_url}/errors/{error_type.value}"
 
 
 def get_error_status_code(error_type: ErrorType, error_code: str) -> HTTPStatus:

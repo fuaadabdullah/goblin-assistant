@@ -17,6 +17,10 @@ import RoutingAuditTab from './components/RoutingAuditTab';
 import { useProviderMutations } from './hooks/useProviderMutations';
 import { useProviderReorder } from './hooks/useProviderReorder';
 import { getProviderRouterConfigError } from '../../../services/provider-router';
+import { useTabListKeyboardNav } from '../../../hooks/useTabListKeyboardNav';
+
+const PROVIDER_TABS = ['details', 'audit'] as const;
+type ProviderTab = (typeof PROVIDER_TABS)[number];
 
 export default function ProvidersManagerScreen() {
   const queryClient = useQueryClient();
@@ -31,7 +35,12 @@ export default function ProvidersManagerScreen() {
 
   const [selectedProvider, setSelectedProvider] = useState<ProviderConfig | null>(null);
   const [testPrompt, setTestPrompt] = useState('Write a hello world in Python');
-  const [activeTab, setActiveTab] = useState<'details' | 'audit'>('details');
+  const [activeTab, setActiveTab] = useState<ProviderTab>('details');
+  const { onKeyDown: onTabKeyDown, registerTab } = useTabListKeyboardNav(
+    PROVIDER_TABS,
+    activeTab,
+    setActiveTab
+  );
 
   useSupabaseRealtime('provider_status', (payload) => {
     if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
@@ -141,9 +150,20 @@ export default function ProvidersManagerScreen() {
           )}
 
           {/* Tabs */}
-          <div className="flex gap-2 border-b border-border">
+          <div
+            className="flex gap-2 border-b border-border"
+            role="tablist"
+            aria-label="Provider sections"
+            onKeyDown={onTabKeyDown}
+          >
             <button
               type="button"
+              id="provider-tab-details"
+              role="tab"
+              aria-selected={activeTab === 'details'}
+              aria-controls="provider-tabpanel-details"
+              tabIndex={activeTab === 'details' ? 0 : -1}
+              ref={registerTab('details')}
               onClick={() => setActiveTab('details')}
               className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'details'
@@ -155,6 +175,12 @@ export default function ProvidersManagerScreen() {
             </button>
             <button
               type="button"
+              id="provider-tab-audit"
+              role="tab"
+              aria-selected={activeTab === 'audit'}
+              aria-controls="provider-tabpanel-audit"
+              tabIndex={activeTab === 'audit' ? 0 : -1}
+              ref={registerTab('audit')}
               onClick={() => setActiveTab('audit')}
               className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'audit'
@@ -168,7 +194,12 @@ export default function ProvidersManagerScreen() {
 
           {/* Details Tab */}
           {activeTab === 'details' && (
-            <div className="space-y-6">
+            <div
+              className="space-y-6"
+              role="tabpanel"
+              id="provider-tabpanel-details"
+              aria-labelledby="provider-tab-details"
+            >
               <ProviderDetails provider={selectedProvider} onSetPriority={setPriority} />
 
               <ProviderPromptTest
@@ -203,7 +234,11 @@ export default function ProvidersManagerScreen() {
           )}
 
           {/* Audit Trail Tab */}
-          {activeTab === 'audit' && <RoutingAuditTab providerId={selectedProvider.name} />}
+          {activeTab === 'audit' && (
+            <div role="tabpanel" id="provider-tabpanel-audit" aria-labelledby="provider-tab-audit">
+              <RoutingAuditTab providerId={selectedProvider.name} />
+            </div>
+          )}
         </div>
       ) : (
         <div className="bg-surface rounded-xl shadow-sm border border-border p-12 text-center">

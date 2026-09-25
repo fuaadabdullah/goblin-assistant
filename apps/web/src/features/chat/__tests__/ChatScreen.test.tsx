@@ -3,7 +3,6 @@ import { render, screen } from '@testing-library/react';
 
 const mockUseAuthSession = vi.fn();
 const mockUseChatSession = vi.fn();
-const mockIsAdminUser = vi.fn();
 const mockChatView = vi.fn();
 
 vi.mock('next/navigation', () => ({
@@ -20,10 +19,6 @@ vi.mock('../hooks/useChatSession', () => ({
   useChatSession: () => mockUseChatSession(),
 }));
 
-vi.mock('../../../utils/access', () => ({
-  isAdminUser: (...args: unknown[]) => mockIsAdminUser(...args),
-}));
-
 vi.mock('../components/ChatView', () => ({
   __esModule: true,
   default: (props: Record<string, unknown>) => {
@@ -37,9 +32,8 @@ import ChatScreen from '../ChatScreen';
 describe('ChatScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseAuthSession.mockReturnValue({ user: { email: 'admin@goblin.dev' } });
+    mockUseAuthSession.mockReturnValue({ isAuthenticated: true, isAdmin: true });
     mockUseChatSession.mockReturnValue({ messages: [], input: '' });
-    mockIsAdminUser.mockReturnValue(true);
   });
 
   it('passes session state to ChatView', () => {
@@ -52,24 +46,12 @@ describe('ChatScreen', () => {
     expect(mockChatView).toHaveBeenCalledWith(expect.objectContaining({ session, isAdmin: true }));
   });
 
-  it('derives admin access from auth user', () => {
-    const user = { email: 'user@example.com', role: 'owner' };
-    mockUseAuthSession.mockReturnValue({ user });
-    mockIsAdminUser.mockReturnValue(false);
+  it('forwards the server-derived admin claim from the auth session', () => {
+    mockUseAuthSession.mockReturnValue({ isAuthenticated: true, isAdmin: false });
 
     render(<ChatScreen />);
 
-    expect(mockIsAdminUser).toHaveBeenCalledWith(user);
     expect(screen.getByTestId('chat-view')).toHaveAttribute('data-admin', 'false');
-  });
-
-  it('handles missing user by passing non-admin', () => {
-    mockUseAuthSession.mockReturnValue({ user: null });
-    mockIsAdminUser.mockReturnValue(false);
-
-    render(<ChatScreen />);
-
-    expect(mockIsAdminUser).toHaveBeenCalledWith(null);
     expect(mockChatView).toHaveBeenCalledWith(
       expect.objectContaining({
         isAdmin: false,

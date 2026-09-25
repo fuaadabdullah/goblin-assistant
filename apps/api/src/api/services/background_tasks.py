@@ -8,12 +8,43 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_random_exponential
+
+from ..providers.base import ProviderErrorCategory, classify_provider_error
 from ..providers.dispatcher import invoke_provider
 from ..storage.conversations import conversation_store
 from ..storage.database import get_db_context, get_readonly_db_context
 from .retrieval_service import retrieval_service as _retrieval_singleton
 
 logger = logging.getLogger(__name__)
+
+_RETRYABLE_CATEGORY_VALUES = {
+    ProviderErrorCategory.RATE_LIMIT.value,
+    ProviderErrorCategory.TIMEOUT.value,
+    ProviderErrorCategory.SERVER_ERROR.value,
+    ProviderErrorCategory.CONNECTION.value,
+}
+
+
+class _SummaryGenerationError(Exception):
+    """Raised when summarization fails so tenacity can classify it for retry."""
+
+    def __init__(self, category: Optional[str], message: str) -> None:
+        super().__init__(message)
+        self.category = category
+
+
+def _is_retryable_summary_exception(exc: BaseException) -> bool:
+    if isinstance(exc, _SummaryGenerationError):
+        return exc.category in _RETRYABLE_CATEGORY_VALUES
+    if isinstance(exc, (asyncio.TimeoutError, TimeoutError, ConnectionError)):
+        return True
+    return classify_provider_error(exc) in {
+        ProviderErrorCategory.RATE_LIMIT,
+        ProviderErrorCategory.TIMEOUT,
+        ProviderErrorCategory.SERVER_ERROR,
+        ProviderErrorCategory.CONNECTION,
+    }
 
 
 class BackgroundTaskManager:
@@ -256,41 +287,56 @@ Working Memory Summary:"""
     async def _generate_summary_with_retry(
         self, prompt: str, max_retries: int = 3
     ) -> Optional[str]:
-        """Generate summary with retry logic"""
+        """Generate a summary, retrying only transient failures (5xx/429/connection/timeout)."""
 
-        for attempt in range(max_retries):
-            try:
-                payload = {
-                    "messages": [{"role": "user", "content": prompt}],
-                    "model": "gpt-3.5-turbo",
-                    "max_tokens": 400,
-                    "temperature": 0.3,
-                }
+        @retry(
+            retry=retry_if_exception(_is_retryable_summary_exception),
+            stop=stop_after_attempt(max_retries),
+            wait=wait_random_exponential(multiplier=1, max=30),
+            reraise=True,
+        )
+        async def _attempt() -> str:
+            payload = {
+                "messages": [{"role": "user", "content": prompt}],
+                "model": "gpt-3.5-turbo",
+                "max_tokens": 400,
+                "temperature": 0.3,
+            }
 
-                provider_response = await invoke_provider(
-                    pid=None,
-                    model="gpt-3.5-turbo",
-                    payload=payload,
-                    timeout_ms=30000,
-                    stream=False,
-                )
+            provider_response = await invoke_provider(
+                pid=None,
+                model="gpt-3.5-turbo",
+                payload=payload,
+                timeout_ms=30000,
+                stream=False,
+            )
 
-                if isinstance(provider_response, dict) and provider_response.get("ok"):
-                    return provider_response["result"]["text"]
-                else:
-                    logger.warning(
-                        "Summary generation attempt %s failed: %s", attempt + 1, provider_response
-                    )
+            if isinstance(provider_response, dict) and provider_response.get("ok"):
+                text = (provider_response.get("result") or {}).get("text")
+                if isinstance(text, str) and text.strip():
+                    return text.strip()
+                raise _SummaryGenerationError("server-error", "empty summary text")
 
-            except Exception as e:
-                logger.warning("Summary generation attempt %s error: %s", attempt + 1, e)
+            category = (
+                provider_response.get("error_category")
+                if isinstance(provider_response, dict)
+                else None
+            )
+            message = (
+                str(provider_response.get("error") or "summary generation failed")
+                if isinstance(provider_response, dict)
+                else str(provider_response)
+            )
+            raise _SummaryGenerationError(category, message)
 
-            # Wait before retry (exponential backoff)
-            if attempt < max_retries - 1:
-                await asyncio.sleep(2**attempt)
-
-        logger.error("All summary generation attempts failed")
-        return None
+        try:
+            return await _attempt()
+        except _SummaryGenerationError as exc:
+            logger.error("All summary generation attempts failed: %s", exc)
+            return None
+        except Exception as exc:
+            logger.error("Summary generation failed: %s", exc)
+            return None
 
     async def _cleanup_old_embeddings(self):
         """Clean up embeddings older than retention period"""
