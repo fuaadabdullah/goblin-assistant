@@ -24,7 +24,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       git \
     && python -m pip install --upgrade pip \
     && python -m pip install -r /app/apps/api/requirements.lock.txt \
-    && python -m pip install --upgrade 'jaraco.context>=6.1.0' 'wheel>=0.46.2'
+    && python -m pip uninstall --yes jaraco.context wheel \
+    && python -m pip install 'jaraco.context>=6.1.0' 'wheel>=0.46.2' \
+    && python -m pip check
 
 FROM base AS runtime
 
