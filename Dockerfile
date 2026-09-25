@@ -22,7 +22,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       build-essential \
       gcc \
       git \
-    && python -m pip install --upgrade pip \
+    && python -m pip install --upgrade pip 'setuptools>=84.0.0' \
     && python -m pip install -r /app/apps/api/requirements.lock.txt \
     && python -m pip uninstall --yes jaraco.context wheel \
     && python -m pip install 'jaraco.context>=6.1.0' 'wheel>=0.46.2' \
