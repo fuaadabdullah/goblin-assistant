@@ -41,9 +41,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=deps /usr/local /usr/local
-RUN rm -rf \
-      /usr/local/lib/python3.11/site-packages/setuptools/_vendor/jaraco_context-5.3.0.dist-info \
-      /usr/local/lib/python3.11/site-packages/setuptools/_vendor/wheel-0.45.1.dist-info \
+RUN find /usr/local/lib/python3.11/site-packages -type d \
+      \( -name 'jaraco.context-5.3.0.dist-info' -o -name 'jaraco_context-5.3.0.dist-info' -o -name 'wheel-0.45.1.dist-info' \) \
+      -prune -exec rm -rf '{}' + \
     && test -d /usr/local/lib/python3.11/site-packages/setuptools/_vendor/jaraco_context-6.1.0.dist-info \
     && test -d /usr/local/lib/python3.11/site-packages/setuptools/_vendor/wheel-0.46.3.dist-info
 # Stable v1.102.4 predates the patched x/crypto and x/image releases. Pin the
