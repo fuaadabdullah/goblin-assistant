@@ -3,12 +3,20 @@ import { render, screen, fireEvent } from '@testing-library/react';
 vi.mock('@/components/ui', () => ({
   Button: ({
     children,
+    fullWidth,
+    loading,
     ...props
   }: {
     children: React.ReactNode;
     onClick?: () => void;
     disabled?: boolean;
-  }) => <button {...props}>{children}</button>,
+    fullWidth?: boolean;
+    loading?: boolean;
+  }) => {
+    void fullWidth;
+    void loading;
+    return <button {...props}>{children}</button>;
+  },
 }));
 vi.mock('@/components/LoadingSkeleton', () => ({
   ProviderCardSkeleton: () => <div data-testid="skeleton" />,

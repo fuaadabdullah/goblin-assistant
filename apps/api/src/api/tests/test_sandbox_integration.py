@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 
-def test_sandbox_components():
+def run_sandbox_component_smoke():
     """Test individual sandbox components"""
     print("🧪 Testing Sandbox Integration Components")
     print("=" * 50)
@@ -218,5 +218,5 @@ def test_sandbox_components():
 
 
 if __name__ == "__main__":
-    success = test_sandbox_components()
+    success = run_sandbox_component_smoke()
     sys.exit(0 if success else 1)

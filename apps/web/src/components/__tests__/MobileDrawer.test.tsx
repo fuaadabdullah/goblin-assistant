@@ -1,11 +1,11 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import MobileDrawer from '../MobileDrawer';
 import { useUIStore } from '../../store/uiStore';
 
 describe('MobileDrawer', () => {
   afterEach(() => {
-    useUIStore.setState({ mobileNavOpen: false });
+    act(() => useUIStore.setState({ mobileNavOpen: false }));
     document.body.style.overflow = '';
   });
 

@@ -359,7 +359,7 @@ def _fire_weights_upsert(task_type: str, weights: dict, observation_count: int) 
             except Exception as exc:
                 logger.debug("weights_upsert_failed error=%s", exc)
 
-        _fire(_upsert())
+        _fire(_upsert)
     except Exception as exc:
         logger.debug("weights_upsert_schedule_failed error=%s", exc)
 

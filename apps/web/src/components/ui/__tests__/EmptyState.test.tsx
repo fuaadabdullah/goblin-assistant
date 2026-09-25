@@ -58,8 +58,8 @@ describe('EmptyState', () => {
     );
     const link = screen.getByRole('link', { name: 'Open docs' });
     expect(link).toHaveAttribute('href', 'https://example.com');
-    // Anchor variant ignores onAction
-    fireEvent.click(link);
+    // Anchor variant ignores onAction and does not attach a click handler.
+    expect(link).not.toHaveAttribute('onclick');
     expect(onAction).not.toHaveBeenCalled();
   });
 

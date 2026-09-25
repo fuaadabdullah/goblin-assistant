@@ -359,7 +359,7 @@ async def put_secret(
         raise
     except SecretValidationError as e:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=_detail_message("Validation failed", e),
         )
     except SecretUnauthorizedError as e:

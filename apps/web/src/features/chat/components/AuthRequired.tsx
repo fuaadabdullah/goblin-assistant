@@ -38,7 +38,7 @@ export const AuthRequired = ({ className = '' }: AuthRequiredProps) => {
           <div className="flex flex-wrap gap-2">
             <Link
               href="/login"
-              className="inline-flex items-center px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-hover transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="inline-flex items-center px-4 py-2 bg-primary text-text-inverse text-sm font-medium rounded-lg hover:bg-primary-hover transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
             >
               Sign In
             </Link>

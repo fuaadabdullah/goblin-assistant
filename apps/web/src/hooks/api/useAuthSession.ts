@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../../lib/query-keys';
 import {
@@ -19,6 +19,11 @@ const emptySession: AuthSessionSnapshot = {
 
 export const useAuthSession = () => {
   const queryClient = useQueryClient();
+  const isClientHydrated = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false
+  );
 
   const authQuery = useQuery({
     queryKey: queryKeys.authValidate,
@@ -27,7 +32,7 @@ export const useAuthSession = () => {
     staleTime: 60_000,
   });
 
-  const session = authQuery.data ?? emptySession;
+  const session = isClientHydrated ? (authQuery.data ?? emptySession) : emptySession;
 
   const logout = useCallback(async () => {
     await clearAuthSessionState();
@@ -41,7 +46,7 @@ export const useAuthSession = () => {
 
   return {
     ...session,
-    isLoading: authQuery.isLoading,
+    isLoading: !isClientHydrated || authQuery.isLoading,
     isFetching: authQuery.isFetching,
     hasRole: (role: string) => userHasRole(session.user, role),
     hasAnyRole: (roles: string[]) => userHasAnyRole(session.user, roles),

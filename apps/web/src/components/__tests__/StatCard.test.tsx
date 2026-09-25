@@ -4,11 +4,15 @@ import { render, screen } from '@testing-library/react';
 vi.mock('../Card', () => ({
   default: function MockCard({
     children,
+    padded,
+    bordered,
     ...props
   }: {
     children: React.ReactNode;
     [k: string]: unknown;
   }) {
+    void padded;
+    void bordered;
     return (
       <div data-testid="card" {...props}>
         {children}

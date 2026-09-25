@@ -20,7 +20,7 @@ const AUTH_ROUTE_PREFIXES = [
   '/agent',
   '/sandbox',
 ] as const;
-const ADMIN_ROUTE_PREFIXES = ['/admin', '/debug/connectivity'] as const;
+const ADMIN_ROUTE_PREFIXES = ['/admin', '/debug/connectivity', '/debug/retrieval'] as const;
 
 const matchesPrefix = (pathname: string, prefixes: readonly string[]): boolean =>
   prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
@@ -67,6 +67,7 @@ export async function proxy(request: NextRequest) {
   const { supabase, getResponse } = createSupabaseMiddlewareClient(request);
   const e2eAuthBypass =
     isLocalhost(request.nextUrl.hostname) && request.cookies.get('goblin_e2e_auth')?.value === '1';
+  const e2eAdminBypass = e2eAuthBypass && request.cookies.get('goblin_e2e_admin')?.value === '1';
 
   // getUser() validates the session server-side and refreshes the token if
   // needed. We intentionally call this (not getSession()) so the proxy
@@ -77,7 +78,7 @@ export async function proxy(request: NextRequest) {
     pathname: request.nextUrl.pathname,
     search: request.nextUrl.search,
     isAuthenticated: e2eAuthBypass || Boolean(user),
-    isAdmin: isAdminUser(user ?? null),
+    isAdmin: e2eAdminBypass || isAdminUser(user ?? null),
   });
 
   if (!decision.allow) {
@@ -103,5 +104,6 @@ export const config = {
     '/sandbox/:path*',
     '/admin/:path*',
     '/debug/connectivity/:path*',
+    '/debug/retrieval/:path*',
   ],
 };

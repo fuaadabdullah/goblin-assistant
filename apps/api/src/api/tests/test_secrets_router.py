@@ -270,7 +270,7 @@ class TestPutSecret:
                 data={"key": ""},  # Empty value
             ).model_dump(),
         )
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         assert response.json()["detail"] == "Validation failed: Invalid secret format"
 
     def test_authorization_failure_returns_403(self, unauthorized_client: TestClient) -> None:

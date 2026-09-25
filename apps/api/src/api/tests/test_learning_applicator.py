@@ -110,6 +110,7 @@ class TestApplyBatch:
             patch.object(applicator, "_apply_to_bandit"),
             patch.object(applicator, "_apply_to_feature_router"),
             patch.object(applicator, "_apply_to_preference"),
+            patch.object(applicator, "_apply_to_memory_core"),
             patch.object(applicator, "_mark_applied", new=AsyncMock()),
         ):
             result = await applicator.apply_batch(db)
@@ -196,6 +197,7 @@ class TestApplyBatch:
             patch.object(applicator, "_apply_to_bandit", bandit_spy),
             patch.object(applicator, "_apply_to_feature_router", feature_spy),
             patch.object(applicator, "_apply_to_preference", pref_spy),
+            patch.object(applicator, "_apply_to_memory_core"),
             patch.object(applicator, "_mark_applied", new=mark_applied),
         ):
             await applicator.apply_batch(db)
@@ -224,6 +226,7 @@ class TestApplyBatch:
             patch.object(applicator, "_apply_to_bandit"),
             patch.object(applicator, "_apply_to_feature_router"),
             patch.object(applicator, "_apply_to_preference"),
+            patch.object(applicator, "_apply_to_memory_core"),
             patch.object(applicator, "_mark_applied", new=capture_mark),
         ):
             await applicator.apply_batch(db)

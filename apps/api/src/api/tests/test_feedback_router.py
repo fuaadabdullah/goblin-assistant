@@ -347,13 +347,10 @@ class TestFeedbackStats:
         assert "thumbs_up_count" in data
 
     def test_db_failure_returns_zero_stats(self, client):
-        with patch.dict(
-            "sys.modules",
-            {
-                "api.storage.database": MagicMock(
-                    get_db=MagicMock(side_effect=RuntimeError("db down"))
-                ),
-            },
+        with patch(
+            "api.services.feedback_stats_service.get_feedback_stats",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("db down"),
         ):
             resp = client.get("/api/v1/feedback/stats")
 
@@ -362,17 +359,15 @@ class TestFeedbackStats:
         assert data["total_events"] == 0
 
     def test_days_param_accepted(self, client):
-        with patch.dict(
-            "sys.modules",
-            {
-                "api.storage.database": MagicMock(
-                    get_db=MagicMock(side_effect=RuntimeError("db down"))
-                ),
-            },
-        ):
+        with patch(
+            "api.services.feedback_stats_service.get_feedback_stats",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("db down"),
+        ) as mock_stats:
             resp = client.get("/api/v1/feedback/stats?days=30")
 
         assert resp.status_code == 200
+        mock_stats.assert_awaited_once_with(days=30)
 
 
 # ── Pydantic response models ──────────────────────────────────────────────────

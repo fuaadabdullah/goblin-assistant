@@ -130,6 +130,7 @@ The application will now display security warnings at startup if:
 Run this to get a security configuration summary:
 ```python
 from api.security_config import SecurityConfig
+
 print(SecurityConfig.get_security_summary())
 ```
 

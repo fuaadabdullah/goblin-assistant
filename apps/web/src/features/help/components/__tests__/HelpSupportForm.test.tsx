@@ -77,8 +77,8 @@ describe('HelpSupportForm', () => {
   });
 
   it('calls onSubmit on form submit', () => {
-    render(<HelpSupportForm {...defaultProps} />);
-    fireEvent.click(screen.getByText('Send to Support'));
+    const { container } = render(<HelpSupportForm {...defaultProps} />);
+    fireEvent.submit(container.querySelector('form')!);
     expect(defaultProps.onSubmit).toHaveBeenCalled();
   });
 });

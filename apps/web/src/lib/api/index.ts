@@ -37,6 +37,7 @@ import { supportMethods } from './support';
 import { runtimeMethods } from './runtime';
 import { agentMethods } from './agent';
 import { observabilityMethods } from './observability';
+import { retrievalDebugMethods } from './retrieval-debug';
 
 // Export all shared types and utilities
 export * from './shared';
@@ -75,6 +76,9 @@ export const apiClient = {
 
   // Observability methods
   ...observabilityMethods,
+
+  // Retrieval debugging methods
+  ...retrievalDebugMethods,
 
   // Agent methods
   ...agentMethods,

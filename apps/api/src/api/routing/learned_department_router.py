@@ -390,7 +390,7 @@ def _fire_dept_weights_upsert(
             except Exception as exc:
                 logger.debug("dept_weights_upsert_failed error=%s", exc)
 
-        _fire(_upsert())
+        _fire(_upsert)
     except Exception as exc:
         logger.debug("dept_weights_upsert_schedule_failed error=%s", exc)
 

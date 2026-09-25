@@ -24,7 +24,7 @@ const ModeSelector = ({ activeMode, onModeChange }: ModeSelectorProps) => (
         className={[
           'px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-150',
           activeMode === key
-            ? 'bg-primary text-white shadow-sm'
+            ? 'bg-primary text-text-inverse shadow-sm'
             : 'bg-surface border border-border text-muted hover:text-text hover:border-primary/50',
         ].join(' ')}
       >

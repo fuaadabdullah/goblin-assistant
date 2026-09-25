@@ -175,7 +175,7 @@ const SettingsPageContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-bg py-12 px-4">
+    <main id="main-content" className="min-h-screen bg-bg py-12 px-4">
       <Seo title="Settings" description="Provider and model settings." robots="noindex,nofollow" />
       <div className="max-w-6xl mx-auto">
         <div className="mb-12">
@@ -250,7 +250,7 @@ const SettingsPageContent: React.FC = () => {
           onSave={handleSavePreferences}
         />
       </div>
-    </div>
+    </main>
   );
 };
 

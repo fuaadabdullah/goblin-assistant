@@ -37,6 +37,7 @@ describe('Dialog', () => {
         <DialogTrigger>Open me</DialogTrigger>
         <DialogContent>
           <DialogTitle>Hidden</DialogTitle>
+          <DialogDescription>Hidden dialog description</DialogDescription>
         </DialogContent>
       </Dialog>
     );
@@ -50,6 +51,7 @@ describe('Dialog', () => {
         <DialogTrigger>Open me</DialogTrigger>
         <DialogContent>
           <DialogTitle>Now visible</DialogTitle>
+          <DialogDescription>Visible dialog description</DialogDescription>
         </DialogContent>
       </Dialog>
     );
@@ -90,6 +92,7 @@ describe('Dialog', () => {
       <Dialog defaultOpen>
         <DialogContent className="custom-content">
           <DialogTitle>Styled</DialogTitle>
+          <DialogDescription>Styled dialog description</DialogDescription>
         </DialogContent>
       </Dialog>
     );
@@ -114,6 +117,7 @@ describe('Dialog', () => {
       <Dialog defaultOpen>
         <DialogContent>
           <DialogTitle>T</DialogTitle>
+          <DialogDescription>Header and footer dialog</DialogDescription>
           <DialogHeader className="header-class">
             <span data-testid="header-child">H</span>
           </DialogHeader>
@@ -134,6 +138,7 @@ describe('Dialog', () => {
         <DialogTrigger>Open</DialogTrigger>
         <DialogContent>
           <DialogTitle>Tracked</DialogTitle>
+          <DialogDescription>Tracked dialog description</DialogDescription>
         </DialogContent>
       </Dialog>
     );
@@ -147,6 +152,7 @@ describe('Dialog', () => {
         <DialogOverlay className="overlay-class" data-testid="overlay" />
         <DialogContent>
           <DialogTitle>x</DialogTitle>
+          <DialogDescription>Overlay dialog description</DialogDescription>
         </DialogContent>
       </Dialog>
     );

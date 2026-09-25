@@ -19,8 +19,9 @@ describe('useGoblinLoaderAnimation', () => {
   });
 
   it('starts with null', () => {
-    const { result } = renderHook(() => useGoblinLoaderAnimation());
+    const { result, unmount } = renderHook(() => useGoblinLoaderAnimation());
     expect(result.current).toBeNull();
+    unmount();
   });
 
   it('fetches and returns animation data', async () => {

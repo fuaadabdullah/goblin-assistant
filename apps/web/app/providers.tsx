@@ -5,8 +5,6 @@ import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Analytics } from '@vercel/analytics/react';
-import { datadogRum } from '@datadog/browser-rum';
-import { datadogLogs } from '@datadog/browser-logs';
 import { migrateLegacyProviderSelection, useProviderStore } from '@/store/providerStore';
 import { ContrastModeProvider } from '@/hooks/useContrastMode';
 import AuthBootstrapper from '@/auth/AuthBootstrapper';
@@ -33,10 +31,15 @@ function shouldRenderAnalytics(): boolean {
   return process.env['VERCEL_ENV'] === 'production';
 }
 
-function initDatadog() {
+async function initDatadog() {
+  if (process.env['NODE_ENV'] !== 'production') return;
   const appId = process.env['NEXT_PUBLIC_DD_APPLICATION_ID'];
   const clientToken = process.env['NEXT_PUBLIC_DD_CLIENT_TOKEN'];
   if (!appId || !clientToken) return;
+  const [{ datadogRum }, { datadogLogs }] = await Promise.all([
+    import('@datadog/browser-rum'),
+    import('@datadog/browser-logs'),
+  ]);
 
   const site = process.env['NEXT_PUBLIC_DD_SITE'] ?? 'datadoghq.com';
   const env = sanitizeDatadogTagValue(
@@ -45,30 +48,34 @@ function initDatadog() {
   );
   const version = sanitizeDatadogTagValue(process.env['NEXT_PUBLIC_DD_VERSION'], '0');
 
-  datadogRum.init({
-    applicationId: appId,
-    clientToken,
-    site,
-    service: 'goblin-web',
-    env,
-    version,
-    sessionSampleRate: 100,
-    sessionReplaySampleRate: 10,
-    trackUserInteractions: true,
-    trackResources: true,
-    trackLongTasks: true,
-    defaultPrivacyLevel: 'mask-user-input',
-  });
+  if (!datadogRum.getInitConfiguration()) {
+    datadogRum.init({
+      applicationId: appId,
+      clientToken,
+      site,
+      service: 'goblin-web',
+      env,
+      version,
+      sessionSampleRate: 100,
+      sessionReplaySampleRate: 10,
+      trackUserInteractions: true,
+      trackResources: true,
+      trackLongTasks: true,
+      defaultPrivacyLevel: 'mask-user-input',
+    });
+  }
 
-  datadogLogs.init({
-    clientToken,
-    site,
-    service: 'goblin-web',
-    env,
-    version,
-    forwardErrorsToLogs: true,
-    sessionSampleRate: 100,
-  } as any);
+  if (!datadogLogs.getInitConfiguration()) {
+    datadogLogs.init({
+      clientToken,
+      site,
+      service: 'goblin-web',
+      env,
+      version,
+      forwardErrorsToLogs: true,
+      sessionSampleRate: 100,
+    });
+  }
 }
 
 export default function Providers({ children }: { children: ReactNode }) {
@@ -77,7 +84,7 @@ export default function Providers({ children }: { children: ReactNode }) {
   const enableAnalytics = shouldRenderAnalytics();
 
   useEffect(() => {
-    initDatadog();
+    void initDatadog();
     initGA();
     setupGlobalErrorTracking();
     monitorNetworkStatus();

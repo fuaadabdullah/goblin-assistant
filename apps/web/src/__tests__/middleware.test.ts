@@ -86,6 +86,27 @@ describe('proxy route decisions', () => {
     });
   });
 
+  it('restricts retrieval debug to admins', () => {
+    expect(
+      resolveRouteDecision({
+        pathname: '/debug/retrieval',
+        isAuthenticated: true,
+        isAdmin: false,
+      })
+    ).toEqual({
+      allow: false,
+      redirectTarget: '/debug/retrieval',
+    });
+
+    expect(
+      resolveRouteDecision({
+        pathname: '/debug/retrieval',
+        isAuthenticated: true,
+        isAdmin: true,
+      })
+    ).toEqual({ allow: true });
+  });
+
   it('redirects unauthenticated users from /sandbox', () => {
     const decision = resolveRouteDecision({
       pathname: '/sandbox',
