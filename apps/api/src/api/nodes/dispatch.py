@@ -61,6 +61,49 @@ def _extract_prompt(payload: Dict[str, Any]) -> Optional[str]:
     return None
 
 
+_CLOUD_ONLY_PAYLOAD_KEYS = (
+    "tools",
+    "tool_choice",
+    "functions",
+    "function_call",
+    "images",
+    "image",
+    "attachments",
+)
+
+
+def _requires_cloud_capability(payload: Dict[str, Any]) -> bool:
+    """Return True when the node protocol cannot faithfully represent the request."""
+    for key in _CLOUD_ONLY_PAYLOAD_KEYS:
+        value = payload.get(key)
+        if value not in (None, "", [], {}):
+            return True
+
+    messages = payload.get("messages")
+    if isinstance(messages, list):
+        for message in messages:
+            if not isinstance(message, dict):
+                continue
+            content = message.get("content")
+            if content is not None and not isinstance(content, str):
+                return True
+    return False
+
+
+def _local_timeout_seconds(payload: Dict[str, Any]) -> Optional[float]:
+    """Translate the router's millisecond timeout contract for node dispatch."""
+    raw = payload.get("timeout_ms")
+    if raw is None:
+        return None
+    try:
+        timeout_ms = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if timeout_ms <= 0:
+        return None
+    return timeout_ms / 1000.0
+
+
 async def try_local_compute(
     task_type: str,
     payload: Dict[str, Any],
@@ -81,6 +124,9 @@ async def try_local_compute(
     if not node_settings.enabled:
         return None
     if task_type not in LOCAL_CAPABLE_TASKS:
+        return None
+    if _requires_cloud_capability(payload):
+        logger.debug("local_compute_skipped", reason="unsupported_payload_capability")
         return None
 
     prompt = _extract_prompt(payload)
@@ -128,6 +174,7 @@ async def try_local_compute(
             prompt=prompt,
             options=payload.get("options") if isinstance(payload.get("options"), dict) else None,
             job_id=job_id,
+            timeout_seconds=_local_timeout_seconds(payload),
         )
     except NodeUnavailableError as exc:
         reg.record_failure(node.node_id)
@@ -139,9 +186,19 @@ async def try_local_compute(
         )
         return None
 
+    text = result.get("response")
+    if not isinstance(text, str) or not text.strip():
+        reg.record_failure(node.node_id)
+        logger.info(
+            "local_compute_fallback",
+            node_id=node.node_id,
+            reason="invalid_response_payload",
+            job_id=job_id,
+        )
+        return None
+
     reg.record_success(node.node_id)
     latency_ms = (time.perf_counter() - started) * 1000
-    text = result.get("response", "")
 
     logger.info(
         "local_compute_served",
