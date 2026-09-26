@@ -67,6 +67,9 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             "/api/v1/settings",
             "/sandbox",
             "/api/v1/agent",
+            # Node control-plane routes use dedicated registration/operator
+            # bearer secrets in their route dependencies, not LOCAL_LLM_API_KEY.
+            "/api/v1/nodes",
             *JWT_AUTH_ROUTE_PREFIXES,
         ]
 

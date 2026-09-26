@@ -2,6 +2,7 @@
 
 from fastapi import FastAPI
 
+from ..nodes.router import router as nodes_router
 from ..shared_api_routes_runtime import API_V1_PREFIX
 
 
@@ -92,6 +93,10 @@ def mount_versioned_primary_routes(
     app.include_router(ops_router, prefix=API_V1_PREFIX)
     app.include_router(admin_router, prefix=API_V1_PREFIX)
     app.include_router(secrets_router, prefix=API_V1_PREFIX)
+    # Self-hosted compute nodes. Composed here rather than threaded through
+    # register_routes: it is a static internal router with no construction
+    # options, unlike the conditionally-built routers above.
+    app.include_router(nodes_router, prefix=API_V1_PREFIX)
     if semantic_chat_router is not None:
         app.include_router(semantic_chat_router, prefix=API_V1_PREFIX)
     if model_suggestion_debug_router is not None:

@@ -158,6 +158,30 @@ class TestAuthenticationMiddleware:
 
         assert response.status_code == 200
 
+    @patch.dict(
+        os.environ,
+        {
+            "ENVIRONMENT": "production",
+            "LOCAL_LLM_API_KEY": "machine-key",
+        },
+    )
+    def test_auth_middleware_defers_node_routes_to_node_credentials(self):
+        app = FastAPI()
+
+        @app.post("/api/v1/nodes/heartbeat")
+        async def heartbeat():
+            return {"ok": True}
+
+        app.add_middleware(AuthenticationMiddleware)
+        client = TestClient(app)
+
+        response = client.post(
+            "/api/v1/nodes/heartbeat",
+            headers={"Authorization": "Bearer node-registration-secret"},
+        )
+
+        assert response.status_code == 200
+
     @patch.dict(os.environ, {"LOCAL_LLM_API_KEY": "machine-key"})
     def test_auth_middleware_keeps_chat_debug_route_machine_key_protected(self):
         app = FastAPI()
