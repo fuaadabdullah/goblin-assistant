@@ -301,3 +301,88 @@ async def test_disabled_flag_bypasses_local_entirely(registry, monkeypatch):
         await try_local_compute("chat", {"prompt": "hi", "model": "llama3.1:8b"}, registry=registry)
         is None
     )
+
+@pytest.mark.asyncio
+async def test_tool_request_bypasses_local_node(registry, monkeypatch):
+    registry.upsert(make_heartbeat())
+
+    async def should_not_run(**kwargs):
+        raise AssertionError("tool-capable requests must go to the cloud")
+
+    monkeypatch.setattr("api.nodes.dispatch.invoke_node", should_not_run)
+    result = await try_local_compute(
+        "chat",
+        {
+            "prompt": "Use the weather tool.",
+            "model": "llama3.1:8b",
+            "tools": [{"type": "function", "function": {"name": "weather"}}],
+        },
+        registry=registry,
+    )
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_multimodal_message_bypasses_local_node(registry, monkeypatch):
+    registry.upsert(make_heartbeat())
+
+    async def should_not_run(**kwargs):
+        raise AssertionError("multimodal requests must go to the cloud")
+
+    monkeypatch.setattr("api.nodes.dispatch.invoke_node", should_not_run)
+    result = await try_local_compute(
+        "chat",
+        {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Describe this image."},
+                        {"type": "image_url", "image_url": {"url": "https://example.com/x.png"}},
+                    ],
+                }
+            ],
+            "model": "llama3.1:8b",
+        },
+        registry=registry,
+    )
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_caller_timeout_is_forwarded_to_node(registry, monkeypatch):
+    registry.upsert(make_heartbeat())
+    seen = {}
+
+    async def capture(**kwargs):
+        seen.update(kwargs)
+        return {"response": "ok"}
+
+    monkeypatch.setattr("api.nodes.dispatch.invoke_node", capture)
+    result = await try_local_compute(
+        "chat",
+        {"prompt": "hi", "model": "llama3.1:8b", "timeout_ms": 2500},
+        registry=registry,
+    )
+
+    assert result is not None
+    assert seen["timeout_seconds"] == 2.5
+
+
+@pytest.mark.asyncio
+async def test_malformed_node_success_falls_through_and_records_failure(registry, monkeypatch):
+    registry.upsert(make_heartbeat())
+
+    async def malformed(**kwargs):
+        return {"error": "outdated agent payload"}
+
+    monkeypatch.setattr("api.nodes.dispatch.invoke_node", malformed)
+    result = await try_local_compute(
+        "chat",
+        {"prompt": "hi", "model": "llama3.1:8b"},
+        registry=registry,
+    )
+
+    assert result is None
+    assert registry.get("node-001").consecutive_failures == 1
+
