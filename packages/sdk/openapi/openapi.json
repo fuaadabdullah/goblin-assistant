@@ -1754,7 +1754,7 @@
             "type": "integer"
           },
           "thumbs_up_rate": {
-            "default": 0.0,
+            "default": 0,
             "title": "Thumbs Up Rate",
             "type": "number"
           },
@@ -2276,6 +2276,169 @@
           "model_id"
         ],
         "title": "ModelSettings",
+        "type": "object"
+      },
+      "NodeHeartbeat": {
+        "description": "What a node POSTs to /api/v1/nodes/heartbeat.",
+        "properties": {
+          "active_jobs": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Active Jobs",
+            "type": "integer"
+          },
+          "backend": {
+            "default": "unknown",
+            "maxLength": 64,
+            "title": "Backend",
+            "type": "string"
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint"
+          },
+          "gpu": {
+            "default": "",
+            "maxLength": 256,
+            "title": "Gpu",
+            "type": "string"
+          },
+          "max_concurrency": {
+            "default": 1,
+            "minimum": 0,
+            "title": "Max Concurrency",
+            "type": "integer"
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "node_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Node Id",
+            "type": "string"
+          },
+          "node_type": {
+            "default": "inference",
+            "maxLength": 64,
+            "title": "Node Type",
+            "type": "string"
+          },
+          "status": {
+            "default": "online",
+            "enum": [
+              "online",
+              "degraded",
+              "offline"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id"
+        ],
+        "title": "NodeHeartbeat",
+        "type": "object"
+      },
+      "NodeView": {
+        "description": "Read model for the /nodes endpoints.\n\nExposes `age_seconds` and the *effective* status rather than the raw\nstored one, so an operator sees what the router sees.",
+        "properties": {
+          "active_jobs": {
+            "title": "Active Jobs",
+            "type": "integer"
+          },
+          "age_seconds": {
+            "title": "Age Seconds",
+            "type": "number"
+          },
+          "backend": {
+            "title": "Backend",
+            "type": "string"
+          },
+          "consecutive_failures": {
+            "title": "Consecutive Failures",
+            "type": "integer"
+          },
+          "eligible": {
+            "title": "Eligible",
+            "type": "boolean"
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint"
+          },
+          "gpu": {
+            "title": "Gpu",
+            "type": "string"
+          },
+          "heartbeat_count": {
+            "title": "Heartbeat Count",
+            "type": "integer"
+          },
+          "max_concurrency": {
+            "title": "Max Concurrency",
+            "type": "integer"
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "node_type": {
+            "title": "Node Type",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "online",
+              "degraded",
+              "offline"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id",
+          "node_type",
+          "status",
+          "backend",
+          "gpu",
+          "models",
+          "active_jobs",
+          "max_concurrency",
+          "endpoint",
+          "age_seconds",
+          "heartbeat_count",
+          "consecutive_failures",
+          "eligible"
+        ],
+        "title": "NodeView",
         "type": "object"
       },
       "NotificationCreate": {
@@ -4884,7 +5047,7 @@
         "type": "object"
       },
       "ToneMode": {
-        "description": "Voice / register the assistant should answer in.\n\nValues are intentionally broad and additive \u2014 never rename a value\nwithout a deprecation cycle because it is part of the public API\ncontract (exported via OpenAPI and consumed by the SDK).",
+        "description": "Voice / register the assistant should answer in.\n\nValues are intentionally broad and additive — never rename a value\nwithout a deprecation cycle because it is part of the public API\ncontract (exported via OpenAPI and consumed by the SDK).",
         "enum": [
           "DEFAULT",
           "FORMAL",
@@ -7520,7 +7683,7 @@
     },
     "/api/v1/chat/conversations/{conversation_id}/messages": {
       "post": {
-        "description": "Send a message and receive an AI response.\n\nOn stream=True, returns SSE via streaming.generate_chat_stream.\nProvider selection is delegated to the dispatcher; tool-calling is\nrun inline.\n\nPipeline: WTI \u2192 attachments \u2192 context assembly \u2192 provider dispatch \u2192\ntool loop \u2192 normalize \u2192 persist \u2192 respond.",
+        "description": "Send a message and receive an AI response.\n\nOn stream=True, returns SSE via streaming.generate_chat_stream.\nProvider selection is delegated to the dispatcher; tool-calling is\nrun inline.\n\nPipeline: WTI → attachments → context assembly → provider dispatch →\ntool loop → normalize → persist → respond.",
         "operationId": "send_message_api_v1_chat_conversations__conversation_id__messages_post",
         "parameters": [
           {
@@ -9170,7 +9333,7 @@
     },
     "/api/v1/debug/suggest": {
       "post": {
-        "description": "Get intelligent debugging suggestions from model routing system.\n\nRoutes specialized tasks to Raptor model; other tasks to fallback model.\n\nRequest body:\n- task: str \u2014 Task identifier from RAPTOR_TASKS or other\n- context: dict \u2014 Contextual data (error, code, traces, etc.)\n\nReturns:\n- model: str \u2014 Model used ('raptor' or 'fallback')\n- suggestion: str \u2014 The suggestion text\n- confidence: optional float \u2014 Confidence score if available\n- task: str \u2014 Echo of requested task\n- timestamp: str \u2014 Response timestamp\n- raw: optional dict \u2014 Raw model response for debugging",
+        "description": "Get intelligent debugging suggestions from model routing system.\n\nRoutes specialized tasks to Raptor model; other tasks to fallback model.\n\nRequest body:\n- task: str — Task identifier from RAPTOR_TASKS or other\n- context: dict — Contextual data (error, code, traces, etc.)\n\nReturns:\n- model: str — Model used ('raptor' or 'fallback')\n- suggestion: str — The suggestion text\n- confidence: optional float — Confidence score if available\n- task: str — Echo of requested task\n- timestamp: str — Response timestamp\n- raw: optional dict — Raw model response for debugging",
         "operationId": "get_debug_suggestion_api_v1_debug_suggest_post",
         "requestBody": {
           "content": {
@@ -10376,6 +10539,181 @@
         ]
       }
     },
+    "/api/v1/nodes": {
+      "get": {
+        "description": "All known nodes with their effective (staleness-aware) status.",
+        "operationId": "list_nodes_api_v1_nodes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/NodeView"
+                  },
+                  "title": "Response List Nodes Api V1 Nodes Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Nodes",
+        "tags": [
+          "nodes"
+        ]
+      }
+    },
+    "/api/v1/nodes/heartbeat": {
+      "post": {
+        "description": "Accept a node's periodic self-announcement.\n\nUpserts by node_id: the first heartbeat registers the node, subsequent\nones refresh it. There is no separate registration call, so a node that\nrestarts or changes its model set needs no operator intervention.\n\nThe advertised endpoint is validated before it is stored, because dispatch\nwill later send real user prompts to it.",
+        "operationId": "heartbeat_api_v1_nodes_heartbeat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NodeHeartbeat"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Heartbeat Api V1 Nodes Heartbeat Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Heartbeat",
+        "tags": [
+          "nodes"
+        ]
+      }
+    },
+    "/api/v1/nodes/{node_id}": {
+      "delete": {
+        "description": "Drop a node immediately rather than waiting for its heartbeat to lapse.",
+        "operationId": "forget_node_api_v1_nodes__node_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "title": "Node Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Forget Node Api V1 Nodes  Node Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Forget Node",
+        "tags": [
+          "nodes"
+        ]
+      },
+      "get": {
+        "operationId": "get_node_api_v1_nodes__node_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "title": "Node Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Node",
+        "tags": [
+          "nodes"
+        ]
+      }
+    },
     "/api/v1/notifications/": {
       "get": {
         "operationId": "list_notifications_api_v1_notifications__get",
@@ -11385,7 +11723,7 @@
     },
     "/api/v1/routing/explain/{routing_id}": {
       "get": {
-        "description": "Return why a given routing decision picked its provider.\n\nBacked by the in-memory explanation cache populated on every\nProviderSelectionModel.score() call \u2014 see routing/provider_selection.py.\nExplanations are bounded and evicted FIFO, so old routing_ids 404.",
+        "description": "Return why a given routing decision picked its provider.\n\nBacked by the in-memory explanation cache populated on every\nProviderSelectionModel.score() call — see routing/provider_selection.py.\nExplanations are bounded and evicted FIFO, so old routing_ids 404.",
         "operationId": "explain_routing_decision_api_v1_routing_explain__routing_id__get",
         "parameters": [
           {
@@ -12467,7 +12805,7 @@
     },
     "/api/v1/search/collections/{collection_name}/add": {
       "post": {
-        "description": "Backward-compatible shim \u2014 maps collection_name to source_type.",
+        "description": "Backward-compatible shim — maps collection_name to source_type.",
         "operationId": "add_document_compat_api_v1_search_collections__collection_name__add_post",
         "parameters": [
           {
