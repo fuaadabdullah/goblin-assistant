@@ -29,16 +29,24 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 FROM base AS runtime
 
 # Keep runtime image lean: only install minimal shared libs needed by compiled wheels.
+# Also drop the base image's site-packages: the COPY from deps below overlays
+# /usr/local without deleting anything, so stale files would survive under it --
+# notably setuptools' vendored jaraco.context/wheel that deps upgraded away,
+# which Trivy flags. deps started from this same base, so its site-packages is
+# a superset.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     apt-get update \
     && apt-get install -y --no-install-recommends \
       libstdc++6 \
       libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /usr/local/lib/python3.11/site-packages
 
 COPY --from=deps /usr/local /usr/local
-COPY --from=docker.io/tailscale/tailscale:unstable-v1.103.261 /usr/local/bin/tailscaled /usr/local/bin/tailscale /usr/local/bin/
+# unstable-v1.103.311+: earlier builds link golang.org/x/image v0.41.0
+# (CVE-2026-46602/46603); stable v1.102.5 still does and adds x/crypto.
+COPY --from=docker.io/tailscale/tailscale:unstable-v1.103.311 /usr/local/bin/tailscaled /usr/local/bin/tailscale /usr/local/bin/
 RUN groupadd --system --gid 1000 appuser \
     && useradd --system --uid 1000 --gid appuser --home-dir /app --shell /usr/sbin/nologin appuser \
     && mkdir -p /app/apps/api /app/config /app/packages /app/logs /app/chroma_db /app/state \
