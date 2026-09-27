@@ -275,6 +275,45 @@
       "display_name": "Google Gemini",
       "is_active": true
     },
+    "aws_bedrock": {
+      "endpoint": "https://bedrock-mantle.us-east-1.api.aws/v1",
+      "endpoint_env": "AWS_BEDROCK_BASE_URL",
+      "api_key_env": "AWS_BEDROCK_API_KEY",
+      "priority_tier": 32,
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code"
+      ],
+      "models": [
+        "openai.gpt-oss-20b",
+        "qwen.qwen3-32b"
+      ],
+      "cost_score": 0.12,
+      "cost_input_per1k": 9e-05,
+      "cost_output_per1k": 0.00039,
+      "costs": {
+        "default": {
+          "input_per1k": 9e-05,
+          "output_per1k": 0.00039
+        },
+        "openai.gpt-oss-20b": {
+          "input_per1k": 9e-05,
+          "output_per1k": 0.00039
+        }
+      },
+      "rate_limits": {
+        "default": {
+          "requests_per_minute": 60,
+          "tokens_per_minute": 100000,
+          "concurrency": 0
+        }
+      },
+      "default_timeout_ms": 30000,
+      "rate_limit_per_min": 60,
+      "display_name": "AWS Bedrock",
+      "is_active": true
+    },
     "deepseek": {
       "endpoint": "https://api.deepseek.com",
       "endpoint_env": "DEEPSEEK_ENDPOINT",
