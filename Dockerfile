@@ -10,8 +10,6 @@ WORKDIR /app
 FROM base AS deps
 
 COPY apps/api/requirements.txt /app/apps/api/requirements.txt
-COPY apps/api/requirements-vector.txt /app/apps/api/requirements-vector.txt
-
 # Install build-time dependencies and Python packages with BuildKit caches for faster rebuilds.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
@@ -22,7 +20,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       gcc \
       git \
     && python -m pip install --upgrade pip \
-    && python -m pip install -r /app/apps/api/requirements.txt -r /app/apps/api/requirements-vector.txt
+    && python -m pip install -r /app/apps/api/requirements.txt
 
 FROM base AS runtime
 
