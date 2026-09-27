@@ -25,6 +25,7 @@ visible_providers = [
   "cohere",
   "huggingface",
   "aliyun",
+  "aws_bedrock",
   "gcp_vllm",
 ]
 
@@ -100,6 +101,10 @@ azure                    = "azure_openai"
 azure_openai             = "azure_openai"
 azure-openai             = "azure_openai"
 google                   = "gemini"
+aws                      = "aws_bedrock"
+bedrock                  = "aws_bedrock"
+aws_bedrock              = "aws_bedrock"
+aws-bedrock              = "aws_bedrock"
 siliconflow              = "siliconeflow"
 silicon_flow             = "siliconeflow"
 silicone-flow            = "siliconeflow"
@@ -157,6 +162,8 @@ vertex-ai                = "gcp_vm"
 "gemma3-27b"                          = { provider = "gcp_vllm",     model = "gemma3-27b" }
 "deepseek-r1"                         = { provider = "gcp_vllm",     model = "deepseek-r1-32b" }
 "deepseek-r1-32b"                     = { provider = "gcp_vllm",     model = "deepseek-r1-32b" }
+"aws-gpt-oss-20b"                    = { provider = "aws_bedrock",  model = "openai.gpt-oss-20b" }
+"aws-qwen3"                          = { provider = "aws_bedrock",  model = "qwen.qwen3-32b" }
 "bge-m3"                              = { provider = "gcp_vllm",     model = "bge-m3" }
 "bge-reranker"                        = { provider = "gcp_vllm",     model = "bge-reranker-v2-m3" }
 
@@ -296,6 +303,43 @@ default                 = { input_per1k = 0.000075, output_per1k = 0.0003 }
 
 [providers.gemini.rate_limits]
 default                 = { requests_per_minute = 60, tokens_per_minute = 200000, concurrency = 0 }
+
+# ---------------------------------------------------------------------------
+# AWS Bedrock
+# OpenAI-compatible Bedrock Mantle endpoint keeps Goblin's existing provider
+# contract while model execution remains fully managed by AWS.
+# ---------------------------------------------------------------------------
+[providers.aws_bedrock]
+name                    = "AWS Bedrock"
+endpoint                = "https://bedrock-mantle.us-east-1.api.aws/v1"
+endpoint_env            = "AWS_BEDROCK_BASE_URL"
+invoke_path             = "/chat/completions"
+health_path             = "/models"
+api_key_env             = "AWS_BEDROCK_API_KEY"
+default_model           = "openai.gpt-oss-20b"
+models                  = ["openai.gpt-oss-20b", "qwen.qwen3-32b"]
+capabilities            = ["chat", "reasoning", "code"]
+priority_tier           = 32
+cost_score              = 0.12
+cost_input_per1k        = 0.00009
+cost_output_per1k       = 0.00039
+default_timeout_ms      = 30000
+bandwidth_score         = 0.9
+rate_limit_per_min      = 60
+supports_cot            = true
+cot_suppression_prompt  = "Answer directly without exposing private reasoning."
+supports_openai_tools   = true
+tier                    = "cloud"
+display_name            = "AWS Bedrock"
+is_active               = true
+selectable_requires_env = true
+
+[providers.aws_bedrock.costs]
+default                  = { input_per1k = 0.00009, output_per1k = 0.00039 }
+"openai.gpt-oss-20b"     = { input_per1k = 0.00009, output_per1k = 0.00039 }
+
+[providers.aws_bedrock.rate_limits]
+default                  = { requests_per_minute = 60, tokens_per_minute = 100000, concurrency = 0 }
 
 # ---------------------------------------------------------------------------
 # DeepSeek
