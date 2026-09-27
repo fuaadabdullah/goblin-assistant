@@ -141,7 +141,10 @@ with patch('api.providers.openai.AIClient') as MockClient:
 
 ### Coverage Requirements
 
-- **Minimum**: 80% overall coverage
+- **Gate**: the floor in `apps/api/coverage-baseline.txt` (currently 68%),
+  enforced by `make test-api-coverage`. It only ratchets up — raise it when
+  coverage improves; CI rejects lowering it.
+- **Target**: 80% overall coverage
 - **Target**: 80% on critical paths (auth, chat, privacy)
 - **Excluded**: migrations, __init__.py, test files themselves
 

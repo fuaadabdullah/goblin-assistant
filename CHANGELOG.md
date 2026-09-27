@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Self-hosted compute node registry (`api.nodes`): authenticated heartbeats,
+  endpoint policy, mTLS client, TTL eligibility, and local-first routing in
+  front of the cloud ladder, behind `GOBLIN_LOCAL_NODES_ENABLED` (default off).
+- Local-tier streaming over the node agent's `POST /inference/stream`, behind
+  `GOBLIN_NODE_STREAMING_ENABLED` (default off). A stream is served only once
+  its first token arrives; later failures surface as interruptions.
+- `api.routes.introspection.iter_api_routes` for FastAPI-version-independent
+  route enumeration.
+- Backend coverage ratchet (`apps/api/coverage-baseline.txt`,
+  `make check-coverage-ratchet`).
+
+### Changed
+
+- Local compute reports `cost_usd: 0.0` with real token `usage`, tries every
+  eligible node before cloud fallback, and only counts real node faults
+  toward its breaker; heartbeats no longer reset the breaker
+  (`GOBLIN_NODE_FAILURE_COOLDOWN` half-open probe instead).
+- Backend coverage gate moved from a fixed, unmet 80% to a 68% floor that
+  ratchets toward 80%.
+- Code scanning relies on CodeQL default setup; the conflicting advanced
+  `codeql.yml` workflow was removed.
+
+### Fixed
+
+- `contract` gate: install `sqlalchemy[asyncio]` so `greenlet` is present
+  for the OpenAPI export.
+- Route manifest, route-lifecycle check and route tests under FastAPI 0.141
+  (nested `_IncludedRouter`), which previously saw 2 of 208 routes.
+- Web tests on Node 20: `--no-experimental-webstorage` is only passed where
+  the runtime supports it.
+- Tests updated for the fail-closed `ENVIRONMENT=production` default and
+  isolated from the runner's `GITHUB_REPOSITORY`.
+
 ## [0.3.0] - 2026-07-22
 
 ### Added

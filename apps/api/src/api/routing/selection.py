@@ -5,13 +5,23 @@ from __future__ import annotations
 import asyncio
 from typing import Any, Dict, List
 
+import structlog
+
 from .policy_engine import cost_router, tier_router
+
+logger = structlog.get_logger()
 
 
 def _dispatcher():
     from ..providers.dispatcher import dispatcher  # noqa: PLC0415
 
     return dispatcher
+
+
+def _local_compute(stream: bool = False):
+    from ..nodes.dispatch import try_local_compute, try_local_compute_stream  # noqa: PLC0415
+
+    return try_local_compute_stream if stream else try_local_compute
 
 
 def _provider_costs(provider_ids: List[str]) -> Dict[str, tuple[float, float]]:
@@ -67,6 +77,16 @@ async def route_task(
     max_retries: int = 2,
     stream: bool = False,
 ) -> Dict[str, Any]:
+    # Local compute is a fail-open optimization. Any miss or defect before the
+    # first streamed token falls through to the unchanged cloud provider ladder.
+    try:
+        local_result = await _local_compute(stream)(task_type, payload)
+    except Exception as exc:  # noqa: BLE001 - local must never break routing
+        logger.warning("local_compute_error", error=str(exc), task_type=task_type)
+        local_result = None
+    if local_result is not None:
+        return local_result
+
     dispatch = _dispatcher()
     candidates = top_providers_for(
         capability=task_type,

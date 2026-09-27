@@ -2128,6 +2128,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/nodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Nodes
+         * @description All known nodes with their effective (staleness-aware) status.
+         */
+        get: operations["list_nodes_api_v1_nodes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/nodes/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Heartbeat
+         * @description Accept a node's periodic self-announcement.
+         *
+         *     Upserts by node_id: the first heartbeat registers the node, subsequent
+         *     ones refresh it. There is no separate registration call, so a node that
+         *     restarts or changes its model set needs no operator intervention.
+         *
+         *     The advertised endpoint is validated before it is stored, because dispatch
+         *     will later send real user prompts to it.
+         */
+        post: operations["heartbeat_api_v1_nodes_heartbeat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/nodes/{node_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Node */
+        get: operations["get_node_api_v1_nodes__node_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Forget Node
+         * @description Drop a node immediately rather than waiting for its heartbeat to lapse.
+         */
+        delete: operations["forget_node_api_v1_nodes__node_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/notifications/": {
         parameters: {
             query?: never;

@@ -9,10 +9,10 @@ Generated from `packages/sdk/openapi/routes.json` and `packages/sdk/openapi/open
 
 ## Snapshot
 
-- **Mounted paths**: 190
-- **Operations**: 203
-- **OpenAPI paths**: 190
-- **Versioned operations (`/api/v1`)**: 200
+- **Mounted paths**: 193
+- **Operations**: 207
+- **OpenAPI paths**: 193
+- **Versioned operations (`/api/v1`)**: 204
 - **Legacy dual-mount operations**: 0
 - **Deprecated operations**: 3
 - **Hidden manifest operations**: 1
@@ -21,7 +21,7 @@ Generated from `packages/sdk/openapi/routes.json` and `packages/sdk/openapi/open
 
 | Group | Operations |
 | --- | ---: |
-| `/api/v1` | 200 |
+| `/api/v1` | 204 |
 | `/` | 1 |
 | `/metrics` | 1 |
 | `/test` | 1 |
@@ -143,6 +143,10 @@ The `/api/v1` routes are the canonical public API surface.
 | GET | /api/v1/health/stream | /health/stream | stable | - | Health Stream | health | health_stream_api_v1_health_stream_get |
 | GET | /api/v1/health/streaming | /health/streaming | stable | - | Health Streaming | health | health_streaming_api_v1_health_streaming_get |
 | GET | /api/v1/health/{component} | /health/{component} | stable | - | Health Component | health | health_component_api_v1_health__component__get |
+| GET | /api/v1/nodes | /nodes | stable | - | List Nodes | nodes | list_nodes_api_v1_nodes_get |
+| POST | /api/v1/nodes/heartbeat | /nodes/heartbeat | stable | - | Heartbeat | nodes | heartbeat_api_v1_nodes_heartbeat_post |
+| DELETE | /api/v1/nodes/{node_id} | /nodes/{node_id} | stable | - | Forget Node | nodes | forget_node_api_v1_nodes__node_id__delete |
+| GET | /api/v1/nodes/{node_id} | /nodes/{node_id} | stable | - | Get Node | nodes | get_node_api_v1_nodes__node_id__get |
 | GET | /api/v1/notifications/ | /notifications/ | stable | - | List Notifications | notifications | list_notifications_api_v1_notifications__get |
 | POST | /api/v1/notifications/ | /notifications/ | stable | - | Create Notification | notifications | create_notification_api_v1_notifications__post |
 | PATCH | /api/v1/notifications/{notification_id}/read | /notifications/{notification_id}/read | stable | - | Mark Notification Read | notifications | mark_notification_read_api_v1_notifications__notification_id__read_patch |

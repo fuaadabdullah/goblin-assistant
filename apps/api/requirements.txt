@@ -5,7 +5,9 @@ uvicorn[standard]>=0.27.0
 gunicorn>=21.2.0
 sentry-sdk>=2.0.0
 ddtrace>=2.0.0
-sqlalchemy>=2.0.30
+# [asyncio] pulls in greenlet, which sqlalchemy.ext.asyncio requires at import
+# time. Recent SQLAlchemy wheels no longer install it implicitly.
+sqlalchemy[asyncio]>=2.0.30
 pgvector>=0.3.0
 python-dotenv>=1.0.1
 redis>=5.0.0

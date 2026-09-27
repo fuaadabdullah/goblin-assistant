@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from fastapi.routing import APIRoute
 
+from api.routes.introspection import iter_api_routes
 from api.routes.ops_router import router as ops_router
 
 
@@ -14,9 +14,8 @@ def test_reset_route_registered_once() -> None:
     app = _ops_app()
     matches = [
         route
-        for route in app.routes
-        if isinstance(route, APIRoute)
-        and route.path == "/api/v1/ops/circuit-breakers/{provider_name}/reset"
+        for route in iter_api_routes(app)
+        if route.path == "/api/v1/ops/circuit-breakers/{provider_name}/reset"
         and "POST" in route.methods
     ]
     assert len(matches) == 1
@@ -24,11 +23,7 @@ def test_reset_route_registered_once() -> None:
 
 def test_expected_ops_routes_present() -> None:
     app = _ops_app()
-    paths = {
-        route.path
-        for route in app.routes
-        if isinstance(route, APIRoute) and route.path.startswith("/api/v1/ops/")
-    }
+    paths = {route.path for route in iter_api_routes(app) if route.path.startswith("/api/v1/ops/")}
 
     assert "/api/v1/ops/health/summary" in paths
     assert "/api/v1/ops/providers/status" in paths

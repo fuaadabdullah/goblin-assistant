@@ -11,6 +11,17 @@ from api.assistant_tools.registry import TOOL_REGISTRY
 from api.assistant_tools.skills.github_tool_pkg import client, handlers
 
 
+@pytest.fixture(autouse=True)
+def _no_ambient_repo_scope(monkeypatch):
+    """Start every test unscoped.
+
+    GitHub Actions exports GITHUB_REPOSITORY, which the client treats as a
+    repository scope; tests that exercise scoping set it explicitly.
+    """
+    monkeypatch.delenv("AGENT_GITHUB_ALLOWED_REPOSITORY", raising=False)
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+
+
 class _FakeResponse:
     def __init__(self, status_code: int, payload: dict | list, text: str = ""):
         self.status_code = status_code

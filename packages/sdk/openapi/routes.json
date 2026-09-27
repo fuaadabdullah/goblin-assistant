@@ -1,8 +1,8 @@
 {
   "alias_route_count": 0,
   "api_v1_prefix": "/api/v1",
-  "public_route_count": 203,
-  "route_count": 204,
+  "public_route_count": 207,
+  "route_count": 208,
   "routes": [
     {
       "canonical_path": "/",
@@ -1714,6 +1714,66 @@
       ]
     },
     {
+      "canonical_path": "/api/v1/nodes",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/nodes",
+      "method": "GET",
+      "operation_id": "list_nodes_api_v1_nodes_get",
+      "path": "/api/v1/nodes",
+      "replacement_path": null,
+      "summary": "List Nodes",
+      "tags": [
+        "nodes"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/nodes/heartbeat",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/nodes/heartbeat",
+      "method": "POST",
+      "operation_id": "heartbeat_api_v1_nodes_heartbeat_post",
+      "path": "/api/v1/nodes/heartbeat",
+      "replacement_path": null,
+      "summary": "Heartbeat",
+      "tags": [
+        "nodes"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/nodes/{node_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/nodes/{node_id}",
+      "method": "DELETE",
+      "operation_id": "forget_node_api_v1_nodes__node_id__delete",
+      "path": "/api/v1/nodes/{node_id}",
+      "replacement_path": null,
+      "summary": "Forget Node",
+      "tags": [
+        "nodes"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/nodes/{node_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/nodes/{node_id}",
+      "method": "GET",
+      "operation_id": "get_node_api_v1_nodes__node_id__get",
+      "path": "/api/v1/nodes/{node_id}",
+      "replacement_path": null,
+      "summary": "Get Node",
+      "tags": [
+        "nodes"
+      ]
+    },
+    {
       "canonical_path": "/api/v1/notifications/",
       "compatibility_aliases": [],
       "deprecated": false,
@@ -3078,5 +3138,5 @@
     }
   ],
   "schema_version": 1,
-  "versioned_route_count": 200
+  "versioned_route_count": 204
 }

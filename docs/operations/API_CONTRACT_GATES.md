@@ -22,11 +22,19 @@ can detect drift.
 - `make contract-checks` runs both contract gates together.
 - `make test-api-coverage` and `make test-web-coverage` run the merge-blocking
   backend and frontend coverage gates.
+- The backend coverage floor is `apps/api/coverage-baseline.txt` (mirrored by
+  `fail_under` in `apps/api/pyproject.toml`). It is a ratchet toward the 80%
+  target: raise it when coverage improves; `make check-coverage-ratchet` (run
+  in the `policy` job) fails any PR that lowers it or lets the two drift.
+- Route-table tooling must enumerate routes with
+  `api.routes.introspection.iter_api_routes`, not `app.routes`: FastAPI 0.141+
+  nests included routers, so `app.routes` lists only the app's own handful.
 
 ## CI Behavior
 
 GitHub Actions now treats `lint`, `contract`, `test-backend`, and
-`test-frontend` as the required pre-merge gate set. The `merge-gates` job fails
+`test-frontend` as the required pre-merge gate set (plus `policy`, which also
+enforces the coverage ratchet). The `merge-gates` job fails
 if any of those checks fail or are skipped.
 
 `test-backend` runs `make test-api-coverage`; `test-frontend` runs
@@ -55,3 +63,8 @@ also fails.
   contract artifacts.
 - The settings-route compatibility burn-down list lives in
   `docs/operations/API_ROUTE_MIGRATION_TRACKER.md`.
+
+Code scanning uses GitHub's CodeQL **default setup** (python,
+javascript-typescript, actions). There is deliberately no `codeql.yml`: while
+default setup is enabled, GitHub rejects SARIF from advanced workflows, so one
+would only add a permanently failing check.

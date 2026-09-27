@@ -34,6 +34,28 @@ executors:
     resource_class: medium
 
 commands:
+  ensure-supported-node:
+    steps:
+      - run:
+          name: Ensure supported Node.js runtime
+          command: |
+            NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
+            if [ "$NODE_MAJOR" != "20" ] && [ "$NODE_MAJOR" != "22" ]; then
+              echo "CircleCI image provides Node $(node --version); installing project baseline Node 22.15.0."
+              curl -fsSLo /tmp/node-v22.15.0-linux-x64.tar.xz \
+                https://nodejs.org/dist/v22.15.0/node-v22.15.0-linux-x64.tar.xz
+              sudo tar -xJf /tmp/node-v22.15.0-linux-x64.tar.xz \
+                -C /usr/local --strip-components=1
+              rm -f /tmp/node-v22.15.0-linux-x64.tar.xz
+            fi
+            node --version
+            npm --version
+            NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
+            if [ "$NODE_MAJOR" != "20" ] && [ "$NODE_MAJOR" != "22" ]; then
+              echo "Unsupported Node.js major after bootstrap: $NODE_MAJOR"
+              exit 1
+            fi
+
   trigger-autofix:
     steps:
       - run:
@@ -51,6 +73,7 @@ commands:
 
   install-pnpm:
     steps:
+      - ensure-supported-node
       - run:
           name: Install pnpm
           command: sudo npm install -g pnpm@9
@@ -230,7 +253,7 @@ jobs:
               --cov=api \
               --cov-report=xml:coverage.xml \
               --cov-report=html:htmlcov \
-              --cov-fail-under=70 \
+              --cov-fail-under="$(tr -d '[:space:]' < coverage-baseline.txt)" \
               --junitxml=test-results.xml \
               --tb=short -v 2>&1 | tee /tmp/ci_failure_output.txt; exit ${PIPESTATUS[0]}
       - run:

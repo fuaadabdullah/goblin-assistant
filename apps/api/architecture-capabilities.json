@@ -124,6 +124,18 @@
         "api.providers.supabase_events",
         "api.providers.pricing",
         "api.config",
+        "api.observability",
+        "api.nodes.dispatch"
+      ]
+    },
+    {
+      "name": "compute",
+      "owned_modules": [
+        "api.nodes"
+      ],
+      "allowed_dependency_prefixes": [
+        "api.nodes",
+        "api.config",
         "api.observability"
       ]
     }

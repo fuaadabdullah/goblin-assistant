@@ -11,6 +11,7 @@ import pytest
 
 from api import lifespan as lifespan_module
 from api import main
+from api.routes.introspection import iter_api_routes
 
 
 def _provider_health_stub(
@@ -34,7 +35,7 @@ def _provider_health_stub(
 def test_app_registers_runtime_middlewares_and_core_routes() -> None:
     assert len(main.app.user_middleware) >= 4
 
-    paths = {route.path for route in main.app.routes if hasattr(route, "path")}
+    paths = {route.path for route in iter_api_routes(main.app)}
     assert "/" in paths
     assert "/test" in paths
     assert "/api/v1/health" in paths
@@ -53,7 +54,7 @@ def test_create_app_disables_docs_and_openapi_in_production(monkeypatch) -> None
 
     app = create_app()
 
-    paths = {route.path for route in app.routes if hasattr(route, "path")}
+    paths = {route.path for route in iter_api_routes(app)}
     assert "/docs" not in paths
     assert "/redoc" not in paths
     assert "/openapi.json" not in paths
