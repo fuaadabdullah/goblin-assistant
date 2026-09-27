@@ -52,7 +52,7 @@ services:
       - key: LLAMACPP_ORACLE_ENDPOINT
         value: http://100.107.126.121:8081
       - key: LLAMACPP_ORACLE_PROXY
-        value: http://localhost:1055
+        value: socks5://localhost:1055
       - key: LLAMACPP_ORACLE_API_KEY
         sync: false
 
