@@ -16,8 +16,8 @@ export const PROVIDER_IDS = {
   HUGGINGFACE: 'huggingface',
   COHERE: 'cohere',
   OLLAMA_LOCAL: 'ollama_local',
-  GCP_VLLM: 'gcp_vllm',
-  GCP_VM: 'gcp_vm',
+  AWS_VLLM: 'aws_vllm',
+  AWS_VM: 'aws_vm',
   MOCK: 'mock',
 } as const;
 
@@ -26,8 +26,8 @@ export type ProviderId = (typeof PROVIDER_IDS)[keyof typeof PROVIDER_IDS];
 /** Provider IDs that indicate a locally-hosted or self-managed backend. */
 export const LOCAL_PROVIDER_IDS: readonly ProviderId[] = [
   PROVIDER_IDS.OLLAMA_LOCAL,
-  PROVIDER_IDS.GCP_VLLM,
-  PROVIDER_IDS.GCP_VM,
+  PROVIDER_IDS.AWS_VLLM,
+  PROVIDER_IDS.AWS_VM,
   PROVIDER_IDS.MOCK,
 ] as const;
 
