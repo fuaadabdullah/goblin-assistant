@@ -16,9 +16,13 @@ if str(API_SRC_ROOT) not in sys.path:
 # auth/router/config.py raises at import time without JWT_SECRET_KEY;
 # set a dummy so the app can register routes for inspection without fully booting.
 os.environ.setdefault("JWT_SECRET_KEY", "check-route-lifecycle-dummy-secret")
+# ENVIRONMENT defaults to production, which refuses to build the app without
+# explicit CORS origins; the contract exporters set the same placeholder.
+os.environ.setdefault("ALLOWED_ORIGINS", "http://localhost")
 
 from api.core.route_lifecycle import RouteLifecycle, classify_route_lifecycle  # noqa: E402
 from api.main import app  # noqa: E402
+from api.routes.introspection import iter_api_routes  # noqa: E402
 
 
 def main() -> int:
@@ -30,7 +34,9 @@ def main() -> int:
         RouteLifecycle.INTERNAL: 0,
     }
 
-    for route in app.routes:
+    # iter_api_routes, not app.routes: FastAPI >= 0.141 nests included routers,
+    # so app.routes alone would inspect 2 of ~200 routes and pass vacuously.
+    for route in iter_api_routes(app):
         path = getattr(route, "path", "")
         methods = sorted(
             method
