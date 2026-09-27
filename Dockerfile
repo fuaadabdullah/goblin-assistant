@@ -60,4 +60,4 @@ RUN if [ -d /app/apps/api/src/api ] && [ ! -f /app/apps/api/src/api/__init__.py 
 
 USER appuser
 
-CMD ["/app/start.sh"]
+ENTRYPOINT ["/app/start.sh"]
