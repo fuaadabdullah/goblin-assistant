@@ -18,7 +18,7 @@ if [ -n "${TAILSCALE_AUTHKEY:-}" ]; then
       --auth-key="$TAILSCALE_AUTHKEY" \
       --hostname="${TAILSCALE_HOSTNAME:-goblin-render}" \
       --timeout=30s; then
-    echo "[tailscale] joined tailnet as ${TAILSCALE_HOSTNAME:-goblin-render}"
+    # SOCKS5 is the canonical userspace-networking transport for private tailnet HTTP clients.\n    # Set it here so Render dashboard/Blueprint drift cannot silently switch the provider back to HTTP proxy mode.\n    export LLAMACPP_ORACLE_PROXY="socks5://localhost:1055"\n    echo "[tailscale] joined tailnet as ${TAILSCALE_HOSTNAME:-goblin-render}"
   else
     echo "[tailscale] WARNING: tailscale up failed; continuing without tailnet" >&2
     tail -20 /tmp/tailscaled.log >&2 || true
