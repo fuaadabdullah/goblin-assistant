@@ -4,8 +4,8 @@ import asyncio
 import json
 import os
 import secrets
-from urllib.parse import urlparse
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, Header, HTTPException
@@ -47,35 +47,6 @@ async def oracle_mcp_info() -> dict[str, Any]:
         "oracle_api_key_configured": bool(os.getenv("LLAMACPP_ORACLE_API_KEY", "").strip()),
         "tailnet_auth_configured": bool(os.getenv("TAILSCALE_AUTHKEY", "").strip()),
     }
-
-
-async def _tailnet_ping(endpoint: str) -> dict[str, Any]:
-    host = urlparse(endpoint).hostname
-    socket = "/tmp/tailscaled.sock"
-    if not host or not os.path.exists(socket):
-        return {"tailnet_peer_reachable": False, "tailnet_ping": "tailnet socket unavailable"}
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            "tailscale",
-            f"--socket={socket}",
-            "ping",
-            "--c=1",
-            "--timeout=5s",
-            host,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,
-        )
-        stdout, _stderr = await proc.communicate()
-        detail = stdout.decode("utf-8", errors="replace").strip()[-500:]
-        return {
-            "tailnet_peer_reachable": proc.returncode == 0,
-            "tailnet_ping": detail or f"tailscale ping exited {proc.returncode}",
-        }
-    except Exception as exc:
-        return {
-            "tailnet_peer_reachable": False,
-            "tailnet_ping": f"{type(exc).__name__}: {exc}",
-        }
 
 
 async def _run_tailscale(*args: str, timeout: float = 6.0) -> tuple[int | None, str, str]:
@@ -174,7 +145,6 @@ async def _oracle_status() -> dict[str, Any]:
             result["error"] = "Oracle llama.cpp endpoint returned a non-200 response"
     except Exception as exc:
         result["error"] = f"{type(exc).__name__}: {exc}"
-        result.update(await _tailnet_ping(endpoint))
     return result
 
 
