@@ -32,6 +32,7 @@ from .routes.api_keys_router import router as api_keys_router
 from .routes.debug import router as model_suggestion_debug_router
 from .routes.feature_flags_router import router as feature_flags_router
 from .routes.notifications_router import router as notifications_router
+from .routes.oracle_mcp import router as oracle_mcp_router
 from .routes.ops_router import router as ops_router
 from .routes.parse_router import router as parse_router
 from .routes.privacy import router as privacy_router
@@ -117,5 +118,7 @@ def create_app() -> FastAPI:
         routing_analytics_available=routing_analytics_available,
         routing_analytics_router=routing_analytics_router,
     )
+
+    app.include_router(oracle_mcp_router)
 
     return app
