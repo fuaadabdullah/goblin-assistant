@@ -393,7 +393,7 @@ class TestProxy:
             provider._http_client(timeout=5)
         MockClient.assert_called_once_with(timeout=5, proxy="socks5://localhost:1055")
 
-    def test_no_proxy_when_env_unset(self, monkeypatch):
+    def test_oracle_legacy_http_proxy_is_normalized_to_socks5(self, monkeypatch):\n        monkeypatch.setenv("LLAMACPP_ORACLE_PROXY", "http://localhost:1055")\n        provider = LlamaCPPProvider(\n            "llamacpp",\n            {"endpoint": "http://100.64.0.1:8081", "proxy_env": "LLAMACPP_ORACLE_PROXY"},\n        )\n        assert provider._proxy == "socks5://localhost:1055"\n\n    def test_no_proxy_when_env_unset(self, monkeypatch):
         monkeypatch.delenv("LLAMACPP_TEST_PROXY", raising=False)
         provider = LlamaCPPProvider(
             "llamacpp",
