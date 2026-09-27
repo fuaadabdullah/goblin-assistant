@@ -384,14 +384,14 @@ class TestAvailability:
 
 class TestProxy:
     def test_proxy_from_env(self, monkeypatch):
-        monkeypatch.setenv("LLAMACPP_TEST_PROXY", "http://localhost:1055")
+        monkeypatch.setenv("LLAMACPP_TEST_PROXY", "socks5://localhost:1055")
         provider = LlamaCPPProvider(
             "llamacpp",
             {"endpoint": "http://100.64.0.1:8081", "proxy_env": "LLAMACPP_TEST_PROXY"},
         )
         with patch("httpx.AsyncClient") as MockClient:
             provider._http_client(timeout=5)
-        MockClient.assert_called_once_with(timeout=5, proxy="http://localhost:1055")
+        MockClient.assert_called_once_with(timeout=5, proxy="socks5://localhost:1055")
 
     def test_no_proxy_when_env_unset(self, monkeypatch):
         monkeypatch.delenv("LLAMACPP_TEST_PROXY", raising=False)
