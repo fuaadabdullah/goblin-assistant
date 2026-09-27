@@ -230,7 +230,7 @@ jobs:
               --cov=api \
               --cov-report=xml:coverage.xml \
               --cov-report=html:htmlcov \
-              --cov-fail-under=70 \
+              --cov-fail-under="$(tr -d '[:space:]' < coverage-baseline.txt)" \
               --junitxml=test-results.xml \
               --tb=short -v 2>&1 | tee /tmp/ci_failure_output.txt; exit ${PIPESTATUS[0]}
       - run:

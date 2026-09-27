@@ -19,6 +19,8 @@ jobs:
           fetch-depth: 0
       - name: Enforce branch + commit policy
         run: bash tooling/automation/ci-policy-check.sh
+      - name: Coverage baseline only ratchets up
+        run: bash tooling/quality/check-coverage-ratchet.sh
 
   lint:
     name: lint
