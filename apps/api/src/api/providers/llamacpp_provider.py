@@ -27,7 +27,7 @@ class LlamaCPPProvider(BaseProvider):
         self.endpoint = self._base_url
         # e.g. tailscaled's userspace proxy when the endpoint is a tailnet address.
         proxy_env = self.config.get("proxy_env")
-        self._proxy = (os.getenv(str(proxy_env), "").strip() or None) if proxy_env else None
+        self._proxy = (os.getenv(str(proxy_env), "").strip() or None) if proxy_env else None\n        # Render userspace Tailscale exposes both HTTP and SOCKS on 1055.\n        # SOCKS5 avoids HTTP proxy framing edge cases for private tailnet endpoints.\n        if proxy_env == "LLAMACPP_ORACLE_PROXY" and self._proxy == "http://localhost:1055":\n            self._proxy = "socks5://localhost:1055"
         # Non-streaming calls get no bytes until generation finishes; slow CPU nodes need headroom.
         self._invoke_timeout = float(self.config.get("invoke_timeout_s", 120))
 
