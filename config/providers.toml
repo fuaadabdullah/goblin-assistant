@@ -655,19 +655,11 @@ tier                    = "self_hosted"
 priority_tier           = 70
 cost_score              = 0.05
 default_timeout_ms      = 180000
-default_model           = "gemini-2.5-flash"
+default_model           = "goblin-core"
 bandwidth_score         = 0.5
 rate_limit_per_min      = 120
 capabilities            = ["chat", "reasoning", "code"]
-models                  = [
-  "goblin-core",
-  "gemini-2.5-flash",
-  "gemini-2.0-flash",
-  "gemini-2.0-flash-lite",
-  "qwen2.5:3b",
-  "gemma-3-12b",
-  "qwen3-14b",
-]
+models                  = ["goblin-core"]
 supports_cot            = true
 cot_suppression_prompt  = "Be concise."
 display_name            = "GCP Self-Hosted"
