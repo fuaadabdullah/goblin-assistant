@@ -98,6 +98,7 @@ def install_runtime_middlewares(app: FastAPI, *, environment: str) -> None:
             "/test",
             "/health",
             "/api/v1/health",
+            "/mcp/oracle",
             "/auth/register",
             "/auth/login",
             "/auth/csrf-token",
