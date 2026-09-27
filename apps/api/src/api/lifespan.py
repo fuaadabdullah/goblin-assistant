@@ -14,6 +14,75 @@ from .storage.database import engine, init_db, is_postgres, warmup_pool
 
 logger = structlog.get_logger()
 
+_TAILSCALE_SOCKET = "/tmp/tailscaled.sock"
+_tailscaled_process: asyncio.subprocess.Process | None = None
+
+
+async def _ensure_tailnet_proxy() -> None:
+    """Start the Render userspace tailnet proxy when the shell bootstrap was bypassed."""
+    global _tailscaled_process
+
+    auth_key = os.getenv("TAILSCALE_AUTHKEY", "").strip()
+    if not auth_key:
+        return
+    if os.path.exists(_TAILSCALE_SOCKET):
+        logger.info("Tailnet proxy already available", socket=_TAILSCALE_SOCKET)
+        return
+
+    try:
+        _tailscaled_process = await asyncio.create_subprocess_exec(
+            "tailscaled",
+            "--tun=userspace-networking",
+            "--state=mem:",
+            f"--socket={_TAILSCALE_SOCKET}",
+            "--socks5-server=localhost:1055",
+            "--outbound-http-proxy-listen=localhost:1055",
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        await asyncio.sleep(0.25)
+        login = await asyncio.create_subprocess_exec(
+            "tailscale",
+            f"--socket={_TAILSCALE_SOCKET}",
+            "up",
+            f"--auth-key={auth_key}",
+            f"--hostname={os.getenv('TAILSCALE_HOSTNAME', 'goblin-render')}",
+            "--timeout=30s",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _stdout, stderr = await login.communicate()
+        if login.returncode != 0:
+            detail = stderr.decode("utf-8", errors="replace").strip()[-500:]
+            logger.warning("Tailnet proxy authentication failed", error=detail)
+            _tailscaled_process.terminate()
+            await _tailscaled_process.wait()
+            _tailscaled_process = None
+            return
+        logger.info("Tailnet proxy ready", proxy="http://localhost:1055")
+    except Exception as exc:
+        logger.warning("Tailnet proxy failed to start", error=f"{type(exc).__name__}: {exc}")
+        if _tailscaled_process is not None:
+            try:
+                _tailscaled_process.terminate()
+                await _tailscaled_process.wait()
+            except Exception:
+                pass
+            _tailscaled_process = None
+
+
+async def _stop_tailnet_proxy() -> None:
+    global _tailscaled_process
+    if _tailscaled_process is None:
+        return
+    try:
+        _tailscaled_process.terminate()
+        await asyncio.wait_for(_tailscaled_process.wait(), timeout=3.0)
+    except Exception as exc:
+        logger.warning("Tailnet proxy shutdown failed", error=str(exc))
+    finally:
+        _tailscaled_process = None
+
 
 async def _init_redis():
     try:
@@ -282,6 +351,7 @@ async def lifespan(_app: FastAPI):
         # background so the health endpoint responds immediately and Render's
         # 3-minute health-check window is never exceeded.
         async def _start_all_services():
+            await _ensure_tailnet_proxy()
             await asyncio.gather(_init_redis(), _init_db())
             await _restore_colab_endpoint()
             await asyncio.gather(
@@ -340,6 +410,7 @@ async def lifespan(_app: FastAPI):
         await asyncio.gather(
             _stop_ai_health_monitoring(),
             _stop_colab_heartbeat(),
+            _stop_tailnet_proxy(),
         )
 
         await monitor.stop()
