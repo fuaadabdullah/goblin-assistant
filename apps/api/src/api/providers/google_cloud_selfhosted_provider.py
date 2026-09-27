@@ -239,18 +239,30 @@ class GoogleCloudSelfhostedProvider(BaseProvider):
             )
 
         t0 = time.perf_counter()
-        results: List[ProviderHealth] = list(
-            await asyncio.gather(
-                *[b.health_check() for b in self._backends],
-                return_exceptions=False,
-            )
-        )
-        latency = (time.perf_counter() - t0) * 1000
+        tasks = [asyncio.create_task(b.health_check()) for b in self._backends]
+        try:
+            for completed in asyncio.as_completed(tasks):
+                try:
+                    result = await completed
+                except Exception as exc:
+                    logger.debug("gcs_backend_health_failed", error=str(exc))
+                    continue
+                if result.healthy:
+                    latency = (time.perf_counter() - t0) * 1000
+                    return ProviderHealth(
+                        provider_id=self.provider_id,
+                        healthy=True,
+                        latency_ms=latency,
+                    )
 
-        healthy_count = sum(1 for r in results if r.healthy)
-        return ProviderHealth(
-            provider_id=self.provider_id,
-            healthy=healthy_count > 0,
-            latency_ms=latency,
-            error=(None if healthy_count > 0 else f"all {len(self._backends)} backends unhealthy"),
-        )
+            latency = (time.perf_counter() - t0) * 1000
+            return ProviderHealth(
+                provider_id=self.provider_id,
+                healthy=False,
+                latency_ms=latency,
+                error=f"all {len(self._backends)} backends unhealthy",
+            )
+        finally:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
