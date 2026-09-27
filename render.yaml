@@ -50,7 +50,7 @@ services:
       - key: TAILSCALE_HOSTNAME
         value: goblin-render
       - key: LLAMACPP_ORACLE_ENDPOINT
-        value: http://100.107.126.121:8081
+        value: http://100.88.227.73:8081
       - key: LLAMACPP_ORACLE_PROXY
         value: socks5://localhost:1055
       - key: LLAMACPP_ORACLE_API_KEY
