@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 router = APIRouter(tags=["oracle-mcp"])
 
 _SERVICE = "goblin-oracle-bridge"
+_TAILSCALE_SOCKET = "/tmp/tailscaled.sock"
 _TOOLS = [
     {
         "name": "oracle_status",
@@ -76,6 +77,69 @@ async def _tailnet_ping(endpoint: str) -> dict[str, Any]:
         }
 
 
+async def _run_tailscale(*args: str, timeout: float = 6.0) -> tuple[int | None, str, str]:
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "tailscale",
+            f"--socket={_TAILSCALE_SOCKET}",
+            *args,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+        return (
+            proc.returncode,
+            stdout.decode("utf-8", errors="replace").strip(),
+            stderr.decode("utf-8", errors="replace").strip(),
+        )
+    except Exception as exc:
+        return None, "", f"{type(exc).__name__}: {exc}"
+
+
+async def _tailnet_diagnostics(endpoint: str) -> dict[str, Any]:
+    host = urlparse(endpoint).hostname
+    result: dict[str, Any] = {
+        "target": host,
+        "peer_found": False,
+        "peer_online": None,
+        "ping_ok": False,
+    }
+    if not host:
+        result["error"] = "Endpoint host could not be parsed"
+        return result
+
+    code, stdout, stderr = await _run_tailscale("status", "--json")
+    if code == 0:
+        try:
+            payload = json.loads(stdout)
+            peers = payload.get("Peer", {})
+            if isinstance(peers, dict):
+                for peer in peers.values():
+                    if not isinstance(peer, dict):
+                        continue
+                    ips = peer.get("TailscaleIPs") or []
+                    if host in ips:
+                        result["peer_found"] = True
+                        result["peer_online"] = peer.get("Online")
+                        result["peer_hostname"] = peer.get("HostName")
+                        result["peer_active"] = peer.get("Active")
+                        break
+        except Exception as exc:
+            result["status_error"] = f"{type(exc).__name__}: {exc}"
+    else:
+        result["status_error"] = stderr[-300:] or "tailscale status failed"
+
+    ping_code, ping_stdout, ping_stderr = await _run_tailscale(
+        "ping", "--c=1", "--timeout=5s", host, timeout=7.0
+    )
+    result["ping_ok"] = ping_code == 0
+    if ping_stdout:
+        result["ping"] = ping_stdout[-300:]
+    elif ping_stderr:
+        result["ping_error"] = ping_stderr[-300:]
+    return result
+
+
 async def _oracle_status() -> dict[str, Any]:
     endpoint = os.getenv("LLAMACPP_ORACLE_ENDPOINT", "").strip().rstrip("/")
     api_key = os.getenv("LLAMACPP_ORACLE_API_KEY", "").strip()
@@ -89,6 +153,8 @@ async def _oracle_status() -> dict[str, Any]:
     if not endpoint:
         result["error"] = "LLAMACPP_ORACLE_ENDPOINT is not configured"
         return result
+
+    result["tailnet"] = await _tailnet_diagnostics(endpoint)
 
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
     try:
@@ -148,7 +214,7 @@ async def oracle_mcp(
         return _rpc(
             request_id,
             {
-                "content": [{"type": "text", "text": __import__("json").dumps(status)}],
+                "content": [{"type": "text", "text": json.dumps(status)}],
                 "structuredContent": status,
             },
         )
