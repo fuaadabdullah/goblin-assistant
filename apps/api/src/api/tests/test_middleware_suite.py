@@ -6,6 +6,9 @@ from unittest.mock import patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from api.bootstrap.middleware import install_runtime_middlewares
+from api.routes.oracle_mcp import router as oracle_mcp_router
+
 from api.middleware import (
     AuthenticationMiddleware,
     SecurityHeadersMiddleware,
@@ -336,3 +339,29 @@ class TestSecurityHeadersMiddleware:
 
         # At minimum we should have the core security headers
         assert len(response.headers) >= 5
+
+@patch.dict(
+    os.environ,
+    {
+        "ENVIRONMENT": "production",
+        "RATE_LIMIT_ENABLED": "false",
+        "LOCAL_LLM_API_KEY": "machine-key",
+        "ORACLE_MCP_BEARER_TOKEN": "dedicated-mcp-key",
+    },
+)
+def test_oracle_mcp_uses_dedicated_bearer_without_global_auth_collision():
+    """The Oracle MCP route owns its bearer token instead of LOCAL_LLM_API_KEY."""
+    app = FastAPI()
+    app.include_router(oracle_mcp_router)
+    install_runtime_middlewares(app, environment="production")
+    client = TestClient(app)
+
+    response = client.post(
+        "/mcp/oracle",
+        headers={"Authorization": "Bearer dedicated-mcp-key"},
+        json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["result"]["serverInfo"]["name"] == "goblin-oracle-bridge"
+
