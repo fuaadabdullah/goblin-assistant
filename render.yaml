@@ -1,5 +1,4 @@
-# ARCHIVED — Oracle Cloud (infra/oracle/) is the active deployment platform.
-# This file is kept for reference only.
+# Render hosts the thin public API/control plane. Inference and ML workloads run on private compute nodes.
 
 services:
   - type: web
@@ -50,9 +49,9 @@ services:
       - key: TAILSCALE_HOSTNAME
         value: goblin-render
       - key: LLAMACPP_ORACLE_ENDPOINT
-        value: http://100.107.126.121:8081
+        sync: false  # private tailnet endpoint; managed in Render
       - key: LLAMACPP_ORACLE_PROXY
-        value: http://localhost:1055
+        value: socks5://localhost:1055
       - key: LLAMACPP_ORACLE_API_KEY
         sync: false
 
@@ -97,7 +96,7 @@ services:
     # Build settings
     buildCommand: |
       pip install --upgrade pip
-      pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
+      pip install -r apps/api/requirements.txt
 
   - type: keyvalue
     name: goblin-redis
