@@ -59,7 +59,7 @@ async def _ensure_tailnet_proxy() -> None:
             await _tailscaled_process.wait()
             _tailscaled_process = None
             return
-        logger.info("Tailnet proxy ready", proxy="http://localhost:1055")
+        os.environ["LLAMACPP_ORACLE_PROXY"] = "socks5://localhost:1055"\n        logger.info("Tailnet proxy ready", proxy="socks5://localhost:1055")
     except Exception as exc:
         logger.warning("Tailnet proxy failed to start", error=f"{type(exc).__name__}: {exc}")
         if _tailscaled_process is not None:
