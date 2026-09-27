@@ -41,6 +41,7 @@ DEFAULT_PROVIDER_CLASS_MAP: Dict[str, type[BaseProvider]] = {
     "huggingface": OpenAICompatibleProvider,
     "cohere": OpenAICompatibleProvider,
     "ollama_local": OllamaProvider,
+    "aws_bedrock": OpenAICompatibleProvider,
     "gcp_vllm": GoogleCloudProvider,
     "gcp_vm": GoogleCloudSelfhostedProvider,
     "mock": MockProvider,

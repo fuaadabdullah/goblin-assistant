@@ -26,12 +26,14 @@ openai = "gpt-4o-mini"
 anthropic = "claude-3-5-haiku-latest"
 deepseek = "deepseek-chat"
 aliyun = "qwen-plus"
+aws_bedrock = "openai.gpt-oss-20b"
 
 [tiers.best]
 openai = "gpt-4o"
 anthropic = "claude-sonnet-4-20250514"
 gcp_vllm = "qwen3-32b"
 azure_openai = "gpt-4o"
+aws_bedrock = "openai.gpt-oss-20b"
 
 [tiers.local]
 gcp_vm = "gemini-2.5-flash"
