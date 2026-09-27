@@ -30,10 +30,10 @@ aliyun = "qwen-plus"
 [tiers.best]
 openai = "gpt-4o"
 anthropic = "claude-sonnet-4-20250514"
-gcp_vllm = "qwen3-32b"
+aws_vllm = "qwen3-32b"
 azure_openai = "gpt-4o"
 
 [tiers.local]
-gcp_vm = "gemini-2.5-flash"
+aws_vm = "goblin-core"
 ollama_local = "qwen2.5:3b"
 aliyun = "qwen-plus"
