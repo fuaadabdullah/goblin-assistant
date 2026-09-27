@@ -70,13 +70,24 @@ def _build_operation_index(schema: dict[str, object]) -> dict[tuple[str, str], d
     return index
 
 
+def _iter_api_routes(api_app) -> list[Any]:
+    """Every APIRoute the app serves, with its effective mounted path.
+
+    FastAPI >= 0.141 keeps included routers nested rather than flattening them
+    into ``app.routes``; the API's introspection helper handles both shapes.
+    """
+    if str(API_SRC) not in sys.path:
+        sys.path.insert(0, str(API_SRC))
+    from api.routes.introspection import iter_api_routes  # noqa: E402
+
+    return iter_api_routes(api_app)
+
+
 def _route_records_from_app(api_app, schema: dict[str, object] | None = None) -> list[RouteRecord]:
     operation_index = _build_operation_index(schema or {})
     records: list[RouteRecord] = []
 
-    for route in api_app.routes:
-        if not isinstance(route, APIRoute):
-            continue
+    for route in _iter_api_routes(api_app):
 
         path = getattr(route, "path", "")
         if not isinstance(path, str) or not path:

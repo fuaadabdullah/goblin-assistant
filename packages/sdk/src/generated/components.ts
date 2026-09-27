@@ -183,6 +183,11 @@ export interface components {
         };
         /** ApiKeyResponse */
         ApiKeyResponse: {
+            /**
+             * Configured
+             * @default false
+             */
+            configured: boolean;
             /** Key */
             key?: string | null;
             /** Provider */

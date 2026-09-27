@@ -214,7 +214,8 @@ class TestCreateAPIKeyStore:
             store = create_api_key_store()
             assert isinstance(store, DatabaseAPIKeyStore)
 
-    def test_creates_database_store_by_default(self):
+    def test_defaults_to_secret_manager_and_fails_closed(self):
+        """ENVIRONMENT defaults to production: Vault is required, never a silent DB fallback."""
         with patch.dict(os.environ, {}, clear=True):
-            store = create_api_key_store()
-            assert isinstance(store, DatabaseAPIKeyStore)
+            with pytest.raises(ValueError, match="VAULT_URL"):
+                create_api_key_store()

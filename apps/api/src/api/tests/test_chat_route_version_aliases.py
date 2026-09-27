@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from api.api_router import router as api_router
 from api.chat_router import router as chat_router
+from api.routes.introspection import iter_api_routes
 from api.routes.route_mounting import mount_versioned_primary_routes
 
 
@@ -12,7 +13,7 @@ def test_public_routes_are_registered_once_under_v1_prefix() -> None:
     app.include_router(chat_router, prefix="/api/v1")
     app.include_router(api_router, prefix="/api/v1")
 
-    paths = {route.path for route in app.routes}
+    paths = {route.path for route in iter_api_routes(app)}
 
     assert "/api/v1/chat/conversations" in paths
     assert "/api/v1/api/chat" in paths
@@ -103,7 +104,7 @@ def test_mount_versioned_primary_routes_includes_public_v1_routes() -> None:
         notifications_router=notifications,
     )
 
-    paths = {route.path for route in app.routes}
+    paths = {route.path for route in iter_api_routes(app)}
     assert "/api/v1/health" in paths
     assert "/api/v1/settings/" in paths
     assert "/api/v1/providers/models" in paths

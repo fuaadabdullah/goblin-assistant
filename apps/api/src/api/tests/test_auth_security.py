@@ -237,10 +237,10 @@ class TestSandboxSecurity:
         # ["api.sandbox_api"] with a fresh module object at collection time,
         # which would silently orphan a module-attribute patch here from the
         # module the live route function actually reads from.
-        from fastapi.routing import APIRoute
+        from api.routes.introspection import iter_api_routes
 
-        for route in client.app.routes:
-            if isinstance(route, APIRoute) and route.path.endswith("/sandbox/submit"):
+        for route in iter_api_routes(client.app):
+            if route.path.endswith("/sandbox/submit"):
                 monkeypatch.setitem(route.endpoint.__globals__, "SANDBOX_ENABLED", True)
                 # require_api_key reads the module-global API_KEY; align it with
                 # the test key so these tests exercise language validation

@@ -286,14 +286,17 @@ class TestConversationStoreManager:
             manager = ConversationStoreManager()
             assert isinstance(manager._store, InMemoryConversationStore)
 
-    def test_falls_back_to_in_memory_when_no_env(self):
+    def test_defaults_to_database_when_no_env(self):
+        """ENVIRONMENT defaults to production, which must not use in-memory storage."""
         with patch.dict(os.environ, {}, clear=True):
             manager = ConversationStoreManager()
-            assert isinstance(manager._store, InMemoryConversationStore)
+            from api.storage.conversations import DatabaseConversationStore
+
+            assert isinstance(manager._store, DatabaseConversationStore)
 
     @pytest.mark.asyncio
     async def test_delegates_save_and_get(self):
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {"ENVIRONMENT": "development"}, clear=True):
             manager = ConversationStoreManager()
             conv = Conversation(user_id="u-1")
             await manager.save_conversation(conv)
@@ -303,7 +306,7 @@ class TestConversationStoreManager:
 
     @pytest.mark.asyncio
     async def test_delegates_delete(self):
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {"ENVIRONMENT": "development"}, clear=True):
             manager = ConversationStoreManager()
             conv = Conversation(user_id="u-1")
             await manager.save_conversation(conv)
@@ -313,14 +316,14 @@ class TestConversationStoreManager:
 
     @pytest.mark.asyncio
     async def test_delegates_delete_missing(self):
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {"ENVIRONMENT": "development"}, clear=True):
             manager = ConversationStoreManager()
             deleted = await manager.delete_conversation("nonexistent")
             assert deleted is False
 
     @pytest.mark.asyncio
     async def test_delegates_list(self):
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {"ENVIRONMENT": "development"}, clear=True):
             manager = ConversationStoreManager()
             conv1 = Conversation(user_id="u-1", title="A")
             conv2 = Conversation(user_id="u-1", title="B")
@@ -331,7 +334,7 @@ class TestConversationStoreManager:
 
     @pytest.mark.asyncio
     async def test_delegates_update_title(self):
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {"ENVIRONMENT": "development"}, clear=True):
             manager = ConversationStoreManager()
             conv = Conversation(user_id="u-1", title="Old")
             await manager.save_conversation(conv)
@@ -343,14 +346,14 @@ class TestConversationStoreManager:
 
     @pytest.mark.asyncio
     async def test_delegates_update_title_nonexistent(self):
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {"ENVIRONMENT": "development"}, clear=True):
             manager = ConversationStoreManager()
             ok = await manager.update_conversation_title("nonexistent", "Title")
             assert ok is False
 
     @pytest.mark.asyncio
     async def test_delegates_archive_messages(self):
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {"ENVIRONMENT": "development"}, clear=True):
             manager = ConversationStoreManager()
             base = datetime.utcnow()
             m1 = ConversationMessage(role="user", content="old a", timestamp=base)
@@ -372,7 +375,7 @@ class TestConversationStoreManager:
 
     @pytest.mark.asyncio
     async def test_delegates_check_conversation_owner(self):
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {"ENVIRONMENT": "development"}, clear=True):
             manager = ConversationStoreManager()
             conv = Conversation(user_id="u-1")
             await manager.save_conversation(conv)
@@ -383,7 +386,7 @@ class TestConversationStoreManager:
 
     @pytest.mark.asyncio
     async def test_create_conversation(self):
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {"ENVIRONMENT": "development"}, clear=True):
             manager = ConversationStoreManager()
             conv = await manager.create_conversation(user_id="u-1", title="New Chat")
             assert conv.user_id == "u-1"
@@ -394,7 +397,7 @@ class TestConversationStoreManager:
 
     @pytest.mark.asyncio
     async def test_create_conversation_defaults(self):
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {"ENVIRONMENT": "development"}, clear=True):
             manager = ConversationStoreManager()
             conv = await manager.create_conversation()
             assert conv.title == "New Conversation"
@@ -402,7 +405,7 @@ class TestConversationStoreManager:
 
     @pytest.mark.asyncio
     async def test_add_message_to_conversation(self):
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {"ENVIRONMENT": "development"}, clear=True):
             manager = ConversationStoreManager()
             conv = await manager.create_conversation(user_id="u-1")
             ok = await manager.add_message_to_conversation(
@@ -419,7 +422,7 @@ class TestConversationStoreManager:
 
     @pytest.mark.asyncio
     async def test_add_message_to_conversation_nonexistent(self):
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {"ENVIRONMENT": "development"}, clear=True):
             manager = ConversationStoreManager()
             ok = await manager.add_message_to_conversation(
                 conversation_id="does-not-exist",
@@ -430,7 +433,7 @@ class TestConversationStoreManager:
 
     @pytest.mark.asyncio
     async def test_import_messages_to_conversation(self):
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {"ENVIRONMENT": "development"}, clear=True):
             manager = ConversationStoreManager()
             conv = await manager.create_conversation(user_id="u-1")
             msgs = [
@@ -445,14 +448,14 @@ class TestConversationStoreManager:
 
     @pytest.mark.asyncio
     async def test_import_messages_to_conversation_nonexistent(self):
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {"ENVIRONMENT": "development"}, clear=True):
             manager = ConversationStoreManager()
             ok = await manager.import_messages_to_conversation("nonexistent", [])
             assert ok is False
 
     @pytest.mark.asyncio
     async def test_import_messages_sorts_and_updates_timestamp(self):
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {"ENVIRONMENT": "development"}, clear=True):
             manager = ConversationStoreManager()
             base = datetime.utcnow()
             conv = await manager.create_conversation(user_id="u-1")

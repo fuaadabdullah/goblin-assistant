@@ -564,6 +564,11 @@
       },
       "ApiKeyResponse": {
         "properties": {
+          "configured": {
+            "default": false,
+            "title": "Configured",
+            "type": "boolean"
+          },
           "key": {
             "anyOf": [
               {
@@ -1754,7 +1759,7 @@
             "type": "integer"
           },
           "thumbs_up_rate": {
-            "default": 0,
+            "default": 0.0,
             "title": "Thumbs Up Rate",
             "type": "number"
           },
@@ -2283,7 +2288,7 @@
         "properties": {
           "active_jobs": {
             "default": 0,
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Active Jobs",
             "type": "integer"
           },
@@ -2312,7 +2317,7 @@
           },
           "max_concurrency": {
             "default": 1,
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Max Concurrency",
             "type": "integer"
           },
@@ -5047,7 +5052,7 @@
         "type": "object"
       },
       "ToneMode": {
-        "description": "Voice / register the assistant should answer in.\n\nValues are intentionally broad and additive — never rename a value\nwithout a deprecation cycle because it is part of the public API\ncontract (exported via OpenAPI and consumed by the SDK).",
+        "description": "Voice / register the assistant should answer in.\n\nValues are intentionally broad and additive \u2014 never rename a value\nwithout a deprecation cycle because it is part of the public API\ncontract (exported via OpenAPI and consumed by the SDK).",
         "enum": [
           "DEFAULT",
           "FORMAL",
@@ -5982,6 +5987,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Delete Api Key",
         "tags": [
           "api-keys"
@@ -6023,6 +6033,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get Api Key",
         "tags": [
           "api-keys"
@@ -6072,6 +6087,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Store Api Key",
         "tags": [
           "api-keys"
@@ -7683,7 +7703,7 @@
     },
     "/api/v1/chat/conversations/{conversation_id}/messages": {
       "post": {
-        "description": "Send a message and receive an AI response.\n\nOn stream=True, returns SSE via streaming.generate_chat_stream.\nProvider selection is delegated to the dispatcher; tool-calling is\nrun inline.\n\nPipeline: WTI → attachments → context assembly → provider dispatch →\ntool loop → normalize → persist → respond.",
+        "description": "Send a message and receive an AI response.\n\nOn stream=True, returns SSE via streaming.generate_chat_stream.\nProvider selection is delegated to the dispatcher; tool-calling is\nrun inline.\n\nPipeline: WTI \u2192 attachments \u2192 context assembly \u2192 provider dispatch \u2192\ntool loop \u2192 normalize \u2192 persist \u2192 respond.",
         "operationId": "send_message_api_v1_chat_conversations__conversation_id__messages_post",
         "parameters": [
           {
@@ -9333,7 +9353,7 @@
     },
     "/api/v1/debug/suggest": {
       "post": {
-        "description": "Get intelligent debugging suggestions from model routing system.\n\nRoutes specialized tasks to Raptor model; other tasks to fallback model.\n\nRequest body:\n- task: str — Task identifier from RAPTOR_TASKS or other\n- context: dict — Contextual data (error, code, traces, etc.)\n\nReturns:\n- model: str — Model used ('raptor' or 'fallback')\n- suggestion: str — The suggestion text\n- confidence: optional float — Confidence score if available\n- task: str — Echo of requested task\n- timestamp: str — Response timestamp\n- raw: optional dict — Raw model response for debugging",
+        "description": "Get intelligent debugging suggestions from model routing system.\n\nRoutes specialized tasks to Raptor model; other tasks to fallback model.\n\nRequest body:\n- task: str \u2014 Task identifier from RAPTOR_TASKS or other\n- context: dict \u2014 Contextual data (error, code, traces, etc.)\n\nReturns:\n- model: str \u2014 Model used ('raptor' or 'fallback')\n- suggestion: str \u2014 The suggestion text\n- confidence: optional float \u2014 Confidence score if available\n- task: str \u2014 Echo of requested task\n- timestamp: str \u2014 Response timestamp\n- raw: optional dict \u2014 Raw model response for debugging",
         "operationId": "get_debug_suggestion_api_v1_debug_suggest_post",
         "requestBody": {
           "content": {
@@ -10055,6 +10075,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get Feature Flag",
         "tags": [
           "feature-flags"
@@ -10105,6 +10130,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Upsert Feature Flag",
         "tags": [
           "feature-flags"
@@ -11723,7 +11753,7 @@
     },
     "/api/v1/routing/explain/{routing_id}": {
       "get": {
-        "description": "Return why a given routing decision picked its provider.\n\nBacked by the in-memory explanation cache populated on every\nProviderSelectionModel.score() call — see routing/provider_selection.py.\nExplanations are bounded and evicted FIFO, so old routing_ids 404.",
+        "description": "Return why a given routing decision picked its provider.\n\nBacked by the in-memory explanation cache populated on every\nProviderSelectionModel.score() call \u2014 see routing/provider_selection.py.\nExplanations are bounded and evicted FIFO, so old routing_ids 404.",
         "operationId": "explain_routing_decision_api_v1_routing_explain__routing_id__get",
         "parameters": [
           {
@@ -12720,14 +12750,6 @@
         "operationId": "submit_job_api_v1_sandbox_submit_post",
         "parameters": [
           {
-            "in": "query",
-            "name": "request",
-            "required": false,
-            "schema": {
-              "title": "Request"
-            }
-          },
-          {
             "in": "header",
             "name": "x-api-key",
             "required": false,
@@ -12805,7 +12827,7 @@
     },
     "/api/v1/search/collections/{collection_name}/add": {
       "post": {
-        "description": "Backward-compatible shim — maps collection_name to source_type.",
+        "description": "Backward-compatible shim \u2014 maps collection_name to source_type.",
         "operationId": "add_document_compat_api_v1_search_collections__collection_name__add_post",
         "parameters": [
           {
@@ -13096,6 +13118,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List Secrets",
         "tags": [
           "secrets"
@@ -13118,6 +13145,11 @@
             "description": "Successful Response"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Secrets Health",
         "tags": [
           "secrets"
@@ -13175,6 +13207,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Delete Secret",
         "tags": [
           "secrets"
@@ -13232,6 +13269,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get Secret",
         "tags": [
           "secrets"
@@ -13283,6 +13325,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Put Secret",
         "tags": [
           "secrets"
@@ -13324,6 +13371,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Rotate Secret",
         "tags": [
           "secrets"

@@ -5020,9 +5020,7 @@ export interface operations {
     };
     submit_job_api_v1_sandbox_submit_post: {
         parameters: {
-            query?: {
-                request?: unknown;
-            };
+            query?: never;
             header?: {
                 "x-api-key"?: string;
             };
