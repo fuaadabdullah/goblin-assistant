@@ -16,8 +16,10 @@ this moves to Redis or the database.
 
 from __future__ import annotations
 
+import itertools
 import threading
 import time
+from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 import structlog
@@ -27,6 +29,17 @@ from .models import NodeHeartbeat, NodeRecord, NodeStatus, NodeView
 
 logger = structlog.get_logger()
 
+_reservation_ids = itertools.count(1)
+
+
+@dataclass(frozen=True)
+class Reservation:
+    """One API-side claim on a node slot, released exactly once."""
+
+    node_id: str
+    reservation_id: int
+    reserved_at: float
+
 
 class NodeRegistry:
     """Thread-safe store of known nodes, keyed by node_id."""
@@ -35,7 +48,8 @@ class NodeRegistry:
         self._nodes: Dict[str, NodeRecord] = {}
         # In-process reservations close the race between heartbeats: two API
         # requests must not both claim the final slot before active_jobs updates.
-        self._inflight: Dict[str, int] = {}
+        # Keyed node_id -> reservation_id -> Reservation.
+        self._inflight: Dict[str, Dict[int, Reservation]] = {}
         self._lock = threading.RLock()
         self._ttl_override = ttl_seconds
 
@@ -72,18 +86,20 @@ class NodeRegistry:
             )
         return record
 
-    def record_failure(self, node_id: str) -> None:
+    def record_failure(self, node_id: str, *, now: Optional[float] = None) -> None:
         """Note that a dispatch to this node failed.
 
         Failing nodes are shed immediately rather than left eligible until
         their heartbeat lapses -- otherwise every request in the next 90s
         pays the timeout before falling through to the cloud.
         """
+        stamp = now if now is not None else time.monotonic()
         with self._lock:
             record = self._nodes.get(node_id)
             if record is None:
                 return
             record.consecutive_failures += 1
+            record.last_failure_at = stamp
             failures = record.consecutive_failures
         logger.warning("node_dispatch_failed", node_id=node_id, consecutive_failures=failures)
 
@@ -92,6 +108,7 @@ class NodeRegistry:
             record = self._nodes.get(node_id)
             if record is not None:
                 record.consecutive_failures = 0
+                record.last_failure_at = None
 
     def forget(self, node_id: str) -> bool:
         with self._lock:
@@ -109,24 +126,40 @@ class NodeRegistry:
         *,
         model: Optional[str] = None,
         now: Optional[float] = None,
-    ) -> bool:
-        """Atomically reserve one local dispatch slot if the node is eligible."""
+    ) -> Optional[Reservation]:
+        """Atomically reserve one local dispatch slot if the node is eligible.
+
+        Returns the reservation (truthy) or None. Pass it back to release().
+        """
         stamp = now if now is not None else time.monotonic()
         with self._lock:
             record = self._nodes.get(node_id)
             if record is None or not self._is_eligible_locked(record, model=model, now=stamp):
-                return False
-            self._inflight[node_id] = self._inflight.get(node_id, 0) + 1
-            return True
+                return None
+            reservation = Reservation(
+                node_id=node_id,
+                reservation_id=next(_reservation_ids),
+                reserved_at=stamp,
+            )
+            self._inflight.setdefault(node_id, {})[reservation.reservation_id] = reservation
+            return reservation
 
-    def release(self, node_id: str) -> None:
-        """Release an API-side dispatch reservation."""
+    def release(self, node_id: str, reservation: Optional[Reservation] = None) -> None:
+        """Release an API-side dispatch reservation.
+
+        Without an explicit reservation the oldest one is released, which is
+        the right choice for callers that only ever hold one.
+        """
         with self._lock:
-            count = self._inflight.get(node_id, 0)
-            if count <= 1:
-                self._inflight.pop(node_id, None)
+            held = self._inflight.get(node_id)
+            if not held:
+                return
+            if reservation is not None:
+                held.pop(reservation.reservation_id, None)
             else:
-                self._inflight[node_id] = count - 1
+                held.pop(min(held), None)
+            if not held:
+                self._inflight.pop(node_id, None)
 
     # -- reads --------------------------------------------------------------
 
@@ -150,10 +183,31 @@ class NodeRegistry:
         return record.status
 
     def _effective_active_jobs_locked(self, record: NodeRecord) -> int:
-        # Reservations are intentionally conservative. A heartbeat can catch a
-        # request already in flight, so this may briefly double-count that job,
-        # but it can never oversubscribe the node's advertised concurrency.
-        return record.active_jobs + self._inflight.get(record.node_id, 0)
+        """Load the node is carrying, as best this worker can tell.
+
+        The last heartbeat's active_jobs already includes any of our
+        reservations that were in flight when it was sent, but none made
+        since. So: reported load plus reservations newer than that heartbeat,
+        and never less than what this worker alone has in flight (the node
+        may have finished other callers' jobs since it reported).
+        """
+        held = self._inflight.get(record.node_id, {})
+        since_heartbeat = sum(1 for r in held.values() if r.reserved_at >= record.last_heartbeat)
+        return max(record.active_jobs + since_heartbeat, len(held))
+
+    def _is_shed_locked(self, record: NodeRecord, now: float) -> bool:
+        """Whether the failure breaker is open for this node.
+
+        A heartbeat does not close it: it proves the control plane is alive,
+        not that inference works. Instead the breaker goes half-open after a
+        cooldown, and the next dispatch is the probe -- success closes it,
+        failure re-arms the cooldown.
+        """
+        if record.consecutive_failures < node_settings.max_consecutive_failures:
+            return False
+        if record.last_failure_at is None:
+            return False
+        return (now - record.last_failure_at) < node_settings.failure_cooldown_seconds
 
     def _is_eligible_locked(
         self,
@@ -162,11 +216,12 @@ class NodeRegistry:
         model: Optional[str] = None,
         now: Optional[float] = None,
     ) -> bool:
-        if self.effective_status(record, now=now) != "online":
+        stamp = now if now is not None else time.monotonic()
+        if self.effective_status(record, now=stamp) != "online":
             return False
         if self._effective_active_jobs_locked(record) >= record.max_concurrency:
             return False
-        if record.consecutive_failures >= node_settings.max_consecutive_failures:
+        if self._is_shed_locked(record, stamp):
             return False
         if model is not None and not record.serves_model(model):
             return False

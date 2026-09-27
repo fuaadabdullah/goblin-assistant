@@ -138,13 +138,12 @@ def test_node_with_spare_capacity_is_eligible(registry):
     assert [n.node_id for n in registry.eligible_nodes(now=1000.0)] == ["node-001"]
 
 
-
 def test_local_reservation_closes_the_heartbeat_capacity_race(registry):
     registry.upsert(make_heartbeat(active_jobs=0, max_concurrency=1), now=1000.0)
 
-    assert registry.try_reserve("node-001", model="llama3.1:8b", now=1000.0) is True
+    assert registry.try_reserve("node-001", model="llama3.1:8b", now=1000.0) is not None
     assert registry.eligible_nodes(model="llama3.1:8b", now=1000.0) == []
-    assert registry.try_reserve("node-001", model="llama3.1:8b", now=1000.0) is False
+    assert registry.try_reserve("node-001", model="llama3.1:8b", now=1000.0) is None
 
     registry.release("node-001")
     assert [n.node_id for n in registry.eligible_nodes(model="llama3.1:8b", now=1000.0)] == [
@@ -155,11 +154,12 @@ def test_local_reservation_closes_the_heartbeat_capacity_race(registry):
 def test_reservation_counts_against_reported_active_jobs(registry):
     registry.upsert(make_heartbeat(active_jobs=1, max_concurrency=2), now=1000.0)
 
-    assert registry.try_reserve("node-001", model="llama3.1:8b", now=1000.0) is True
+    assert registry.try_reserve("node-001", model="llama3.1:8b", now=1000.0) is not None
     assert registry.eligible_nodes(model="llama3.1:8b", now=1000.0) == []
 
     registry.release("node-001")
     assert len(registry.eligible_nodes(model="llama3.1:8b", now=1000.0)) == 1
+
 
 def test_unsupported_model_makes_node_ineligible(registry):
     registry.upsert(make_heartbeat(models=["llama3.1:8b"]), now=1000.0)
@@ -171,12 +171,75 @@ def test_repeated_dispatch_failures_shed_the_node(registry):
     """A broken node must stop being chosen before its heartbeat lapses."""
     registry.upsert(make_heartbeat(), now=1000.0)
     for _ in range(node_settings.max_consecutive_failures):
-        registry.record_failure("node-001")
+        registry.record_failure("node-001", now=1000.0)
     assert registry.eligible_nodes(now=1000.0) == []
 
-    # A fresh heartbeat is evidence of recovery.
+
+def test_heartbeat_does_not_reset_the_failure_breaker(registry):
+    """A heartbeat proves the control plane is up, not that inference works."""
+    registry.upsert(make_heartbeat(), now=1000.0)
+    for _ in range(node_settings.max_consecutive_failures):
+        registry.record_failure("node-001", now=1000.0)
+
     registry.upsert(make_heartbeat(), now=1001.0)
-    assert len(registry.eligible_nodes(now=1001.0)) == 1
+    assert registry.get("node-001").consecutive_failures == node_settings.max_consecutive_failures
+    assert registry.eligible_nodes(now=1001.0) == []
+
+
+def test_shed_node_goes_half_open_after_cooldown(registry):
+    registry.upsert(make_heartbeat(), now=1000.0)
+    for _ in range(node_settings.max_consecutive_failures):
+        registry.record_failure("node-001", now=1000.0)
+
+    probe_at = 1000.0 + node_settings.failure_cooldown_seconds
+    registry.upsert(make_heartbeat(), now=probe_at)
+    assert len(registry.eligible_nodes(now=probe_at)) == 1, "one probe is allowed through"
+
+    # A failed probe re-arms the cooldown.
+    registry.record_failure("node-001", now=probe_at)
+    assert registry.eligible_nodes(now=probe_at) == []
+
+    # A successful dispatch closes the breaker outright.
+    registry.record_success("node-001")
+    assert len(registry.eligible_nodes(now=probe_at)) == 1
+
+
+def test_reservations_after_a_heartbeat_add_to_reported_load(registry):
+    """Codex P1: reported active_jobs=1 plus a newer reservation fills max=2."""
+    registry.upsert(make_heartbeat(active_jobs=1, max_concurrency=2), now=1000.0)
+    assert registry.try_reserve("node-001", model="llama3.1:8b", now=1000.5) is not None
+    assert registry.try_reserve("node-001", model="llama3.1:8b", now=1000.6) is None
+
+
+def test_heartbeat_that_saw_our_job_is_not_double_counted(registry):
+    """A reservation older than the heartbeat is already inside active_jobs."""
+    registry.upsert(make_heartbeat(active_jobs=0, max_concurrency=2), now=1000.0)
+    held = registry.try_reserve("node-001", model="llama3.1:8b", now=1000.5)
+    assert held is not None
+
+    # The next heartbeat reports our job; one slot must still be free.
+    registry.upsert(make_heartbeat(active_jobs=1, max_concurrency=2), now=1001.0)
+    assert registry.try_reserve("node-001", model="llama3.1:8b", now=1001.5) is not None
+    assert registry.try_reserve("node-001", model="llama3.1:8b", now=1001.6) is None
+
+
+def test_local_inflight_is_a_floor_when_the_heartbeat_is_stale_low(registry):
+    """Our own in-flight jobs count even if a heartbeat under-reports them."""
+    registry.upsert(make_heartbeat(active_jobs=0, max_concurrency=2), now=1000.0)
+    registry.try_reserve("node-001", model="llama3.1:8b", now=1000.1)
+    registry.try_reserve("node-001", model="llama3.1:8b", now=1000.2)
+    registry.upsert(make_heartbeat(active_jobs=0, max_concurrency=2), now=1001.0)
+    assert registry.eligible_nodes(model="llama3.1:8b", now=1001.0) == []
+
+
+def test_release_frees_the_specific_reservation(registry):
+    registry.upsert(make_heartbeat(active_jobs=0, max_concurrency=2), now=1000.0)
+    first = registry.try_reserve("node-001", model="llama3.1:8b", now=1000.1)
+    second = registry.try_reserve("node-001", model="llama3.1:8b", now=1000.2)
+    registry.release("node-001", second)
+    registry.release("node-001", second)  # idempotent
+    assert registry.try_reserve("node-001", model="llama3.1:8b", now=1000.3) is not None
+    registry.release("node-001", first)
 
 
 # --- local dispatch and cloud fallback ------------------------------------

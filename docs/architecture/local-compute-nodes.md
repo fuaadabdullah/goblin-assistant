@@ -116,7 +116,7 @@ A node receives work only when **all** of these hold:
 2. Reported status is `online` — never `degraded` or `offline`.
 3. Reported capacity has room **and** this API process can atomically reserve a local dispatch slot.
 4. The requested model appears in `models`.
-5. Fewer than `GOBLIN_NODE_MAX_FAILURES` consecutive dispatch failures.
+5. The node's failure breaker is closed (see below).
 
 A stale heartbeat means **offline regardless of what the node last claimed** —
 silence is the only signal we get when a machine is unplugged. Timestamps are
@@ -124,17 +124,65 @@ monotonic, not wall clock: staleness is a duration, and a clock adjustment
 must never make a live node look dead or a dead one look fresh.
 
 Rule 5 exists so one broken node doesn't make every request for the next 90
-seconds pay a timeout before falling through.
+seconds pay a timeout before falling through. After
+`GOBLIN_NODE_MAX_FAILURES` consecutive dispatch failures the node is shed for
+`GOBLIN_NODE_FAILURE_COOLDOWN` seconds, then goes half-open: the next dispatch
+is a probe, success closes the breaker and failure re-arms the cooldown.
+**Heartbeats do not reset it** — a heartbeat proves the control plane is up,
+not that inference, TLS, or the advertised model works.
 
-## Fallback
+### Capacity accounting
 
-Every negative case returns `None`, which the router reads as "use the cloud":
-no eligible node, unsupported model, saturation, timeout, connection refused,
-TLS failure, a `503` from the node's own concurrency gate (normal saturation, not a health failure), a node with no
-advertised endpoint, or an outright bug in the local tier (it is wrapped in a
-`try/except` — a defect here degrades to cloud rather than 500-ing the user).
+Effective load is `max(active_jobs + reservations made since that heartbeat,
+reservations held by this process)`. A heartbeat already counts any of our jobs
+that were in flight when it was sent, so only newer reservations are added on
+top; our own in-flight count is a floor in case the node has since finished
+other callers' work and under-reports.
 
-Streaming skips the local tier entirely: the node agent forces `stream:false`.
+## Fallback and failure semantics
+
+Every eligible node is tried in load order. Only when all of them miss does the
+local tier return `None`, which the router reads as "use the cloud": no
+eligible node, unsupported model, saturation, timeout, connection refused, TLS
+failure, a node with no advertised endpoint, or an outright bug in the local
+tier (it is wrapped in a `try/except` — a defect here degrades to cloud rather
+than 500-ing the user).
+
+Not every miss is a health signal. Only these feed the failure breaker:
+
+| Outcome | Falls back | Counts as node failure |
+| --- | --- | --- |
+| Connect/read timeout, refused, TLS error, 5xx, 401/403 | yes | **yes** |
+| `503` / `429` (the agent's own concurrency gate) | yes | no — flow control |
+| Request-scoped 4xx (400, 404, 405, 409, 413, 415, 422) | yes | no — says nothing about the node |
+| Stream fails **after** the first token | **no** — surfaces as an interrupted stream | **yes** |
+
+A broken or unreadable mTLS certificate is re-attempted on every call (the SSL
+context is cached only after it builds successfully), so the tier keeps
+failing closed rather than silently falling back to system trust.
+
+## Cost
+
+Local responses report `cost_usd: 0.0` with real token counts from the node in
+the same `usage` shape cloud providers use (`prompt_tokens`,
+`completion_tokens`, `total_tokens`), at the top level and under `result`.
+
+## Streaming
+
+With `GOBLIN_NODE_STREAMING_ENABLED=true`, `route_task(..., stream=True)`
+tries the local tier through the agent's `POST /inference/stream` (NDJSON).
+The stream counts as served only once the **first token** arrives, so a node
+that dies before speaking falls back to the next node or the cloud invisibly.
+After the first token there is no silent fallback — splicing a cloud answer
+onto half a local one is worse than an honest interruption — so the stream
+raises `NodeStreamInterruptedError` and the node takes a breaker failure.
+
+Chunks match the cloud providers' `{"text": ...}` shape; the final chunk is
+`{"text": "", "done": true, "usage": {...}, "cost_usd": 0.0}`, which existing
+consumers skip as empty text. The node's reservation is held until the stream
+is exhausted, fails, or is closed — including a stream closed before it was
+ever read. Agents without the stream endpoint answer 404, which falls back
+without tripping the breaker; keep the flag off until the fleet is upgraded.
 
 ## Configuration
 
@@ -150,6 +198,8 @@ Streaming skips the local tier entirely: the node agent forces `stream:false`.
 | `GOBLIN_NODE_WRITE_TIMEOUT` | `10` | Request write timeout |
 | `GOBLIN_NODE_ALLOW_INSECURE_ENDPOINTS` | `false` | Development only; permits non-loopback HTTP |
 | `GOBLIN_NODE_MAX_FAILURES` | `3` | Consecutive failures before shedding |
+| `GOBLIN_NODE_FAILURE_COOLDOWN` | `60` | Seconds shed before a half-open probe |
+| `GOBLIN_NODE_STREAMING_ENABLED` | `false` | Serve `stream=True` locally; needs agent `/inference/stream` |
 | `GOBLIN_NODE_DEFAULT_MODEL` | `llama3.1:8b` | Used when the caller names none |
 | `GOBLIN_NODE_CLIENT_CERT/KEY`, `GOBLIN_NODE_CA_CERT` | — | mTLS identity presented to nodes |
 
@@ -175,7 +225,7 @@ is not.
 
 ## Known limitation: multi-worker deployments
 
-The registry is in-memory. API-side reservations are counted conservatively on top of reported `active_jobs`, preventing concurrent requests in the **same API process** from oversubscribing the node between heartbeats. Nodes re-announce every ~30s, so an API restart
+The registry is in-memory. API-side reservations are counted on top of reported `active_jobs` (see *Capacity accounting*), preventing concurrent requests in the **same API process** from oversubscribing the node between heartbeats. Nodes re-announce every ~30s, so an API restart
 costs at most one heartbeat interval of blindness — cheaper than the
 consistency problems of persisting state that is stale the moment it is written.
 
@@ -204,7 +254,6 @@ is covered by an automated test, not just the manual run.
 
 ## Not implemented
 
-- **Streaming** to local nodes.
 - Per-node secrets, HMAC-signed heartbeats, replay protection.
 - **Role-based authorization.** The operator secret is a stand-in until
   `UserModel` grows a role and a real `require_admin` dependency exists.

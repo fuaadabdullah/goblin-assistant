@@ -41,6 +41,13 @@ class NodeSettings:
     # Replace it with a real authorization dependency once roles exist.
     operator_secret: str = field(default_factory=lambda: _env("GOBLIN_NODE_OPERATOR_SECRET", ""))
 
+    # Serve stream=True requests on nodes. Requires goblin-node-agent with
+    # POST /inference/stream; older agents answer 404, which falls back to the
+    # cloud without tripping the breaker, but costs a round trip per request.
+    streaming_enabled: bool = field(
+        default_factory=lambda: _flag("GOBLIN_NODE_STREAMING_ENABLED", "false")
+    )
+
     # Hosts a node is permitted to advertise as its endpoint, comma separated.
     # Empty means "no allowlist", which is acceptable only because the
     # heartbeat is authenticated -- set it in production anyway, so a leaked
@@ -89,6 +96,12 @@ class NodeSettings:
     # its heartbeat to lapse.
     max_consecutive_failures: int = field(
         default_factory=lambda: int(_env("GOBLIN_NODE_MAX_FAILURES", "3"))
+    )
+
+    # How long a shed node stays out of rotation before one probe dispatch
+    # is allowed through (half-open). Heartbeats do not reset the breaker.
+    failure_cooldown_seconds: float = field(
+        default_factory=lambda: float(_env("GOBLIN_NODE_FAILURE_COOLDOWN", "60"))
     )
 
     # mTLS material the API presents when calling a node agent. Without a

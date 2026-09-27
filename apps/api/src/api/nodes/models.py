@@ -54,6 +54,9 @@ class NodeRecord(BaseModel):
     # Set when a dispatch to this node fails, so one bad node does not get
     # retried on every request until its heartbeat happens to lapse.
     consecutive_failures: int = 0
+    # Monotonic time of the most recent dispatch failure; drives the
+    # half-open cooldown once consecutive_failures reaches the threshold.
+    last_failure_at: Optional[float] = None
 
     @classmethod
     def from_heartbeat(
@@ -76,8 +79,11 @@ class NodeRecord(BaseModel):
             last_heartbeat=now,
             first_seen=previous.first_seen if previous else now,
             heartbeat_count=(previous.heartbeat_count + 1) if previous else 1,
-            # A fresh heartbeat is evidence the node recovered.
-            consecutive_failures=0,
+            # A heartbeat proves the control plane is alive, not that
+            # inference works, so dispatch failures survive it. Only a
+            # successful dispatch (or the breaker cooldown) clears them.
+            consecutive_failures=previous.consecutive_failures if previous else 0,
+            last_failure_at=previous.last_failure_at if previous else None,
         )
 
     def age_seconds(self, now: Optional[float] = None) -> float:

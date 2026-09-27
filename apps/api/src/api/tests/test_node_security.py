@@ -248,7 +248,6 @@ async def test_dispatch_revalidates_endpoint_against_current_policy(monkeypatch)
     assert result is None, "must refuse to dial a now-disallowed host"
 
 
-
 @pytest.mark.asyncio
 async def test_client_classifies_503_as_capacity_not_health_failure(monkeypatch):
     from api.nodes import client as node_client
@@ -276,6 +275,7 @@ async def test_client_classifies_503_as_capacity_not_health_failure(monkeypatch)
             model="llama3.1:8b",
             prompt="hi",
         )
+
 
 # --- default posture -------------------------------------------------------
 

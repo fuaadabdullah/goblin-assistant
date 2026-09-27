@@ -36,7 +36,7 @@ async def test_local_node_serves_and_cloud_is_untouched(cloud, monkeypatch):
     async def local_hit(task_type, payload):
         return {"ok": True, "text": "local answer", "compute_tier": "local", "node_id": "node-001"}
 
-    monkeypatch.setattr(selection, "_local_compute", lambda: local_hit)
+    monkeypatch.setattr(selection, "_local_compute", lambda stream=False: local_hit)
 
     result = await selection.route_task("chat", {"prompt": "Explain compound interest."})
     assert result["text"] == "local answer"
@@ -49,7 +49,7 @@ async def test_no_local_node_falls_back_to_cloud(cloud, monkeypatch):
     async def local_miss(task_type, payload):
         return None
 
-    monkeypatch.setattr(selection, "_local_compute", lambda: local_miss)
+    monkeypatch.setattr(selection, "_local_compute", lambda stream=False: local_miss)
 
     result = await selection.route_task("chat", {"prompt": "hi"})
     assert result["ok"] is True
@@ -64,7 +64,7 @@ async def test_node_failure_falls_back_to_cloud(cloud, monkeypatch):
     async def local_dead(task_type, payload):
         return None  # dispatch swallowed NodeUnavailableError and told us to move on
 
-    monkeypatch.setattr(selection, "_local_compute", lambda: local_dead)
+    monkeypatch.setattr(selection, "_local_compute", lambda stream=False: local_dead)
 
     result = await selection.route_task("chat", {"prompt": "Explain compound interest."})
     assert result["ok"] is True
@@ -79,7 +79,7 @@ async def test_local_tier_exception_never_breaks_routing(cloud, monkeypatch):
     async def local_explodes(task_type, payload):
         raise RuntimeError("registry corrupted")
 
-    monkeypatch.setattr(selection, "_local_compute", lambda: local_explodes)
+    monkeypatch.setattr(selection, "_local_compute", lambda stream=False: local_explodes)
 
     result = await selection.route_task("chat", {"prompt": "hi"})
     assert result["ok"] is True
@@ -88,19 +88,41 @@ async def test_local_tier_exception_never_breaks_routing(cloud, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_streaming_requests_skip_local_entirely(cloud, monkeypatch):
-    """The node agent forces stream:false, so streaming must not go local."""
+async def test_streaming_requests_use_the_streaming_local_tier(cloud, monkeypatch):
+    """stream=True consults the streaming entry point and returns its stream."""
     consulted = []
 
-    async def local(task_type, payload):
-        consulted.append(task_type)
-        return {"ok": True, "text": "local answer"}
+    async def chunks():
+        yield {"text": "local "}
+        yield {"text": "stream"}
 
-    monkeypatch.setattr(selection, "_local_compute", lambda: local)
+    async def local_stream(task_type, payload):
+        consulted.append(task_type)
+        return {"ok": True, "stream": chunks(), "compute_tier": "local"}
+
+    def pick(stream=False):
+        assert stream is True, "streaming requests must use the streaming entry point"
+        return local_stream
+
+    monkeypatch.setattr(selection, "_local_compute", pick)
 
     result = await selection.route_task("chat", {"prompt": "hi"}, stream=True)
-    assert consulted == [], "local tier must not be consulted for streaming"
+    assert consulted == ["chat"]
+    assert result["compute_tier"] == "local"
+    assert [c["text"] async for c in result["stream"]] == ["local ", "stream"]
+    assert cloud == []
+
+
+@pytest.mark.asyncio
+async def test_streaming_local_miss_falls_back_to_cloud(cloud, monkeypatch):
+    async def local_miss(task_type, payload):
+        return None
+
+    monkeypatch.setattr(selection, "_local_compute", lambda stream=False: local_miss)
+
+    result = await selection.route_task("chat", {"prompt": "hi"}, stream=True)
     assert result["text"] == "cloud answer"
+    assert cloud == ["groq"]
 
 
 @pytest.mark.asyncio
@@ -118,7 +140,7 @@ async def test_cloud_ladder_still_retries_next_provider(monkeypatch):
     async def local_miss(task_type, payload):
         return None
 
-    monkeypatch.setattr(selection, "_local_compute", lambda: local_miss)
+    monkeypatch.setattr(selection, "_local_compute", lambda stream=False: local_miss)
     _d = FlakyDispatcher()
     monkeypatch.setattr(selection, "_dispatcher", lambda: _d)
     monkeypatch.setattr(selection, "top_providers_for", lambda **kwargs: ["groq", "gemini"])
@@ -138,7 +160,7 @@ async def test_total_failure_still_reports_providers_tried(monkeypatch):
     async def local_miss(task_type, payload):
         return None
 
-    monkeypatch.setattr(selection, "_local_compute", lambda: local_miss)
+    monkeypatch.setattr(selection, "_local_compute", lambda stream=False: local_miss)
     _d = DeadDispatcher()
     monkeypatch.setattr(selection, "_dispatcher", lambda: _d)
     monkeypatch.setattr(selection, "top_providers_for", lambda **kwargs: ["groq", "gemini"])
