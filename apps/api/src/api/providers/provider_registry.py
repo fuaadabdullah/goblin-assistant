@@ -12,10 +12,9 @@ from .aliyun_provider import AliyunProvider
 from .anthropic_provider import AnthropicProvider
 from .azure_provider import AzureOpenAIProvider
 from .base import BaseProvider
+from .llamacpp_provider import LlamaCPPProvider
 from .contracts import ProviderAdapter
 from .domain import ProviderMetadata, capabilities_from_config_list
-from .google_cloud_provider import GoogleCloudProvider
-from .google_cloud_selfhosted_provider import GoogleCloudSelfhostedProvider
 from .mock_provider import MockProvider
 from .ollama_provider import OllamaProvider
 from .openai_compatible import OpenAICompatibleProvider
@@ -41,19 +40,11 @@ DEFAULT_PROVIDER_CLASS_MAP: Dict[str, type[BaseProvider]] = {
     "huggingface": OpenAICompatibleProvider,
     "cohere": OpenAICompatibleProvider,
     "ollama_local": OllamaProvider,
-    "gcp_vllm": GoogleCloudProvider,
-    "gcp_vm": GoogleCloudSelfhostedProvider,
+    "aws_vllm": OpenAICompatibleProvider,
+    "aws_vm": LlamaCPPProvider,
     "mock": MockProvider,
     "rovo_dev": RovoDevProvider,
 }
-
-
-def _gcs_any_backend_configured(backends: list) -> bool:
-    """Return True if at least one google_cloud_selfhosted backend has its
-    required env vars set."""
-    from .google_cloud_selfhosted_provider import _backend_is_configured
-
-    return any(_backend_is_configured(bc) for bc in backends)
 
 
 class ProviderRuntimeConfig(BaseModel):
@@ -170,8 +161,6 @@ class ProviderRuntimeConfig(BaseModel):
     def is_configured(self) -> bool:
         if self.provider_id == "mock":
             return True
-        if self.provider_id in ("gcp_vm", "google_cloud_selfhosted"):
-            return _gcs_any_backend_configured(self.raw.get("backends", []))
         if self.provider_id == "azure_openai":
             return bool(
                 self.resolved_api_key
