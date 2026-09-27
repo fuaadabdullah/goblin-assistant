@@ -70,3 +70,7 @@ make contract-checks
 
 For the canonical API contract snapshots and CI gates, see
 [`docs/operations/API_CONTRACT_GATES.md`](docs/operations/API_CONTRACT_GATES.md).
+
+## License
+
+Goblin Assistant is licensed under the Apache License, Version 2.0 (SPDX: `Apache-2.0`). The license includes an explicit patent grant in Section 3. This project is not affiliated with the Apache Software Foundation.
