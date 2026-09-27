@@ -73,3 +73,89 @@ async def test_tailnet_diagnostics_rejects_unparseable_endpoint():
     assert result["peer_found"] is False
     assert result["ping_ok"] is False
     assert "error" in result
+
+
+def test_oci_config_accepts_base64_key_content(monkeypatch):
+    import base64
+
+    pem = "-----BEGIN PRIVATE KEY-----\nTEST\n-----END PRIVATE KEY-----\n"
+    monkeypatch.setenv("OCI_MCP_TENANCY", "tenancy")
+    monkeypatch.setenv("OCI_MCP_USER", "user")
+    monkeypatch.setenv("OCI_MCP_FINGERPRINT", "aa:bb")
+    monkeypatch.setenv("OCI_MCP_REGION", "us-ashburn-1")
+    monkeypatch.setenv(
+        "OCI_MCP_PRIVATE_KEY_B64",
+        base64.b64encode(pem.encode()).decode(),
+    )
+    monkeypatch.setattr(oracle_mcp.oci.config, "validate_config", lambda _config: None)
+
+    config = oracle_mcp._oci_config()
+
+    assert config["tenancy"] == "tenancy"
+    assert config["user"] == "user"
+    assert config["region"] == "us-ashburn-1"
+    assert config["key_content"] == pem
+
+
+@pytest.mark.asyncio
+async def test_oci_control_status_reports_safe_readiness(monkeypatch):
+    monkeypatch.setattr(
+        oracle_mcp,
+        "_oci_config",
+        lambda: {
+            "tenancy": "hidden",
+            "user": "hidden",
+            "fingerprint": "hidden",
+            "region": "us-ashburn-1",
+            "key_content": "hidden",
+        },
+    )
+    monkeypatch.setattr(
+        oracle_mcp,
+        "_safe_instances_sync",
+        lambda _config: [{"name": "goblin-core", "state": "RUNNING"}],
+    )
+
+    result = await oracle_mcp._oci_control_status()
+
+    assert result == {
+        "configured": True,
+        "credentials_valid": True,
+        "region": "us-ashburn-1",
+        "instance_count": 1,
+        "write_scope": "restricted_by_oci_iam",
+    }
+    assert "tenancy" not in result
+    assert "user" not in result
+    assert "fingerprint" not in result
+
+
+@pytest.mark.asyncio
+async def test_oci_compute_inventory_returns_safe_metadata(monkeypatch):
+    monkeypatch.setattr(
+        oracle_mcp,
+        "_oci_config",
+        lambda: {
+            "tenancy": "hidden",
+            "user": "hidden",
+            "fingerprint": "hidden",
+            "region": "us-ashburn-1",
+            "key_content": "hidden",
+        },
+    )
+    instances = [
+        {
+            "name": "goblin-core",
+            "state": "RUNNING",
+            "shape": "VM.Standard.A1.Flex",
+            "availability_domain": "AD-1",
+            "time_created": "2026-09-27T10:00:00+00:00",
+        }
+    ]
+    monkeypatch.setattr(oracle_mcp, "_safe_instances_sync", lambda _config: instances)
+
+    result = await oracle_mcp._oci_compute_inventory()
+
+    assert result["region"] == "us-ashburn-1"
+    assert result["count"] == 1
+    assert result["instances"] == instances
