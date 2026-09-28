@@ -1,14 +1,14 @@
 # FastAPI backend dependencies
 fastapi>=0.111.0
-starlette>=0.49.1
-uvicorn[standard]>=0.27.0
+starlette>=1.7.0
+uvicorn[standard]>=0.54.0
 gunicorn>=21.2.0
 sentry-sdk>=2.0.0
-ddtrace>=2.0.0
-sqlalchemy>=2.0.30
+ddtrace>=4.15.2
+sqlalchemy>=2.1.0
 pgvector>=0.3.0
 python-dotenv>=1.0.1
-redis>=5.0.0
+redis>=8.1.0
 asyncpg>=0.29.0
 aiosqlite>=0.20.0
 alembic>=1.13.0
@@ -23,7 +23,7 @@ opentelemetry-exporter-otlp-proto-http>=1.26.0
 opentelemetry-instrumentation-fastapi>=0.47b0
 opentelemetry-instrumentation-httpx>=0.47b0
 opentelemetry-instrumentation-sqlalchemy>=0.47b0
-langtrace-python-sdk>=3.3.0
+langtrace-python-sdk>=3.8.21
 
 # Supabase integration
 supabase>=1.0.0
@@ -33,7 +33,7 @@ pytest>=8.0.0
 pytest-asyncio>=0.23.0
 mypy>=1.11.0
 pyright>=1.1.390
-ruff>=0.6.0
+ruff>=0.16.9
 pytest-cov>=5.0.0
 pytest-benchmark>=4.0.0
 vulture>=2.11
@@ -43,20 +43,20 @@ hvac>=1.2.0
 aiohttp>=3.9.0
 
 # Additional dependencies from main requirements
-google-auth>=2.49.0
-pyjwt[crypto]>=2.12.0
+google-auth>=2.58.1
+pyjwt[crypto]>=2.15.0
 bcrypt>=4.0.1
 pydantic>=2.0.0
 cryptography>=42.0.0
 email-validator>=2.3.0
 bleach>=6.1.0
-openai>=1.12.0
-anthropic>=0.21.3
-litellm==1.92.0
+openai>=3.19.2
+anthropic>=1.8.0
+litellm==1.102.1
 tiktoken>=0.7.0
 psutil>=5.9.0
 celery[redis]>=5.3.0
-flower>=2.0.0
+flower>=2.2.0
 APScheduler>=3.10.0
 python-multipart>=0.0.6
 
@@ -66,7 +66,7 @@ python-multipart>=0.0.6
 # Sandbox dependencies
 rq>=1.15.0
 docker>=7.0.0
-boto3>=1.34.0
+boto3>=1.43.102
 
 # Financial data
 yfinance>=0.2.36
