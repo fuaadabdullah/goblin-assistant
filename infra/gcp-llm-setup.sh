@@ -1,7 +1,7 @@
 #!/bin/bash
 # Google Cloud Platform — LLM Server Setup
 # Project: goblin-assistant-489711
-# Account: fuaadabdullah@gmail.com
+# Account: supplied through GCP_ACCOUNT_EMAIL (never committed)
 #
 # Usage:
 #   ./gcp-llm-setup.sh ollama
@@ -17,7 +17,7 @@ set -euo pipefail
 # ── Config ────────────────────────────────────────────────────────────────────
 
 PROJECT_ID="goblin-assistant-489711"
-ACCOUNT="fuaadabdullah@gmail.com"
+ACCOUNT="${GCP_ACCOUNT_EMAIL:-}"
 ZONE="us-central1-a"
 REGION="us-central1"
 
@@ -46,6 +46,7 @@ err()  { echo "✗ $*" >&2; }
 die()  { err "$*"; exit 1; }
 
 require_gcloud() {
+  [[ -n "$ACCOUNT" ]] || die "Set GCP_ACCOUNT_EMAIL to the project account before running this script"
   command -v gcloud &>/dev/null || die "gcloud not found — install from https://cloud.google.com/sdk/docs/install"
   gcloud config set account "$ACCOUNT" --quiet
   gcloud config set project "$PROJECT_ID" --quiet
